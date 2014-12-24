@@ -1,0 +1,7 @@
+glob:Build/*
+glob:Release/*
+glob:Debug/*
+glob:Work/*
+glob:*.aps
+glob:*.suo
+glob:*.vcxproj.user
