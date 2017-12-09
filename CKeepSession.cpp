@@ -73,7 +73,7 @@ bool CKeepSession::Initialize()
 	_ShutdownEvent = CreateEventEx(NULL, NULL, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
 	if (_ShutdownEvent == NULL)
 	{
-		printf("Unable to create shutdown event: %d.\n", GetLastError());
+		DebugErrorBox("Unable to create shutdown event: %d.", GetLastError());
 		return false;
 	}
 
@@ -82,7 +82,7 @@ bool CKeepSession::Initialize()
 	hr = _Endpoint->Activate(__uuidof(IAudioClient), CLSCTX_INPROC_SERVER, NULL, reinterpret_cast<void **>(&_AudioClient));
 	if (FAILED(hr))
 	{
-		printf("Unable to activate audio client: %x.\n", hr);
+		DebugErrorBox("Unable to activate audio client: %x.", hr);
 		return false;
 	}
 
@@ -91,7 +91,7 @@ bool CKeepSession::Initialize()
 	hr = _AudioClient->GetMixFormat(&_MixFormat);
 	if (FAILED(hr))
 	{
-		printf("Unable to get mix format on audio client: %x.\n", hr);
+		DebugErrorBox("Unable to get mix format on audio client: %x.", hr);
 		return false;
 	}
 	_FrameSize = _MixFormat->nBlockAlign;
@@ -107,7 +107,7 @@ bool CKeepSession::Initialize()
 		}
 		else
 		{
-			printf("Unknown PCM integer sample type\n");
+			DebugErrorBox("Unknown PCM integer sample type.");
 			return false;
 		}
 	}
@@ -118,7 +118,7 @@ bool CKeepSession::Initialize()
 	}
 	else
 	{
-		printf("unrecognized device format.\n");
+		DebugErrorBox("unrecognized device format.");
 		return false;
 	}
 
@@ -128,7 +128,7 @@ bool CKeepSession::Initialize()
 
 	if (FAILED(hr))
 	{
-		printf("Unable to initialize audio client: %x.\n", hr);
+		DebugErrorBox("Unable to initialize audio client: %x.", hr);
 		return false;
 	}
 
@@ -137,14 +137,14 @@ bool CKeepSession::Initialize()
 	hr = _AudioClient->GetBufferSize(&_BufferSizeInFrames);
 	if (FAILED(hr))
 	{
-		printf("Unable to get audio client buffer: %x. \n", hr);
+		DebugErrorBox("Unable to get audio client buffer: %x.", hr);
 		return false;
 	}
 
 	hr = _AudioClient->GetService(IID_PPV_ARGS(&_RenderClient));
 	if (FAILED(hr))
 	{
-		printf("Unable to get new render client: %x.\n", hr);
+		DebugErrorBox("Unable to get new render client: %x.", hr);
 		return false;
 	}
 
@@ -153,13 +153,13 @@ bool CKeepSession::Initialize()
 	hr = _AudioClient->GetService(IID_PPV_ARGS(&_AudioSessionControl));
 	if (FAILED(hr))
 	{
-		printf("Unable to retrieve session control: %x\n", hr);
+		DebugErrorBox("Unable to retrieve session control: %x.", hr);
 		return false;
 	}
 	hr = _AudioSessionControl->RegisterAudioSessionNotification(this);
 	if (FAILED(hr))
 	{
-		printf("Unable to register for stream switch notifications: %x\n", hr);
+		DebugErrorBox("Unable to register for stream switch notifications: %x.", hr);
 		return false;
 	}
 
@@ -169,13 +169,13 @@ bool CKeepSession::Initialize()
 	hr = _RenderClient->GetBuffer(_BufferSizeInFrames, &pData);
 	if (FAILED(hr))
 	{
-		printf("Failed to get buffer: %x.\n", hr);
+		DebugErrorBox("Failed to get buffer: %x.", hr);
 		return false;
 	}
 	hr = _RenderClient->ReleaseBuffer(_BufferSizeInFrames, AUDCLNT_BUFFERFLAGS_SILENT);
 	if (FAILED(hr))
 	{
-		printf("Failed to release buffer: %x.\n", hr);
+		DebugErrorBox("Failed to release buffer: %x.", hr);
 		return false;
 	}
 
@@ -184,7 +184,7 @@ bool CKeepSession::Initialize()
 	_RenderThread = CreateThread(NULL, 0, WASAPIRenderThread, this, 0, NULL);
 	if (_RenderThread == NULL)
 	{
-		printf("Unable to create transport thread: %x.", GetLastError());
+		DebugErrorBox("Unable to create transport thread: %x.", GetLastError());
 		return false;
 	}
 
@@ -193,7 +193,7 @@ bool CKeepSession::Initialize()
 	hr = _AudioClient->Start();
 	if (FAILED(hr))
 	{
-		printf("Unable to start render client: %x.\n", hr);
+		DebugErrorBox("Unable to start render client: %x.", hr);
 		return false;
 	}
 
@@ -218,7 +218,7 @@ void CKeepSession::Shutdown()
 	hr = _AudioClient->Stop();
 	if (FAILED(hr))
 	{
-		printf("Unable to stop audio client: %x\n", hr);
+		DebugErrorBox("Unable to stop audio client: %x.", hr);
 	}
 
 	if (_RenderThread)
@@ -275,7 +275,7 @@ DWORD CKeepSession::DoRenderThread()
 	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 	if (FAILED(hr))
 	{
-		printf("Unable to initialize COM in render thread: %x\n", hr);
+		DebugErrorBox("Unable to initialize COM in render thread: %x.", hr);
 		return hr;
 	}
 
@@ -285,7 +285,7 @@ DWORD CKeepSession::DoRenderThread()
 	mmcssHandle = AvSetMmThreadCharacteristics(L"Audio", &mmcssTaskIndex);
 	if (mmcssHandle == NULL)
 	{
-		printf("Unable to enable MMCSS on render thread: %d\n", GetLastError());
+		DebugErrorBox("Unable to enable MMCSS on render thread: %d.", GetLastError());
 	}
 #endif
 

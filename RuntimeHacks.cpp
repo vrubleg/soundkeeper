@@ -1,3 +1,5 @@
+#ifdef NDEBUG
+
 // "?terminate@@YAXXZ" from "msvcrt.dll" will be used
 void __cdecl terminate(void);
 
@@ -12,3 +14,5 @@ void __cdecl operator delete(void* const block, size_t const) noexcept
 {
 	operator delete(block);
 }
+
+#endif

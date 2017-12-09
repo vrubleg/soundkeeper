@@ -82,15 +82,15 @@ HRESULT CSoundKeeper::Start()
 	hr = DevEnumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &DevCollection);
 	if (FAILED(hr))
 	{
-		printf("Unable to retrieve device collection: %x\n", hr);
-		goto Exit;
+		DebugErrorBox("Unable to retrieve device collection: %x.", hr);
+		goto exit;
 	}
 
 	hr = DevCollection->GetCount(&KeepersCount);
 	if (FAILED(hr))
 	{
-		printf("Unable to get device collection length: %x\n", hr);
-		goto Exit;
+		DebugErrorBox("Unable to get device collection length: %x.", hr);
+		goto exit;
 	}
 
 	Keepers = new CKeepSession*[KeepersCount]();
@@ -123,7 +123,7 @@ HRESULT CSoundKeeper::Start()
 
 	IsStarted = true;
 
-Exit:
+exit:
 
 	SafeRelease(&DevCollection);
 	return hr;
@@ -188,31 +188,31 @@ HRESULT CSoundKeeper::Main()
 	hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&DevEnumerator));
 	if (FAILED(hr))
 	{
-		printf("Unable to instantiate device enumerator: %x\n", hr);
-		goto Exit;
+		DebugErrorBox("Unable to instantiate device enumerator: %x.", hr);
+		goto exit;
 	}
 
 	ShutdownEvent = CreateEventEx(NULL, NULL, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
 	if (ShutdownEvent == NULL)
 	{
-		printf("Unable to create shutdown event: %d.\n", GetLastError());
+		DebugErrorBox("Unable to create shutdown event: %d.", GetLastError());
 		hr = E_FAIL;
-		goto Exit;
+		goto exit;
 	}
 
 	RestartEvent = CreateEventEx(NULL, NULL, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
 	if (RestartEvent == NULL)
 	{
-		printf("Unable to create restart event: %d.\n", GetLastError());
+		DebugErrorBox("Unable to create restart event: %d.", GetLastError());
 		hr = E_FAIL;
-		goto Exit;
+		goto exit;
 	}
 
 	hr = DevEnumerator->RegisterEndpointNotificationCallback(this);
 	if (FAILED(hr))
 	{
-		printf("Unable to register for stream switch notifications: %x\n", hr);
-		goto Exit;
+		DebugErrorBox("Unable to register for stream switch notifications: %x.", hr);
+		goto exit;
 	}
 
 	// Main loop
@@ -241,7 +241,7 @@ HRESULT CSoundKeeper::Main()
 	}
 	Stop();
 
-Exit:
+exit:
 
 	if (ShutdownEvent)
 	{

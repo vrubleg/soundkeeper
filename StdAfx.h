@@ -16,5 +16,8 @@ template <class T> void SafeRelease(T **ppT)
 	}
 }
 
-// Disable all printf calls
-#define printf(...)
+#ifdef NDEBUG
+#define DebugErrorBox(...)
+#else
+#define DebugErrorBox(...) { char __msgbuf[8192]; sprintf(__msgbuf, __VA_ARGS__); MessageBoxA(0, __msgbuf, "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL); }
+#endif
