@@ -9,21 +9,29 @@
 
 int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
-	// Prevent from multiple instances
-	HANDLE mutex = CreateMutex(NULL, FALSE, L"DigitalSoundKeeper");
-	if (GetLastError() == ERROR_ALREADY_EXISTS || GetLastError() == ERROR_ACCESS_DENIED) return 1;
+	// Prevent from multiple instances (the mutex will be destroyed automatically on program exit)
+	CreateMutexA(NULL, FALSE, "DigitalSoundKeeper");
+	if (GetLastError() == ERROR_ALREADY_EXISTS || GetLastError() == ERROR_ACCESS_DENIED)
+	{
+		MessageBoxA(0, "The program is already running", "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL);
+		return 1;
+	}
 
 	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED); // A GUI application should use COINIT_APARTMENTTHREADED
 	if (FAILED(hr))
 	{
-		MessageBoxA(0, "Unable to initialize COM", "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL);
-		return 1;
+		MessageBoxA(0, "Cannot initialize COM", "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL);
+		return hr;
 	}
 
 	CSoundKeeper *keeper = new CSoundKeeper();
-	keeper->Main();
+	hr = keeper->Main();
+	if (FAILED(hr))
+	{
+		MessageBoxA(0, "Cannot run main code", "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL);
+	}
 	keeper->Release();
 
 	CoUninitialize();
-	return 0;
+	return hr;
 }

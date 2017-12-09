@@ -183,14 +183,12 @@ void CSoundKeeper::FireShutdown()
 
 HRESULT CSoundKeeper::Main()
 {
-	HRESULT result = S_OK;
 	HRESULT hr = S_OK;
 
 	hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&DevEnumerator));
 	if (FAILED(hr))
 	{
 		printf("Unable to instantiate device enumerator: %x\n", hr);
-		result = hr;
 		goto Exit;
 	}
 
@@ -198,21 +196,23 @@ HRESULT CSoundKeeper::Main()
 	if (ShutdownEvent == NULL)
 	{
 		printf("Unable to create shutdown event: %d.\n", GetLastError());
-		return false;
+		hr = E_FAIL;
+		goto Exit;
 	}
 
 	RestartEvent = CreateEventEx(NULL, NULL, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
 	if (RestartEvent == NULL)
 	{
 		printf("Unable to create restart event: %d.\n", GetLastError());
-		return false;
+		hr = E_FAIL;
+		goto Exit;
 	}
 
 	hr = DevEnumerator->RegisterEndpointNotificationCallback(this);
 	if (FAILED(hr))
 	{
 		printf("Unable to register for stream switch notifications: %x\n", hr);
-		return false;
+		goto Exit;
 	}
 
 	// Main loop
@@ -255,13 +255,9 @@ Exit:
 	}
 	if (DevEnumerator)
 	{
-		hr = DevEnumerator->UnregisterEndpointNotificationCallback(this);
-		if (FAILED(hr))
-		{
-			printf("Unable to unregister for endpoint notifications: %x\n", hr);
-		}
+		DevEnumerator->UnregisterEndpointNotificationCallback(this);
 	}
 	SafeRelease(&DevEnumerator);
 
-	return result;
+	return hr;
 }
