@@ -1,3 +1,4 @@
+glob:.vs/*
 glob:Build/*
 glob:Release/*
 glob:Debug/*
