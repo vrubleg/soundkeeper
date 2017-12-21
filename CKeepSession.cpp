@@ -310,7 +310,7 @@ DWORD CKeepSession::DoRenderThread()
 		framesAvailable = _BufferSizeInFrames - padding;
 		if (framesAvailable == 0)
 		{
-			playing = false;
+			// It can happen right after waking PC up after sleeping, so just do nothing
 			break;
 		}
 

@@ -1,4 +1,4 @@
-#ifdef NDEBUG
+#if !defined(_DEBUG) && _MSC_VER >= 1900 /* VS2015+ */
 
 // "?terminate@@YAXXZ" from "msvcrt.dll" will be used
 void __cdecl terminate(void);
