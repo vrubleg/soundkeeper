@@ -3,7 +3,8 @@ http://veg.by/en/projects/soundkeeper/
 
 Prevents SPDIF/HDMI digital playback devices from falling asleep. Uses WASAPI, requires Windows 7+.
 To close the program, just mute the Sound Keeper in the Volume Mixer or simply kill the soundkeeper.exe process.
-For autorunning, simply copy soundkeeper.exe to startup directory in the your Start Menu.
+To enable autorunning, press Win+R, enter "shell:startup", press Enter, and copy soundkeeper.exe into this directory.
+To disable autorunning, close the program and then remove soundkeeper.exe from the startup directory.
 
 Features:
 - Sound Keeper is fully automatic and doesn't require any user interaction.
