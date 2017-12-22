@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------------------------------------------------
-// Digital Sound Keeper v1.0 [24.12.2014]
+// Digital Sound Keeper v1.0.1 [2017/12/21]
 // Prevents SPDIF/HDMI digital playback devices from falling asleep. Uses WASAPI, requires Windows 7+.
-// (C) 2014 Evgeny Vrublevsky <veg@tut.by>
+// (C) 2014-2017 Evgeny Vrublevsky <me@veg.by>
 // ---------------------------------------------------------------------------------------------------------------------
 
 #include "StdAfx.h"
@@ -30,7 +30,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLi
 	{
 		MessageBoxA(0, "Cannot run main code", "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL);
 	}
-	keeper->Release();
+	keeper->Release(); // Destroys the object
 
 	CoUninitialize();
 	return hr;
