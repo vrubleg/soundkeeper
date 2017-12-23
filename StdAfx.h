@@ -19,5 +19,5 @@ template <class T> void SafeRelease(T **ppT)
 #ifdef NDEBUG
 #define DebugErrorBox(...)
 #else
-#define DebugErrorBox(...) { char __msgbuf[8192]; sprintf(__msgbuf, __VA_ARGS__); MessageBoxA(0, __msgbuf, "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL); }
+#define DebugErrorBox(...) { char __msgbuf[8192]; sprintf_s(__msgbuf, __VA_ARGS__); MessageBoxA(0, __msgbuf, "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL); }
 #endif

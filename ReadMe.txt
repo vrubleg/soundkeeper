@@ -1,10 +1,10 @@
-Digital Sound Keeper v1.0.1 [2017/12/21]
+Digital Sound Keeper v1.0.2 [2017/12/23]
 http://veg.by/en/projects/soundkeeper/
 
 Prevents SPDIF/HDMI digital playback devices from falling asleep. Uses WASAPI, requires Windows 7+.
+To enable autorun, press Win+R, enter "shell:startup", press Enter, and copy soundkeeper.exe into the opened directory.
+To disable autorun, close the program and then remove soundkeeper.exe from the startup directory.
 To close the program, just mute the Sound Keeper in the Volume Mixer or simply kill the soundkeeper.exe process.
-To enable autorunning, press Win+R, enter "shell:startup", press Enter, and copy soundkeeper.exe into this directory.
-To disable autorunning, close the program and then remove soundkeeper.exe from the startup directory.
 
 Features:
 - Sound Keeper is fully automatic and doesn't require any user interaction.
@@ -23,5 +23,6 @@ Memory:             1636KB              13704KB             (Private Working Set
 Changelog:
 [2014/12/24] v1.0.0: Initial release.
 [2017/12/21] v1.0.1: Waking PC up after sleeping doesn't cause problems with keeping sound on.
+[2017/12/23] v1.0.2: 64-bit version was added.
 
 (C) 2014-2017 Evgeny Vrublevsky <me@veg.by>
