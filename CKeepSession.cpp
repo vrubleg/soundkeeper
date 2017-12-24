@@ -118,7 +118,7 @@ bool CKeepSession::Initialize()
 	}
 	else
 	{
-		DebugErrorBox("unrecognized device format.");
+		DebugErrorBox("Unrecognized device format.");
 		return false;
 	}
 
