@@ -77,19 +77,20 @@ HRESULT CSoundKeeper::Start()
 {
 	if (IsStarted) return S_OK;
 	HRESULT hr = S_OK;
+	IsRetryRequired = false;
 
 	IMMDeviceCollection *DevCollection = NULL;
 	hr = DevEnumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &DevCollection);
 	if (FAILED(hr))
 	{
-		DebugErrorBox("Unable to retrieve device collection: %x.", hr);
+		DebugLogError("Unable to retrieve device collection: 0x%08X.", hr);
 		goto exit;
 	}
 
 	hr = DevCollection->GetCount(&KeepersCount);
 	if (FAILED(hr))
 	{
-		DebugErrorBox("Unable to get device collection length: %x.", hr);
+		DebugLogError("Unable to get device collection length: 0x%08X.", hr);
 		goto exit;
 	}
 
@@ -117,8 +118,12 @@ HRESULT CSoundKeeper::Start()
 		PropVariantClear(&formfactor);
 
 		Keepers[i] = new CKeepSession(this, device);
-		Keepers[i]->Initialize();
 		SafeRelease(&device);
+
+		if (!Keepers[i]->Initialize())
+		{
+			IsRetryRequired = true;
+		}
 	}
 
 	IsStarted = true;
@@ -127,6 +132,28 @@ exit:
 
 	SafeRelease(&DevCollection);
 	return hr;
+}
+
+bool CSoundKeeper::Retry()
+{
+	if (!IsRetryRequired) return true;
+	IsRetryRequired = false;
+
+	if (Keepers != nullptr)
+	{
+		for (UINT i = 0; i < KeepersCount; i++)
+		{
+			if (Keepers[i] != nullptr)
+			{
+				if (!Keepers[i]->Initialize())
+				{
+					IsRetryRequired = true;
+				}
+			}
+		}
+	}
+
+	return !IsRetryRequired;
 }
 
 HRESULT CSoundKeeper::Stop()
@@ -188,14 +215,14 @@ HRESULT CSoundKeeper::Main()
 	hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&DevEnumerator));
 	if (FAILED(hr))
 	{
-		DebugErrorBox("Unable to instantiate device enumerator: %x.", hr);
+		DebugLogError("Unable to instantiate device enumerator: 0x%08X.", hr);
 		goto exit;
 	}
 
 	ShutdownEvent = CreateEventEx(NULL, NULL, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
 	if (ShutdownEvent == NULL)
 	{
-		DebugErrorBox("Unable to create shutdown event: %d.", GetLastError());
+		DebugLogError("Unable to create shutdown event: 0x%08X.", GetLastError());
 		hr = E_FAIL;
 		goto exit;
 	}
@@ -203,7 +230,7 @@ HRESULT CSoundKeeper::Main()
 	RestartEvent = CreateEventEx(NULL, NULL, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
 	if (RestartEvent == NULL)
 	{
-		DebugErrorBox("Unable to create restart event: %d.", GetLastError());
+		DebugLogError("Unable to create restart event: 0x%08X.", GetLastError());
 		hr = E_FAIL;
 		goto exit;
 	}
@@ -211,19 +238,26 @@ HRESULT CSoundKeeper::Main()
 	hr = DevEnumerator->RegisterEndpointNotificationCallback(this);
 	if (FAILED(hr))
 	{
-		DebugErrorBox("Unable to register for stream switch notifications: %x.", hr);
+		DebugLogError("Unable to register for stream switch notifications: 0x%08X.", hr);
 		goto exit;
 	}
 
 	// Main loop
+	DebugLog("Start");
 	Start();
 	HANDLE wait[2] = { RestartEvent, ShutdownEvent };
 	bool working = true;
 	while (working)
 	{
-		switch (WaitForMultipleObjects(2, wait, FALSE, INFINITE))
+		switch (WaitForMultipleObjects(2, wait, FALSE, IsRetryRequired ? 500 : INFINITE))
 		{
+		case WAIT_TIMEOUT:
+			DebugLog("Retry");
+			Retry();
+			break;
+
 		case WAIT_OBJECT_0 + 0:
+			DebugLog("Restart");
 			// Prevent multiple restarts
 			while (WaitForSingleObject(RestartEvent, 750) != WAIT_TIMEOUT)
 			{
@@ -234,6 +268,7 @@ HRESULT CSoundKeeper::Main()
 
 		case WAIT_OBJECT_0 + 1:
 		default:
+			DebugLog("Shutdown");
 			// Shutdown
 			working = false; // We're done, exit the loop
 			break;
@@ -250,8 +285,8 @@ exit:
 	}
 	if (RestartEvent)
 	{
-		CloseHandle(ShutdownEvent);
-		ShutdownEvent = NULL;
+		CloseHandle(RestartEvent);
+		RestartEvent = NULL;
 	}
 	if (DevEnumerator)
 	{

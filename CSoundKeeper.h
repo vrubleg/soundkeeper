@@ -36,6 +36,7 @@ protected:
 
 	IMMDeviceEnumerator *DevEnumerator;
 	bool IsStarted;
+	bool IsRetryRequired = false;
 	CKeepSession** Keepers;
 	UINT KeepersCount;
 	HANDLE ShutdownEvent;
@@ -44,6 +45,7 @@ protected:
 	HRESULT Start();
 	HRESULT Stop();
 	HRESULT Restart();
+	bool Retry();
 
 public:
 

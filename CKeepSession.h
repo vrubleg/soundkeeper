@@ -16,8 +16,8 @@ public:
 
 	enum RenderSampleType
 	{
-		SampleTypeFloat,
-		SampleType16BitPCM,
+		SampleTypeFloat32,
+		SampleTypeInt16,
 	};
 
 protected:
@@ -29,14 +29,15 @@ protected:
 	CSoundKeeper* SoundKeeper;
 	IMMDevice* _Endpoint;
 	IAudioClient* _AudioClient;
+	bool          _IsStarted = false;
 	IAudioRenderClient* _RenderClient;
 
 	HANDLE      _RenderThread;
 	HANDLE      _ShutdownEvent;
 	WAVEFORMATEX* _MixFormat;
-	UINT32      _FrameSize;
-	RenderSampleType _RenderSampleType;
-	UINT32      _BufferSizeInFrames;
+	UINT32      _FrameSize = 0;
+	RenderSampleType _RenderSampleType = SampleTypeFloat32;
+	UINT32      _BufferSizeInFrames = 0;
 
 	IAudioSessionControl *  _AudioSessionControl;
 	UINT32 BufferSizeInMs;
@@ -47,6 +48,7 @@ public:
 
 	CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint);
 	bool Initialize();
+	bool IsStarted();
 	void Shutdown();
 
 private:

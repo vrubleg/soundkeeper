@@ -1,13 +1,13 @@
 // ---------------------------------------------------------------------------------------------------------------------
-// Digital Sound Keeper v1.0.2 [2017/12/23]
+// Digital Sound Keeper v1.0.3 [2019/07/14]
 // Prevents SPDIF/HDMI digital playback devices from falling asleep. Uses WASAPI, requires Windows 7+.
-// (C) 2014-2017 Evgeny Vrublevsky <me@veg.by>
+// (C) 2014-2019 Evgeny Vrublevsky <me@veg.by>
 // ---------------------------------------------------------------------------------------------------------------------
 
 #include "StdAfx.h"
 #include "CSoundKeeper.h"
 
-int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
+int Main()
 {
 	// Prevent from multiple instances (the mutex will be destroyed automatically on program exit)
 	CreateMutexA(NULL, FALSE, "DigitalSoundKeeper");
@@ -35,3 +35,19 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLi
 	CoUninitialize();
 	return hr;
 }
+
+#if _DEBUG
+
+int main()
+{
+	return Main();
+}
+
+#else
+
+int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
+{
+	return Main();
+}
+
+#endif

@@ -1,4 +1,4 @@
-Digital Sound Keeper v1.0.2 [2017/12/23]
+Digital Sound Keeper v1.0.3 [2019/07/14]
 http://veg.by/en/projects/soundkeeper/
 
 Prevents SPDIF/HDMI digital playback devices from falling asleep. Uses WASAPI, requires Windows 7+.
@@ -22,7 +22,8 @@ Memory:             1636KB              13704KB             (Private Working Set
 
 Changelog:
 [2014/12/24] v1.0.0: Initial release.
-[2017/12/21] v1.0.1: Waking PC up after sleeping doesn't cause problems with keeping sound on.
+[2017/12/21] v1.0.1: Waking PC up after sleeping doesn't prevent Sound Keeper from working.
 [2017/12/23] v1.0.2: 64-bit version was added.
+[2019/07/14] v1.0.3: Exclusive mode doesn't prevent Sound Keeper from working.
 
-(C) 2014-2017 Evgeny Vrublevsky <me@veg.by>
+(C) 2014-2019 Evgeny Vrublevsky <me@veg.by>

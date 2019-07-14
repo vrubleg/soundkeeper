@@ -66,14 +66,17 @@ ULONG STDMETHODCALLTYPE CKeepSession::Release()
 // Initialize and start the renderer
 bool CKeepSession::Initialize()
 {
+	if (_IsStarted) return true;
+
 	HRESULT hr = S_OK;
+	_IsStarted = false;
 
 	//
 	//  Create shutdown event - we want auto reset events that start in the not-signaled state.
 	_ShutdownEvent = CreateEventEx(NULL, NULL, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
 	if (_ShutdownEvent == NULL)
 	{
-		DebugErrorBox("Unable to create shutdown event: %d.", GetLastError());
+		DebugLogError("Unable to create shutdown event: 0x%08X.", GetLastError());
 		return false;
 	}
 
@@ -82,7 +85,7 @@ bool CKeepSession::Initialize()
 	hr = _Endpoint->Activate(__uuidof(IAudioClient), CLSCTX_INPROC_SERVER, NULL, reinterpret_cast<void **>(&_AudioClient));
 	if (FAILED(hr))
 	{
-		DebugErrorBox("Unable to activate audio client: %x.", hr);
+		DebugLogError("Unable to activate audio client: 0x%08X.", hr);
 		return false;
 	}
 
@@ -91,7 +94,7 @@ bool CKeepSession::Initialize()
 	hr = _AudioClient->GetMixFormat(&_MixFormat);
 	if (FAILED(hr))
 	{
-		DebugErrorBox("Unable to get mix format on audio client: %x.", hr);
+		DebugLogError("Unable to get mix format on audio client: 0x%08X.", hr);
 		return false;
 	}
 	_FrameSize = _MixFormat->nBlockAlign;
@@ -101,34 +104,44 @@ bool CKeepSession::Initialize()
 	if (_MixFormat->wFormatTag == WAVE_FORMAT_PCM
 		|| _MixFormat->wFormatTag == WAVE_FORMAT_EXTENSIBLE && reinterpret_cast<WAVEFORMATEXTENSIBLE *>(_MixFormat)->SubFormat == KSDATAFORMAT_SUBTYPE_PCM)
 	{
+		DebugLog("Format: PCM %d-bit integer.", _MixFormat->wBitsPerSample);
 		if (_MixFormat->wBitsPerSample == 16)
 		{
-			_RenderSampleType = SampleType16BitPCM;
+			_RenderSampleType = SampleTypeInt16;
 		}
 		else
 		{
-			DebugErrorBox("Unknown PCM integer sample type.");
+			DebugLogError("Unsupported PCM integer sample type.");
 			return false;
 		}
 	}
 	else if (_MixFormat->wFormatTag == WAVE_FORMAT_IEEE_FLOAT
 		|| (_MixFormat->wFormatTag == WAVE_FORMAT_EXTENSIBLE && reinterpret_cast<WAVEFORMATEXTENSIBLE *>(_MixFormat)->SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT))
 	{
-		_RenderSampleType = SampleTypeFloat;
+		DebugLog("Format: PCM %d-bit float.", _MixFormat->wBitsPerSample);
+		if (_MixFormat->wBitsPerSample == 32)
+		{
+			_RenderSampleType = SampleTypeFloat32;
+		}
+		else
+		{
+			DebugLogError("Unsupported PCM float sample type.");
+			return false;
+		}
 	}
 	else
 	{
-		DebugErrorBox("Unrecognized device format.");
+		DebugLogError("Unrecognized device format.");
 		return false;
 	}
 
 	//
 	// Initialize WASAPI in timer driven mode.
-	hr = _AudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_NOPERSIST, BufferSizeInMs * 10000, 0, _MixFormat, NULL);
+	hr = _AudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_NOPERSIST, static_cast<UINT64>(BufferSizeInMs) * 10000, 0, _MixFormat, NULL);
 
 	if (FAILED(hr))
 	{
-		DebugErrorBox("Unable to initialize audio client: %x.", hr);
+		DebugLogError("Unable to initialize audio client: 0x%08X.", hr);
 		return false;
 	}
 
@@ -137,14 +150,14 @@ bool CKeepSession::Initialize()
 	hr = _AudioClient->GetBufferSize(&_BufferSizeInFrames);
 	if (FAILED(hr))
 	{
-		DebugErrorBox("Unable to get audio client buffer: %x.", hr);
+		DebugLogError("Unable to get audio client buffer: 0x%08X.", hr);
 		return false;
 	}
 
 	hr = _AudioClient->GetService(IID_PPV_ARGS(&_RenderClient));
 	if (FAILED(hr))
 	{
-		DebugErrorBox("Unable to get new render client: %x.", hr);
+		DebugLogError("Unable to get new render client: 0x%08X.", hr);
 		return false;
 	}
 
@@ -153,13 +166,13 @@ bool CKeepSession::Initialize()
 	hr = _AudioClient->GetService(IID_PPV_ARGS(&_AudioSessionControl));
 	if (FAILED(hr))
 	{
-		DebugErrorBox("Unable to retrieve session control: %x.", hr);
+		DebugLogError("Unable to retrieve session control: 0x%08X.", hr);
 		return false;
 	}
 	hr = _AudioSessionControl->RegisterAudioSessionNotification(this);
 	if (FAILED(hr))
 	{
-		DebugErrorBox("Unable to register for stream switch notifications: %x.", hr);
+		DebugLogError("Unable to register for stream switch notifications: 0x%08X.", hr);
 		return false;
 	}
 
@@ -169,13 +182,13 @@ bool CKeepSession::Initialize()
 	hr = _RenderClient->GetBuffer(_BufferSizeInFrames, &pData);
 	if (FAILED(hr))
 	{
-		DebugErrorBox("Failed to get buffer: %x.", hr);
+		DebugLogError("Failed to get buffer: 0x%08X.", hr);
 		return false;
 	}
 	hr = _RenderClient->ReleaseBuffer(_BufferSizeInFrames, AUDCLNT_BUFFERFLAGS_SILENT);
 	if (FAILED(hr))
 	{
-		DebugErrorBox("Failed to release buffer: %x.", hr);
+		DebugLogError("Failed to release buffer: 0x%08X.", hr);
 		return false;
 	}
 
@@ -184,7 +197,7 @@ bool CKeepSession::Initialize()
 	_RenderThread = CreateThread(NULL, 0, WASAPIRenderThread, this, 0, NULL);
 	if (_RenderThread == NULL)
 	{
-		DebugErrorBox("Unable to create transport thread: %x.", GetLastError());
+		DebugLogError("Unable to create transport thread: 0x%08X.", GetLastError());
 		return false;
 	}
 
@@ -193,32 +206,38 @@ bool CKeepSession::Initialize()
 	hr = _AudioClient->Start();
 	if (FAILED(hr))
 	{
-		DebugErrorBox("Unable to start render client: %x.", hr);
+		DebugLogError("Unable to start render client: 0x%08X.", hr);
 		return false;
 	}
+	_IsStarted = true;
 
 	return true;
 }
 
+bool CKeepSession::IsStarted()
+{
+	return _IsStarted;
+}
+
 //
-//  Stop the renderer and free all the resources
+// Stop the renderer and free all the resources
 void CKeepSession::Shutdown()
 {
 	HRESULT hr;
 
-	//
-	//  Tell the render thread to shut down, wait for the thread to complete then clean up all the stuff we 
-	//  allocated in Start().
-	//
 	if (_ShutdownEvent)
 	{
 		SetEvent(_ShutdownEvent);
 	}
 
-	hr = _AudioClient->Stop();
-	if (FAILED(hr))
+	if (_IsStarted)
 	{
-		DebugErrorBox("Unable to stop audio client: %x.", hr);
+		hr = _AudioClient->Stop();
+		_IsStarted = false;
+		if (FAILED(hr))
+		{
+			DebugLogError("Unable to stop audio client: 0x%08X.", hr);
+		}
 	}
 
 	if (_RenderThread)
@@ -275,7 +294,7 @@ DWORD CKeepSession::DoRenderThread()
 	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 	if (FAILED(hr))
 	{
-		DebugErrorBox("Unable to initialize COM in render thread: %x.", hr);
+		DebugLogError("Unable to initialize COM in render thread: 0x%08X.", hr);
 		return hr;
 	}
 
@@ -285,7 +304,7 @@ DWORD CKeepSession::DoRenderThread()
 	mmcssHandle = AvSetMmThreadCharacteristics(L"Audio", &mmcssTaskIndex);
 	if (mmcssHandle == NULL)
 	{
-		DebugErrorBox("Unable to enable MMCSS on render thread: %d.", GetLastError());
+		DebugLogError("Unable to enable MMCSS on render thread: 0x%08X.", GetLastError());
 	}
 #endif
 
@@ -337,7 +356,7 @@ DWORD CKeepSession::DoRenderThread()
 	}
 
 #ifdef ENABLE_MMCSS
-	AvRevertMmThreadCharacteristics(mmcssHandle);
+	if (mmcssHandle != NULL) AvRevertMmThreadCharacteristics(mmcssHandle);
 #endif
 
 	CoUninitialize();
