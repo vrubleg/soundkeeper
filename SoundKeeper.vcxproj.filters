@@ -53,6 +53,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="ReadMe.txt" />
+    <CopyFileToFolders Include="ReadMe.txt" />
   </ItemGroup>
 </Project>
