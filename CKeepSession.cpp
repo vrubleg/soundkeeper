@@ -1,6 +1,6 @@
 #include "StdAfx.h"
 #define INITGUID
-#include "CKeepSession.h"
+#include "CKeepSession.hpp"
 
 // Inaudible tone generation.
 // #define ENABLE_INAUDIBLE
@@ -379,7 +379,7 @@ DWORD CKeepSession::DoRenderThread()
 
 		hr = _RenderClient->ReleaseBuffer(framesAvailable, NULL);
 #else
-		// ZeroMemory(pData, _FrameSize * framesAvailable);
+		// ZeroMemory(pData, static_cast<SIZE_T>(_FrameSize) * framesAvailable);
 		hr = _RenderClient->ReleaseBuffer(framesAvailable, AUDCLNT_BUFFERFLAGS_SILENT);
 #endif
 

@@ -1,5 +1,5 @@
 #include "StdAfx.h"
-#include "CSoundKeeper.h"
+#include "CSoundKeeper.hpp"
 
 CSoundKeeper::CSoundKeeper()
 	: _cRef(1), DevEnumerator(NULL), IsStarted(false), Keepers(NULL), KeepersCount(0), ShutdownEvent(NULL), RestartEvent(NULL)

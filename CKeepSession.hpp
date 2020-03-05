@@ -4,7 +4,7 @@
 #include <audioclient.h>
 
 class CKeepSession;
-#include "CSoundKeeper.h"
+#include "CSoundKeeper.hpp"
 
 //
 // Play silence via WASAPI

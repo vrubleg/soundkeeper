@@ -4,7 +4,7 @@
 #include <audiopolicy.h>
 
 class CSoundKeeper;
-#include "CKeepSession.h"
+#include "CKeepSession.hpp"
 
 class CSoundKeeper : public IMMNotificationClient
 {

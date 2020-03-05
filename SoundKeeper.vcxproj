@@ -25,8 +25,8 @@
     <ClCompile Include="RuntimeHacks.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CKeepSession.h" />
-    <ClInclude Include="CSoundKeeper.h" />
+    <ClInclude Include="CKeepSession.hpp" />
+    <ClInclude Include="CSoundKeeper.hpp" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="StdAfx.h" />
   </ItemGroup>
