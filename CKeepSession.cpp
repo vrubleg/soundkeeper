@@ -2,8 +2,12 @@
 #define INITGUID
 #include "CKeepSession.h"
 
+// Inaudible tone generation.
+// #define ENABLE_INAUDIBLE
+
 // Enable Multimedia Class Scheduler Service
 #define ENABLE_MMCSS
+
 #ifdef ENABLE_MMCSS
 #include <avrt.h>
 #endif
@@ -325,9 +329,12 @@ DWORD CKeepSession::DoRenderThread()
 
 		//  Calculate the number of frames available
 		framesAvailable = _BufferSizeInFrames - padding;
+#ifdef ENABLE_INAUDIBLE
+		framesAvailable &= 0xFFFFFFFC; // Must be a multiple of 4.
+#endif
 		if (framesAvailable == 0)
 		{
-			// It can happen right after waking PC up after sleeping, so just do nothing
+			// It can happen right after waking PC up after sleeping, so just do nothing.
 			break;
 		}
 
@@ -338,7 +345,44 @@ DWORD CKeepSession::DoRenderThread()
 			break;
 		}
 
+#ifdef ENABLE_INAUDIBLE
+		if (_RenderSampleType == SampleTypeInt16)
+		{
+			UINT32 n = 0;
+			constexpr INT16 tbl[] = { -1, 0, 1, 0 };
+			for (size_t i = 0; i < framesAvailable; i++)
+			{
+				for (size_t j = 0; j < _MixFormat->nChannels; j++)
+				{
+					*reinterpret_cast<INT16*>(pData + j * 2) = tbl[n];
+				}
+				pData += _FrameSize;
+				n = ++n % 4;
+			}
+		}
+		else
+		{
+			UINT32 n = 0;
+			// 0xb8000100 = -3.051851E-5 = -1.0/32767.
+			// 0x38000100 =  3.051851E-5 =  1.0/32767.
+			constexpr UINT32 tbl[] = { 0xb8000100, 0, 0x38000100, 0 };
+			for (size_t i = 0; i < framesAvailable; i++)
+			{
+				for (size_t j = 0; j < _MixFormat->nChannels; j++)
+				{
+					*reinterpret_cast<UINT32*>(pData + j * 4) = tbl[n];
+				}
+				pData += _FrameSize;
+				n = ++n % 4;
+			}
+		}
+
+		hr = _RenderClient->ReleaseBuffer(framesAvailable, NULL);
+#else
+		// ZeroMemory(pData, _FrameSize * framesAvailable);
 		hr = _RenderClient->ReleaseBuffer(framesAvailable, AUDCLNT_BUFFERFLAGS_SILENT);
+#endif
+
 		if (FAILED(hr))
 		{
 			playing = false;
