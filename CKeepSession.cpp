@@ -57,6 +57,7 @@ ULONG STDMETHODCALLTYPE CKeepSession::Release()
 	ULONG returnValue = InterlockedDecrement(&_RefCount);
 	if (returnValue == 0)
 	{
+		if (_IsStarted) Shutdown();
 		delete this;
 	}
 	return returnValue;
@@ -77,7 +78,7 @@ bool CKeepSession::Initialize()
 	if (_ShutdownEvent == NULL)
 	{
 		DebugLogError("Unable to create shutdown event: 0x%08X.", GetLastError());
-		return false;
+		goto error;
 	}
 
 	//
@@ -86,7 +87,7 @@ bool CKeepSession::Initialize()
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to activate audio client: 0x%08X.", hr);
-		return false;
+		goto error;
 	}
 
 	//
@@ -95,7 +96,7 @@ bool CKeepSession::Initialize()
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to get mix format on audio client: 0x%08X.", hr);
-		return false;
+		goto error;
 	}
 	_FrameSize = _MixFormat->nBlockAlign;
 
@@ -112,7 +113,7 @@ bool CKeepSession::Initialize()
 		else
 		{
 			DebugLogError("Unsupported PCM integer sample type.");
-			return false;
+			goto error;
 		}
 	}
 	else if (_MixFormat->wFormatTag == WAVE_FORMAT_IEEE_FLOAT
@@ -126,13 +127,13 @@ bool CKeepSession::Initialize()
 		else
 		{
 			DebugLogError("Unsupported PCM float sample type.");
-			return false;
+			goto error;
 		}
 	}
 	else
 	{
 		DebugLogError("Unrecognized device format.");
-		return false;
+		goto error;
 	}
 
 	//
@@ -142,7 +143,7 @@ bool CKeepSession::Initialize()
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to initialize audio client: 0x%08X.", hr);
-		return false;
+		goto error;
 	}
 
 	//
@@ -151,14 +152,14 @@ bool CKeepSession::Initialize()
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to get audio client buffer: 0x%08X.", hr);
-		return false;
+		goto error;
 	}
 
 	hr = _AudioClient->GetService(IID_PPV_ARGS(&_RenderClient));
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to get new render client: 0x%08X.", hr);
-		return false;
+		goto error;
 	}
 
 	//
@@ -167,13 +168,13 @@ bool CKeepSession::Initialize()
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to retrieve session control: 0x%08X.", hr);
-		return false;
+		goto error;
 	}
 	hr = _AudioSessionControl->RegisterAudioSessionNotification(this);
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to register for stream switch notifications: 0x%08X.", hr);
-		return false;
+		goto error;
 	}
 
 	//
@@ -183,13 +184,13 @@ bool CKeepSession::Initialize()
 	if (FAILED(hr))
 	{
 		DebugLogError("Failed to get buffer: 0x%08X.", hr);
-		return false;
+		goto error;
 	}
 	hr = _RenderClient->ReleaseBuffer(_BufferSizeInFrames, AUDCLNT_BUFFERFLAGS_SILENT);
 	if (FAILED(hr))
 	{
 		DebugLogError("Failed to release buffer: 0x%08X.", hr);
-		return false;
+		goto error;
 	}
 
 	//
@@ -198,7 +199,7 @@ bool CKeepSession::Initialize()
 	if (_RenderThread == NULL)
 	{
 		DebugLogError("Unable to create transport thread: 0x%08X.", GetLastError());
-		return false;
+		goto error;
 	}
 
 	//
@@ -207,11 +208,16 @@ bool CKeepSession::Initialize()
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to start render client: 0x%08X.", hr);
-		return false;
+		goto error;
 	}
 	_IsStarted = true;
 
 	return true;
+
+error:
+
+	Shutdown();
+	return false;
 }
 
 bool CKeepSession::IsStarted()
@@ -244,14 +250,6 @@ void CKeepSession::Shutdown()
 	{
 		WaitForSingleObject(_RenderThread, INFINITE);
 
-		CloseHandle(_RenderThread);
-		_RenderThread = NULL;
-	}
-
-	if (_RenderThread)
-	{
-		SetEvent(_ShutdownEvent);
-		WaitForSingleObject(_RenderThread, INFINITE);
 		CloseHandle(_RenderThread);
 		_RenderThread = NULL;
 	}
