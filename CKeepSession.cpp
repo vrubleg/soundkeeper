@@ -12,11 +12,6 @@
 #include <avrt.h>
 #endif
 
-CKeepSession::~CKeepSession(void)
-{
-	//  Empty destructor - everything should be released in the Shutdown() call
-}
-
 CKeepSession::CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint) :
 _RefCount(1), SoundKeeper(soundkeeper), _Endpoint(endpoint), _AudioClient(NULL),
 _RenderClient(NULL), _RenderThread(NULL), _ShutdownEvent(NULL), _MixFormat(NULL),
@@ -24,6 +19,13 @@ _AudioSessionControl(NULL), BufferSizeInMs(1000)
 {
 	_Endpoint->AddRef();    // Since we're holding a copy of the endpoint, take a reference to it.  It'll be released in Shutdown();
 	SoundKeeper->AddRef();
+}
+
+CKeepSession::~CKeepSession(void)
+{
+	if (_ShutdownEvent) Shutdown();
+	SafeRelease(&_Endpoint);
+	SafeRelease(&SoundKeeper);
 }
 
 HRESULT STDMETHODCALLTYPE CKeepSession::QueryInterface(REFIID Iid, void **Object)
@@ -61,7 +63,6 @@ ULONG STDMETHODCALLTYPE CKeepSession::Release()
 	ULONG returnValue = InterlockedDecrement(&_RefCount);
 	if (returnValue == 0)
 	{
-		if (_IsStarted) Shutdown();
 		delete this;
 	}
 	return returnValue;
@@ -264,10 +265,8 @@ void CKeepSession::Shutdown()
 		_ShutdownEvent = NULL;
 	}
 
-	SafeRelease(&_Endpoint);
 	SafeRelease(&_AudioClient);
 	SafeRelease(&_RenderClient);
-	SafeRelease(&SoundKeeper);
 
 	if (_MixFormat)
 	{
