@@ -168,6 +168,7 @@
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <AdditionalOptions>/NOCOFFGRPINFO %(AdditionalOptions)</AdditionalOptions>
       <MinimumRequiredVersion>6.0</MinimumRequiredVersion>
+      <EntryPointSymbol>EntryPoint</EntryPointSymbol>
     </Link>
     <Manifest />
     <Manifest>
@@ -200,6 +201,7 @@
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <AdditionalOptions>/NOCOFFGRPINFO %(AdditionalOptions)</AdditionalOptions>
       <MinimumRequiredVersion>6.0</MinimumRequiredVersion>
+      <EntryPointSymbol>EntryPoint</EntryPointSymbol>
     </Link>
     <Manifest />
     <Manifest>

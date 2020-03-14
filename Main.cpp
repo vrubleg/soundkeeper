@@ -45,9 +45,9 @@ int main()
 
 #else
 
-int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
+EXTERN_C void APIENTRY EntryPoint()
 {
-	return Main();
+	ExitProcess(Main());
 }
 
 #endif
