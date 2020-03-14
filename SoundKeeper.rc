@@ -15,10 +15,10 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// Russian (Russia) resources
+// English resources
 
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_RUS)
-LANGUAGE LANG_RUSSIAN, SUBLANG_DEFAULT
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+LANGUAGE LANG_ENGLISH, SUBLANG_NEUTRAL
 
 #ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
@@ -45,15 +45,6 @@ END
 
 #endif    // APSTUDIO_INVOKED
 
-#endif    // Russian (Russia) resources
-/////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////
-// English (United Kingdom) resources
-
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENG)
-LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_UK
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -61,8 +52,8 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_UK
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2020,8,12,0
- PRODUCTVERSION 1,0,4,1
+ FILEVERSION 2020,3,14,0
+ PRODUCTVERSION 1,0,4,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -79,12 +70,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Vegalogic Software"
             VALUE "FileDescription", "Sound Keeper"
-            VALUE "FileVersion", "2020.08.12"
+            VALUE "FileVersion", "2020.03.14"
             VALUE "InternalName", "SoundKeeper"
             VALUE "LegalCopyright", "(C) 2014-2020 Evgeny Vrublevsky <me@veg.by>"
             VALUE "OriginalFilename", "soundkeeper.exe"
             VALUE "ProductName", "Sound Keeper"
-            VALUE "ProductVersion", "1.0.4.1"
+            VALUE "ProductVersion", "1.0.4"
         END
     END
     BLOCK "VarFileInfo"
@@ -103,7 +94,7 @@ END
 // remains consistent on all systems.
 IDI_MAIN                ICON                    "Main.ico"
 
-#endif    // English (United Kingdom) resources
+#endif    // English resources
 /////////////////////////////////////////////////////////////////////////////
 
 
