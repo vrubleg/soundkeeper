@@ -20,7 +20,7 @@ protected:
 	IMMDevice*              m_endpoint;
 
 	HANDLE                  m_render_thread;
-	HANDLE                  m_shutdown_event;
+	HANDLE                  m_stop_event;
 
 	IAudioClient*           m_audio_client;
 	bool                    m_audio_client_is_started = false;
@@ -45,16 +45,16 @@ protected:
 public:
 
 	CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint);
-	bool Initialize();
+	bool Start();
 	bool IsStarted();
-	void Shutdown();
+	void Stop();
 
 private:
 
 	//
 	//  Render buffer management.
 	//
-	static DWORD __stdcall WASAPIRenderThread(LPVOID Context);
+	static DWORD __stdcall StartRenderThread(LPVOID Context);
 	DWORD CKeepSession::DoRenderThread();
 
 	STDMETHOD(OnDisplayNameChanged) (LPCWSTR /*NewDisplayName*/, LPCGUID /*EventContext*/) { return S_OK; };

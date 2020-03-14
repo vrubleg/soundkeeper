@@ -34,13 +34,13 @@ public:
 
 protected:
 
-	IMMDeviceEnumerator *DevEnumerator;
-	bool IsStarted;
-	bool IsRetryRequired = false;
-	CKeepSession** Keepers;
-	UINT KeepersCount;
-	HANDLE ShutdownEvent;
-	HANDLE RestartEvent;
+	IMMDeviceEnumerator*    m_dev_enumerator;
+	bool                    m_is_started;
+	bool                    m_is_retry_required = false;
+	CKeepSession**          m_sessions;
+	UINT                    m_sessions_count;
+	HANDLE                  m_shutdown_event;
+	HANDLE                  m_restart_event;
 
 	HRESULT Start();
 	HRESULT Stop();

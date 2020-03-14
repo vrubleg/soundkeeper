@@ -2,7 +2,7 @@
 #include "CSoundKeeper.hpp"
 
 CSoundKeeper::CSoundKeeper()
-	: m_ref_count(1), DevEnumerator(NULL), IsStarted(false), Keepers(NULL), KeepersCount(0), ShutdownEvent(NULL), RestartEvent(NULL)
+	: m_ref_count(1), m_dev_enumerator(NULL), m_is_started(false), m_sessions(NULL), m_sessions_count(0), m_shutdown_event(NULL), m_restart_event(NULL)
 { }
 CSoundKeeper::~CSoundKeeper() { }
 
@@ -75,30 +75,30 @@ HRESULT STDMETHODCALLTYPE CSoundKeeper::OnPropertyValueChanged(LPCWSTR pwstrDevi
 
 HRESULT CSoundKeeper::Start()
 {
-	if (IsStarted) return S_OK;
+	if (m_is_started) return S_OK;
 	HRESULT hr = S_OK;
-	IsRetryRequired = false;
+	m_is_retry_required = false;
 
 	IMMDeviceCollection *DevCollection = NULL;
-	hr = DevEnumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &DevCollection);
+	hr = m_dev_enumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &DevCollection);
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to retrieve device collection: 0x%08X.", hr);
 		goto exit;
 	}
 
-	hr = DevCollection->GetCount(&KeepersCount);
+	hr = DevCollection->GetCount(&m_sessions_count);
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to get device collection length: 0x%08X.", hr);
 		goto exit;
 	}
 
-	Keepers = new CKeepSession*[KeepersCount]();
+	m_sessions = new CKeepSession*[m_sessions_count]();
 
-	for (UINT i = 0; i < KeepersCount; i += 1)
+	for (UINT i = 0; i < m_sessions_count; i++)
 	{
-		Keepers[i] = nullptr;
+		m_sessions[i] = nullptr;
 
 		IMMDevice *device;
 		DevCollection->Item(i, &device);
@@ -117,16 +117,16 @@ HRESULT CSoundKeeper::Start()
 		}
 		PropVariantClear(&formfactor);
 
-		Keepers[i] = new CKeepSession(this, device);
+		m_sessions[i] = new CKeepSession(this, device);
 		SafeRelease(&device);
 
-		if (!Keepers[i]->Initialize())
+		if (!m_sessions[i]->Start())
 		{
-			IsRetryRequired = true;
+			m_is_retry_required = true;
 		}
 	}
 
-	IsStarted = true;
+	m_is_started = true;
 
 exit:
 
@@ -136,46 +136,46 @@ exit:
 
 bool CSoundKeeper::Retry()
 {
-	if (!IsRetryRequired) return true;
-	IsRetryRequired = false;
+	if (!m_is_retry_required) return true;
+	m_is_retry_required = false;
 
-	if (Keepers != nullptr)
+	if (m_sessions != nullptr)
 	{
-		for (UINT i = 0; i < KeepersCount; i++)
+		for (UINT i = 0; i < m_sessions_count; i++)
 		{
-			if (Keepers[i] != nullptr)
+			if (m_sessions[i] != nullptr)
 			{
-				if (!Keepers[i]->Initialize())
+				if (!m_sessions[i]->Start())
 				{
-					IsRetryRequired = true;
+					m_is_retry_required = true;
 				}
 			}
 		}
 	}
 
-	return !IsRetryRequired;
+	return !m_is_retry_required;
 }
 
 HRESULT CSoundKeeper::Stop()
 {
-	if (!IsStarted) return S_OK;
+	if (!m_is_started) return S_OK;
 
-	if (Keepers != nullptr)
+	if (m_sessions != nullptr)
 	{
-		for (UINT i = 0; i < KeepersCount; i++)
+		for (UINT i = 0; i < m_sessions_count; i++)
 		{
-			if (Keepers[i] != nullptr)
+			if (m_sessions[i] != nullptr)
 			{
-				Keepers[i]->Shutdown();
-				Keepers[i]->Release();
+				m_sessions[i]->Stop();
+				m_sessions[i]->Release();
 			}
 		}
-		delete Keepers;
+		delete m_sessions;
 	}
 
-	Keepers = nullptr;
-	KeepersCount = 0;
-	IsStarted = false;
+	m_sessions = nullptr;
+	m_sessions_count = 0;
+	m_is_started = false;
 	return S_OK;
 }
 
@@ -200,42 +200,42 @@ HRESULT CSoundKeeper::Restart()
 
 void CSoundKeeper::FireRestart()
 {
-	SetEvent(RestartEvent);
+	SetEvent(m_restart_event);
 }
 
 void CSoundKeeper::FireShutdown()
 {
-	SetEvent(ShutdownEvent);
+	SetEvent(m_shutdown_event);
 }
 
 HRESULT CSoundKeeper::Main()
 {
 	HRESULT hr = S_OK;
 
-	hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&DevEnumerator));
+	hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&m_dev_enumerator));
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to instantiate device enumerator: 0x%08X.", hr);
 		goto exit;
 	}
 
-	ShutdownEvent = CreateEventEx(NULL, NULL, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
-	if (ShutdownEvent == NULL)
+	m_shutdown_event = CreateEventEx(NULL, NULL, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
+	if (m_shutdown_event == NULL)
 	{
 		DebugLogError("Unable to create shutdown event: 0x%08X.", GetLastError());
 		hr = E_FAIL;
 		goto exit;
 	}
 
-	RestartEvent = CreateEventEx(NULL, NULL, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
-	if (RestartEvent == NULL)
+	m_restart_event = CreateEventEx(NULL, NULL, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
+	if (m_restart_event == NULL)
 	{
 		DebugLogError("Unable to create restart event: 0x%08X.", GetLastError());
 		hr = E_FAIL;
 		goto exit;
 	}
 
-	hr = DevEnumerator->RegisterEndpointNotificationCallback(this);
+	hr = m_dev_enumerator->RegisterEndpointNotificationCallback(this);
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to register for stream switch notifications: 0x%08X.", hr);
@@ -245,11 +245,11 @@ HRESULT CSoundKeeper::Main()
 	// Main loop
 	DebugLog("Start");
 	Start();
-	HANDLE wait[2] = { RestartEvent, ShutdownEvent };
+	HANDLE wait[2] = { m_restart_event, m_shutdown_event };
 	bool working = true;
 	while (working)
 	{
-		switch (WaitForMultipleObjects(2, wait, FALSE, IsRetryRequired ? 500 : INFINITE))
+		switch (WaitForMultipleObjects(2, wait, FALSE, m_is_retry_required ? 500 : INFINITE))
 		{
 		case WAIT_TIMEOUT:
 			DebugLog("Retry");
@@ -259,7 +259,7 @@ HRESULT CSoundKeeper::Main()
 		case WAIT_OBJECT_0 + 0:
 			DebugLog("Restart");
 			// Prevent multiple restarts
-			while (WaitForSingleObject(RestartEvent, 750) != WAIT_TIMEOUT)
+			while (WaitForSingleObject(m_restart_event, 750) != WAIT_TIMEOUT)
 			{
 				Sleep(1000);
 			}
@@ -278,21 +278,21 @@ HRESULT CSoundKeeper::Main()
 
 exit:
 
-	if (ShutdownEvent)
+	if (m_shutdown_event)
 	{
-		CloseHandle(ShutdownEvent);
-		ShutdownEvent = NULL;
+		CloseHandle(m_shutdown_event);
+		m_shutdown_event = NULL;
 	}
-	if (RestartEvent)
+	if (m_restart_event)
 	{
-		CloseHandle(RestartEvent);
-		RestartEvent = NULL;
+		CloseHandle(m_restart_event);
+		m_restart_event = NULL;
 	}
-	if (DevEnumerator)
+	if (m_dev_enumerator)
 	{
-		DevEnumerator->UnregisterEndpointNotificationCallback(this);
+		m_dev_enumerator->UnregisterEndpointNotificationCallback(this);
 	}
-	SafeRelease(&DevEnumerator);
+	SafeRelease(&m_dev_enumerator);
 
 	return hr;
 }

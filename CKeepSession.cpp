@@ -14,7 +14,7 @@
 
 CKeepSession::CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint) :
 m_ref_count(1), m_soundkeeper(soundkeeper), m_endpoint(endpoint), m_audio_client(NULL),
-m_render_client(NULL), m_render_thread(NULL), m_shutdown_event(NULL), m_mix_format(NULL),
+m_render_client(NULL), m_render_thread(NULL), m_stop_event(NULL), m_mix_format(NULL),
 m_audio_session_control(NULL), m_buffer_size_in_ms(1000)
 {
 	m_endpoint->AddRef();
@@ -23,7 +23,7 @@ m_audio_session_control(NULL), m_buffer_size_in_ms(1000)
 
 CKeepSession::~CKeepSession(void)
 {
-	if (m_shutdown_event) Shutdown();
+	if (m_stop_event) Stop();
 	SafeRelease(&m_endpoint);
 	SafeRelease(&m_soundkeeper);
 }
@@ -70,7 +70,7 @@ ULONG STDMETHODCALLTYPE CKeepSession::Release()
 
 //
 // Initialize and start the renderer
-bool CKeepSession::Initialize()
+bool CKeepSession::Start()
 {
 	if (m_audio_client_is_started) return true;
 
@@ -79,8 +79,8 @@ bool CKeepSession::Initialize()
 
 	//
 	//  Create shutdown event - we want auto reset events that start in the not-signaled state.
-	m_shutdown_event = CreateEventEx(NULL, NULL, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
-	if (m_shutdown_event == NULL)
+	m_stop_event = CreateEventEx(NULL, NULL, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
+	if (m_stop_event == NULL)
 	{
 		DebugLogError("Unable to create shutdown event: 0x%08X.", GetLastError());
 		goto error;
@@ -200,7 +200,7 @@ bool CKeepSession::Initialize()
 
 	//
 	// Now create the thread which is going to drive the renderer
-	m_render_thread = CreateThread(NULL, 0, WASAPIRenderThread, this, 0, NULL);
+	m_render_thread = CreateThread(NULL, 0, StartRenderThread, this, 0, NULL);
 	if (m_render_thread == NULL)
 	{
 		DebugLogError("Unable to create transport thread: 0x%08X.", GetLastError());
@@ -221,7 +221,7 @@ bool CKeepSession::Initialize()
 
 error:
 
-	Shutdown();
+	Stop();
 	return false;
 }
 
@@ -232,13 +232,13 @@ bool CKeepSession::IsStarted()
 
 //
 // Stop the renderer and free all the resources
-void CKeepSession::Shutdown()
+void CKeepSession::Stop()
 {
 	HRESULT hr;
 
-	if (m_shutdown_event)
+	if (m_stop_event)
 	{
-		SetEvent(m_shutdown_event);
+		SetEvent(m_stop_event);
 	}
 
 	if (m_audio_client_is_started)
@@ -259,10 +259,10 @@ void CKeepSession::Shutdown()
 		m_render_thread = NULL;
 	}
 
-	if (m_shutdown_event)
+	if (m_stop_event)
 	{
-		CloseHandle(m_shutdown_event);
-		m_shutdown_event = NULL;
+		CloseHandle(m_stop_event);
+		m_stop_event = NULL;
 	}
 
 	SafeRelease(&m_audio_client);
@@ -284,7 +284,7 @@ void CKeepSession::Shutdown()
 //
 //  Render thread - processes samples from the audio engine
 //
-DWORD CKeepSession::WASAPIRenderThread(LPVOID context)
+DWORD CKeepSession::StartRenderThread(LPVOID context)
 {
 	CKeepSession *renderer = static_cast<CKeepSession *>(context);
 	return renderer->DoRenderThread();
@@ -310,7 +310,7 @@ DWORD CKeepSession::DoRenderThread()
 #endif
 
 	bool playing = true;
-	while (playing) switch (WaitForSingleObject(m_shutdown_event, m_buffer_size_in_ms / 2 + m_buffer_size_in_ms / 4))
+	while (playing) switch (WaitForSingleObject(m_stop_event, m_buffer_size_in_ms / 2 + m_buffer_size_in_ms / 4))
 	{
 	case WAIT_TIMEOUT: // Timeout - provide the next buffer of samples
 
@@ -389,7 +389,7 @@ DWORD CKeepSession::DoRenderThread()
 		}
 		break;
 
-	case WAIT_OBJECT_0 + 0: // m_shutdown_event
+	case WAIT_OBJECT_0 + 0: // m_stop_event
 	default:
 
 		playing = false; // We're done, exit the loop.
@@ -412,7 +412,7 @@ DWORD CKeepSession::DoRenderThread()
 //
 HRESULT CKeepSession::OnSessionDisconnected(AudioSessionDisconnectReason DisconnectReason)
 {
-	SetEvent(m_shutdown_event);
+	SetEvent(m_stop_event);
 	m_soundkeeper->FireRestart();
 	return S_OK;
 }
