@@ -2,7 +2,7 @@
 #include "CSoundKeeper.hpp"
 
 CSoundKeeper::CSoundKeeper()
-	: _cRef(1), DevEnumerator(NULL), IsStarted(false), Keepers(NULL), KeepersCount(0), ShutdownEvent(NULL), RestartEvent(NULL)
+	: m_ref_count(1), DevEnumerator(NULL), IsStarted(false), Keepers(NULL), KeepersCount(0), ShutdownEvent(NULL), RestartEvent(NULL)
 { }
 CSoundKeeper::~CSoundKeeper() { }
 
@@ -10,17 +10,17 @@ CSoundKeeper::~CSoundKeeper() { }
 
 ULONG STDMETHODCALLTYPE CSoundKeeper::AddRef()
 {
-	return InterlockedIncrement(&_cRef);
+	return InterlockedIncrement(&m_ref_count);
 }
 
 ULONG STDMETHODCALLTYPE CSoundKeeper::Release()
 {
-	ULONG ulRef = InterlockedDecrement(&_cRef);
-	if (0 == ulRef)
+	ULONG result = InterlockedDecrement(&m_ref_count);
+	if (result == 0)
 	{
 		delete this;
 	}
-	return ulRef;
+	return result;
 }
 
 HRESULT STDMETHODCALLTYPE CSoundKeeper::QueryInterface(REFIID riid, VOID **ppvInterface)

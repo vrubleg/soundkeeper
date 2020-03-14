@@ -10,7 +10,7 @@ class CSoundKeeper : public IMMNotificationClient
 {
 protected:
 
-	LONG _cRef;
+	LONG m_ref_count;
 
 	~CSoundKeeper();
 

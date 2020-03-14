@@ -12,7 +12,20 @@ class CKeepSession;
 
 class CKeepSession : IAudioSessionEvents
 {
-public:
+protected:
+
+	LONG                    m_ref_count;
+
+	CSoundKeeper*           m_soundkeeper;
+	IMMDevice*              m_endpoint;
+
+	HANDLE                  m_render_thread;
+	HANDLE                  m_shutdown_event;
+
+	IAudioClient*           m_audio_client;
+	bool                    m_audio_client_is_started = false;
+	IAudioRenderClient*     m_render_client;
+	IAudioSessionControl*   m_audio_session_control;
 
 	enum RenderSampleType
 	{
@@ -20,27 +33,12 @@ public:
 		SampleTypeInt16,
 	};
 
-protected:
+	WAVEFORMATEX*           m_mix_format;
+	UINT32                  m_frame_size = 0;
+	RenderSampleType        m_sample_type = SampleTypeFloat32;
 
-	LONG    _RefCount;
-	//
-	//  Core Audio Rendering member variables.
-	//
-	CSoundKeeper* SoundKeeper;
-	IMMDevice* _Endpoint;
-	IAudioClient* _AudioClient;
-	bool          _IsStarted = false;
-	IAudioRenderClient* _RenderClient;
-
-	HANDLE      _RenderThread;
-	HANDLE      _ShutdownEvent;
-	WAVEFORMATEX* _MixFormat;
-	UINT32      _FrameSize = 0;
-	RenderSampleType _RenderSampleType = SampleTypeFloat32;
-	UINT32      _BufferSizeInFrames = 0;
-
-	IAudioSessionControl *  _AudioSessionControl;
-	UINT32 BufferSizeInMs;
+	UINT32                  m_buffer_size_in_ms;
+	UINT32                  m_buffer_size_in_frames = 0;
 
 	~CKeepSession(void);
 
