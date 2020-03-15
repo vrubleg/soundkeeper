@@ -10,7 +10,7 @@ class CSoundKeeper : public IMMNotificationClient
 {
 protected:
 
-	LONG m_ref_count;
+	LONG m_ref_count = 1;
 
 	~CSoundKeeper();
 
@@ -34,13 +34,13 @@ public:
 
 protected:
 
-	IMMDeviceEnumerator*    m_dev_enumerator;
-	bool                    m_is_started;
+	IMMDeviceEnumerator*    m_dev_enumerator = nullptr;
+	bool                    m_is_started = false;
 	bool                    m_is_retry_required = false;
-	CKeepSession**          m_sessions;
-	UINT                    m_sessions_count;
-	HANDLE                  m_shutdown_event;
-	HANDLE                  m_restart_event;
+	CKeepSession**          m_sessions = nullptr;
+	UINT                    m_sessions_count = 0;
+	HANDLE                  m_shutdown_event = NULL;
+	HANDLE                  m_restart_event = NULL;
 
 	HRESULT Start();
 	HRESULT Stop();

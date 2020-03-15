@@ -14,30 +14,30 @@ class CKeepSession : IAudioSessionEvents
 {
 protected:
 
-	LONG                    m_ref_count;
+	LONG                    m_ref_count = 1;
 
-	CSoundKeeper*           m_soundkeeper;
-	IMMDevice*              m_endpoint;
+	CSoundKeeper*           m_soundkeeper = nullptr;
+	IMMDevice*              m_endpoint = nullptr;
 
-	HANDLE                  m_render_thread;
-	HANDLE                  m_stop_event;
+	HANDLE                  m_render_thread = NULL;
+	HANDLE                  m_stop_event = NULL;
 
-	IAudioClient*           m_audio_client;
+	IAudioClient*           m_audio_client = nullptr;
 	bool                    m_audio_client_is_started = false;
-	IAudioRenderClient*     m_render_client;
-	IAudioSessionControl*   m_audio_session_control;
+	IAudioRenderClient*     m_render_client = nullptr;
+	IAudioSessionControl*   m_audio_session_control = nullptr;
 
-	enum RenderSampleType
+	enum sample_type_t
 	{
-		SampleTypeFloat32,
-		SampleTypeInt16,
+		k_sample_type_float32,
+		k_sample_type_int16,
 	};
 
-	WAVEFORMATEX*           m_mix_format;
+	WAVEFORMATEX*           m_mix_format = nullptr;
 	UINT32                  m_frame_size = 0;
-	RenderSampleType        m_sample_type = SampleTypeFloat32;
+	sample_type_t           m_sample_type = k_sample_type_float32;
 
-	UINT32                  m_buffer_size_in_ms;
+	UINT32                  m_buffer_size_in_ms = 500;
 	UINT32                  m_buffer_size_in_frames = 0;
 
 	~CKeepSession(void);
@@ -49,13 +49,18 @@ public:
 	bool IsStarted();
 	void Stop();
 
-private:
+protected:
 
 	//
-	//  Render buffer management.
+	// Rendering thread.
 	//
-	static DWORD __stdcall StartRenderThread(LPVOID Context);
-	DWORD CKeepSession::DoRenderThread();
+
+	static DWORD APIENTRY StartRenderingThread(LPVOID Context);
+	HRESULT CKeepSession::RenderingThread();
+
+	//
+	// IAudioSessionEvents.
+	//
 
 	STDMETHOD(OnDisplayNameChanged) (LPCWSTR /*NewDisplayName*/, LPCGUID /*EventContext*/) { return S_OK; };
 	STDMETHOD(OnIconPathChanged) (LPCWSTR /*NewIconPath*/, LPCGUID /*EventContext*/) { return S_OK; };
@@ -71,7 +76,7 @@ private:
 
 public:
 
-	HRESULT STDMETHODCALLTYPE QueryInterface(REFIID Iid, void **Object);
+	HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void **object);
 	ULONG STDMETHODCALLTYPE AddRef();
 	ULONG STDMETHODCALLTYPE Release();
 };

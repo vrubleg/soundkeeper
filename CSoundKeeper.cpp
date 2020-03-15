@@ -1,9 +1,7 @@
 #include "StdAfx.h"
 #include "CSoundKeeper.hpp"
 
-CSoundKeeper::CSoundKeeper()
-	: m_ref_count(1), m_dev_enumerator(NULL), m_is_started(false), m_sessions(NULL), m_sessions_count(0), m_shutdown_event(NULL), m_restart_event(NULL)
-{ }
+CSoundKeeper::CSoundKeeper() { }
 CSoundKeeper::~CSoundKeeper() { }
 
 // IUnknown methods

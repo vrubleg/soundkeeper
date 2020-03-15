@@ -12,10 +12,8 @@
 #include <avrt.h>
 #endif
 
-CKeepSession::CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint) :
-m_ref_count(1), m_soundkeeper(soundkeeper), m_endpoint(endpoint), m_audio_client(NULL),
-m_render_client(NULL), m_render_thread(NULL), m_stop_event(NULL), m_mix_format(NULL),
-m_audio_session_control(NULL), m_buffer_size_in_ms(1000)
+CKeepSession::CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint)
+	: m_soundkeeper(soundkeeper), m_endpoint(endpoint)
 {
 	m_endpoint->AddRef();
 	m_soundkeeper->AddRef();
@@ -113,7 +111,7 @@ bool CKeepSession::Start()
 		DebugLog("Format: PCM %d-bit integer.", m_mix_format->wBitsPerSample);
 		if (m_mix_format->wBitsPerSample == 16)
 		{
-			m_sample_type = SampleTypeInt16;
+			m_sample_type = k_sample_type_int16;
 		}
 		else
 		{
@@ -127,7 +125,7 @@ bool CKeepSession::Start()
 		DebugLog("Format: PCM %d-bit float.", m_mix_format->wBitsPerSample);
 		if (m_mix_format->wBitsPerSample == 32)
 		{
-			m_sample_type = SampleTypeFloat32;
+			m_sample_type = k_sample_type_float32;
 		}
 		else
 		{
@@ -184,7 +182,7 @@ bool CKeepSession::Start()
 
 	//
 	// We want to pre-roll one buffer's worth of silence into the pipeline. That way the audio engine won't glitch on startup.  
-	BYTE *p_data;
+	BYTE* p_data;
 	hr = m_render_client->GetBuffer(m_buffer_size_in_frames, &p_data);
 	if (FAILED(hr))
 	{
@@ -200,7 +198,7 @@ bool CKeepSession::Start()
 
 	//
 	// Now create the thread which is going to drive the renderer
-	m_render_thread = CreateThread(NULL, 0, StartRenderThread, this, 0, NULL);
+	m_render_thread = CreateThread(NULL, 0, StartRenderingThread, this, 0, NULL);
 	if (m_render_thread == NULL)
 	{
 		DebugLogError("Unable to create transport thread: 0x%08X.", GetLastError());
@@ -234,8 +232,6 @@ bool CKeepSession::IsStarted()
 // Stop the renderer and free all the resources
 void CKeepSession::Stop()
 {
-	HRESULT hr;
-
 	if (m_stop_event)
 	{
 		SetEvent(m_stop_event);
@@ -243,8 +239,8 @@ void CKeepSession::Stop()
 
 	if (m_audio_client_is_started)
 	{
-		hr = m_audio_client->Stop();
 		m_audio_client_is_started = false;
+		HRESULT hr = m_audio_client->Stop();
 		if (FAILED(hr))
 		{
 			DebugLogError("Unable to stop audio client: 0x%08X.", hr);
@@ -282,15 +278,10 @@ void CKeepSession::Stop()
 }
 
 //
-//  Render thread - processes samples from the audio engine
+// Rendering thread.
 //
-DWORD CKeepSession::StartRenderThread(LPVOID context)
-{
-	CKeepSession *renderer = static_cast<CKeepSession *>(context);
-	return renderer->DoRenderThread();
-}
 
-DWORD CKeepSession::DoRenderThread()
+DWORD APIENTRY CKeepSession::StartRenderingThread(LPVOID context)
 {
 	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 	if (FAILED(hr))
@@ -309,12 +300,27 @@ DWORD CKeepSession::DoRenderThread()
 	}
 #endif
 
+	CKeepSession* renderer = static_cast<CKeepSession*>(context);
+	hr = renderer->RenderingThread();
+
+#ifdef ENABLE_MMCSS
+	if (mmcss_handle != NULL) AvRevertMmThreadCharacteristics(mmcss_handle);
+#endif
+
+	CoUninitialize();
+	return hr;
+}
+
+HRESULT CKeepSession::RenderingThread()
+{
+	HRESULT hr = S_OK;
+
 	bool playing = true;
 	while (playing) switch (WaitForSingleObject(m_stop_event, m_buffer_size_in_ms / 2 + m_buffer_size_in_ms / 4))
 	{
 	case WAIT_TIMEOUT: // Timeout - provide the next buffer of samples
 
-		BYTE *p_data;
+		BYTE* p_data;
 		UINT32 padding;
 		UINT32 frames_available;
 
@@ -345,10 +351,10 @@ DWORD CKeepSession::DoRenderThread()
 		}
 
 #ifdef ENABLE_INAUDIBLE
-		if (m_sample_type == SampleTypeInt16)
+		if (m_sample_type == k_sample_type_int16)
 		{
 			UINT32 n = 0;
-			constexpr INT16 tbl[] = { -1, 0, 1, 0 };
+			constexpr static INT16 tbl[] = { -1, 0, 1, 0 };
 			for (size_t i = 0; i < frames_available; i++)
 			{
 				for (size_t j = 0; j < m_mix_format->nChannels; j++)
@@ -364,7 +370,7 @@ DWORD CKeepSession::DoRenderThread()
 			UINT32 n = 0;
 			// 0xb8000100 = -3.051851E-5 = -1.0/32767.
 			// 0x38000100 =  3.051851E-5 =  1.0/32767.
-			constexpr UINT32 tbl[] = { 0xb8000100, 0, 0x38000100, 0 };
+			constexpr static UINT32 tbl[] = { 0xb8000100, 0, 0x38000100, 0 };
 			for (size_t i = 0; i < frames_available; i++)
 			{
 				for (size_t j = 0; j < m_mix_format->nChannels; j++)
@@ -381,7 +387,6 @@ DWORD CKeepSession::DoRenderThread()
 		// ZeroMemory(p_data, static_cast<SIZE_T>(m_frame_size) * frames_available);
 		hr = m_render_client->ReleaseBuffer(frames_available, AUDCLNT_BUFFERFLAGS_SILENT);
 #endif
-
 		if (FAILED(hr))
 		{
 			playing = false;
@@ -396,12 +401,7 @@ DWORD CKeepSession::DoRenderThread()
 		break;
 	}
 
-#ifdef ENABLE_MMCSS
-	if (mmcss_handle != NULL) AvRevertMmThreadCharacteristics(mmcss_handle);
-#endif
-
-	CoUninitialize();
-	return 0;
+	return hr;
 }
 
 //
@@ -412,6 +412,7 @@ DWORD CKeepSession::DoRenderThread()
 //
 HRESULT CKeepSession::OnSessionDisconnected(AudioSessionDisconnectReason DisconnectReason)
 {
+	m_audio_client_is_started = false;
 	SetEvent(m_stop_event);
 	m_soundkeeper->FireRestart();
 	return S_OK;
