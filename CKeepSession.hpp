@@ -3,6 +3,12 @@
 #include <mmdeviceapi.h>
 #include <audioclient.h>
 
+// Inaudible tone generation.
+// #define ENABLE_INAUDIBLE
+
+// Enable Multimedia Class Scheduler Service.
+#define ENABLE_MMCSS
+
 class CKeepSession;
 #include "CSoundKeeper.hpp"
 
@@ -31,13 +37,17 @@ protected:
 
 	enum sample_type_t
 	{
+		k_sample_type_unknown,
 		k_sample_type_float32,
 		k_sample_type_int16,
 	};
 
 	WAVEFORMATEX*           m_mix_format = nullptr;
+#ifdef ENABLE_INAUDIBLE
+	sample_type_t           m_sample_type = k_sample_type_unknown;
+	UINT32                  m_channels_count = 0;
 	UINT32                  m_frame_size = 0;
-	sample_type_t           m_sample_type = k_sample_type_float32;
+#endif
 
 	UINT32                  m_buffer_size_in_ms = 1000;
 	UINT32                  m_buffer_size_in_frames = 0;

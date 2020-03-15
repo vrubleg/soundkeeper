@@ -2,12 +2,6 @@
 #define INITGUID
 #include "CKeepSession.hpp"
 
-// Inaudible tone generation.
-// #define ENABLE_INAUDIBLE
-
-// Enable Multimedia Class Scheduler Service
-#define ENABLE_MMCSS
-
 #ifdef ENABLE_MMCSS
 #include <avrt.h>
 #endif
@@ -88,7 +82,7 @@ bool CKeepSession::Start()
 	}
 
 	//
-	// Now activate an IAudioClient object on our preferred endpoint and retrieve the mix format for that endpoint
+	// Now activate an IAudioClient object on our preferred endpoint.
 	hr = m_endpoint->Activate(__uuidof(IAudioClient), CLSCTX_INPROC_SERVER, NULL, reinterpret_cast<void **>(&m_audio_client));
 	if (FAILED(hr))
 	{
@@ -98,7 +92,7 @@ bool CKeepSession::Start()
 	}
 
 	//
-	// Load the MixFormat. This may differ depending on the shared mode used
+	// Load the MixFormat. This may differ depending on the shared mode used.
 	hr = m_audio_client->GetMixFormat(&m_mix_format);
 	if (FAILED(hr))
 	{
@@ -106,10 +100,14 @@ bool CKeepSession::Start()
 		DebugLogError("Unable to get mix format on audio client: 0x%08X.", hr);
 		goto error;
 	}
-	m_frame_size = m_mix_format->nBlockAlign;
 
-	//
-	// Crack open the mix format and determine what kind of samples are being rendered
+#ifdef ENABLE_INAUDIBLE
+
+	m_frame_size = m_mix_format->nBlockAlign;
+	m_channels_count = m_mix_format->nChannels;
+
+	// Determine what kind of samples are being rendered.
+	m_sample_type = k_sample_type_unknown;
 	if (m_mix_format->wFormatTag == WAVE_FORMAT_PCM
 		|| m_mix_format->wFormatTag == WAVE_FORMAT_EXTENSIBLE && reinterpret_cast<WAVEFORMATEXTENSIBLE *>(m_mix_format)->SubFormat == KSDATAFORMAT_SUBTYPE_PCM)
 	{
@@ -121,7 +119,6 @@ bool CKeepSession::Start()
 		else
 		{
 			DebugLogError("Unsupported PCM integer sample type.");
-			goto error;
 		}
 	}
 	else if (m_mix_format->wFormatTag == WAVE_FORMAT_IEEE_FLOAT
@@ -135,14 +132,14 @@ bool CKeepSession::Start()
 		else
 		{
 			DebugLogError("Unsupported PCM float sample type.");
-			goto error;
 		}
 	}
 	else
 	{
-		DebugLogError("Unrecognized device format.");
-		goto error;
+		DebugLogError("Unrecognized sample format.");
 	}
+
+#endif
 
 	//
 	// Initialize WASAPI in timer driven mode.
@@ -361,13 +358,16 @@ HRESULT CKeepSession::Render()
 	}
 
 #ifdef ENABLE_INAUDIBLE
+
+	DWORD render_flags = NULL;
+
 	if (m_sample_type == k_sample_type_int16)
 	{
 		UINT32 n = 0;
 		constexpr static INT16 tbl[] = { -1, 0, 1, 0 };
 		for (size_t i = 0; i < frames_available; i++)
 		{
-			for (size_t j = 0; j < m_mix_format->nChannels; j++)
+			for (size_t j = 0; j < m_channels_count; j++)
 			{
 				*reinterpret_cast<INT16*>(p_data + j * 2) = tbl[n];
 			}
@@ -375,7 +375,7 @@ HRESULT CKeepSession::Render()
 			n = ++n % 4;
 		}
 	}
-	else
+	else if (m_sample_type == k_sample_type_float32)
 	{
 		UINT32 n = 0;
 		// 0xb8000100 = -3.051851E-5 = -1.0/32767.
@@ -383,7 +383,7 @@ HRESULT CKeepSession::Render()
 		constexpr static UINT32 tbl[] = { 0xb8000100, 0, 0x38000100, 0 };
 		for (size_t i = 0; i < frames_available; i++)
 		{
-			for (size_t j = 0; j < m_mix_format->nChannels; j++)
+			for (size_t j = 0; j < m_channels_count; j++)
 			{
 				*reinterpret_cast<UINT32*>(p_data + j * 4) = tbl[n];
 			}
@@ -391,12 +391,20 @@ HRESULT CKeepSession::Render()
 			n = ++n % 4;
 		}
 	}
+	else
+	{
+		render_flags = AUDCLNT_BUFFERFLAGS_SILENT;
+	}
 
-	hr = m_render_client->ReleaseBuffer(frames_available, NULL);
+	hr = m_render_client->ReleaseBuffer(frames_available, render_flags);
+
 #else
+
 	// ZeroMemory(p_data, static_cast<SIZE_T>(m_frame_size) * frames_available);
 	hr = m_render_client->ReleaseBuffer(frames_available, AUDCLNT_BUFFERFLAGS_SILENT);
+
 #endif
+
 	if (FAILED(hr))
 	{
 		DebugLogError("Failed to release buffer: 0x%08X.", hr);
