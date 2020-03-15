@@ -196,6 +196,11 @@ HRESULT CSoundKeeper::Restart()
 	return S_OK;
 }
 
+void CSoundKeeper::FireRetry()
+{
+	SetEvent(m_retry_event);
+}
+
 void CSoundKeeper::FireRestart()
 {
 	SetEvent(m_restart_event);
@@ -233,6 +238,14 @@ HRESULT CSoundKeeper::Main()
 		goto exit;
 	}
 
+	m_retry_event = CreateEventEx(NULL, NULL, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
+	if (m_retry_event == NULL)
+	{
+		DebugLogError("Unable to create retry event: 0x%08X.", GetLastError());
+		hr = E_FAIL;
+		goto exit;
+	}
+
 	hr = m_dev_enumerator->RegisterEndpointNotificationCallback(this);
 	if (FAILED(hr))
 	{
@@ -243,29 +256,42 @@ HRESULT CSoundKeeper::Main()
 	// Main loop
 	DebugLog("Start");
 	Start();
-	HANDLE wait[2] = { m_restart_event, m_shutdown_event };
+	HANDLE wait[] = { m_retry_event, m_restart_event, m_shutdown_event };
 	bool working = true;
 	while (working)
 	{
-		switch (WaitForMultipleObjects(2, wait, FALSE, m_is_retry_required ? 500 : INFINITE))
+		switch (WaitForMultipleObjects(_countof(wait), wait, FALSE, m_is_retry_required ? 500 : INFINITE))
 		{
-		case WAIT_TIMEOUT:
-			DebugLog("Retry");
-			Retry();
-			break;
-
 		case WAIT_OBJECT_0 + 0:
-			DebugLog("Restart");
-			// Prevent multiple restarts
-			while (WaitForSingleObject(m_restart_event, 750) != WAIT_TIMEOUT)
+
+			// Prevent multiple retries.
+			while (WaitForSingleObject(m_retry_event, 500) != WAIT_TIMEOUT)
 			{
-				Sleep(1000);
+				Sleep(500);
 			}
-			Restart();
+			m_is_retry_required = true;
+
+		case WAIT_TIMEOUT:
+
+			DebugLog("Retry");
+			this->Retry();
 			break;
 
 		case WAIT_OBJECT_0 + 1:
+
+			// Prevent multiple restarts.
+			while (WaitForSingleObject(m_restart_event, 500) != WAIT_TIMEOUT)
+			{
+				Sleep(500);
+			}
+
+			DebugLog("Restart");
+			this->Restart();
+			break;
+
+		case WAIT_OBJECT_0 + 2:
 		default:
+
 			DebugLog("Shutdown");
 			// Shutdown
 			working = false; // We're done, exit the loop
@@ -285,6 +311,11 @@ exit:
 	{
 		CloseHandle(m_restart_event);
 		m_restart_event = NULL;
+	}
+	if (m_retry_event)
+	{
+		CloseHandle(m_retry_event);
+		m_retry_event = NULL;
 	}
 	if (m_dev_enumerator)
 	{

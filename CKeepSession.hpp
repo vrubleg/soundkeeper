@@ -19,11 +19,13 @@ protected:
 	CSoundKeeper*           m_soundkeeper = nullptr;
 	IMMDevice*              m_endpoint = nullptr;
 
+	bool                    m_is_started = false;
+	bool                    m_is_valid = false;
+
 	HANDLE                  m_render_thread = NULL;
 	HANDLE                  m_stop_event = NULL;
 
 	IAudioClient*           m_audio_client = nullptr;
-	bool                    m_audio_client_is_started = false;
 	IAudioRenderClient*     m_render_client = nullptr;
 	IAudioSessionControl*   m_audio_session_control = nullptr;
 
@@ -37,7 +39,7 @@ protected:
 	UINT32                  m_frame_size = 0;
 	sample_type_t           m_sample_type = k_sample_type_float32;
 
-	UINT32                  m_buffer_size_in_ms = 500;
+	UINT32                  m_buffer_size_in_ms = 1000;
 	UINT32                  m_buffer_size_in_frames = 0;
 
 	~CKeepSession(void);
@@ -46,8 +48,9 @@ public:
 
 	CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint);
 	bool Start();
-	bool IsStarted();
 	void Stop();
+	bool IsStarted() const { return m_is_started; }
+	bool IsValid() const { return m_is_valid; };
 
 protected:
 

@@ -17,11 +17,12 @@ CKeepSession::CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint)
 {
 	m_endpoint->AddRef();
 	m_soundkeeper->AddRef();
+	m_is_valid = true;
 }
 
 CKeepSession::~CKeepSession(void)
 {
-	if (m_stop_event) Stop();
+	if (m_stop_event) this->Stop();
 	SafeRelease(&m_endpoint);
 	SafeRelease(&m_soundkeeper);
 }
@@ -67,13 +68,15 @@ ULONG STDMETHODCALLTYPE CKeepSession::Release()
 }
 
 //
-// Initialize and start the renderer
+// Initialize and start the renderer.
 bool CKeepSession::Start()
 {
-	if (m_audio_client_is_started) return true;
+	if (!m_is_valid) return false;
+	if (m_is_started) return true;
+
+	if (m_stop_event) this->Stop();
 
 	HRESULT hr = S_OK;
-	m_audio_client_is_started = false;
 
 	//
 	//  Create shutdown event - we want auto reset events that start in the not-signaled state.
@@ -89,6 +92,7 @@ bool CKeepSession::Start()
 	hr = m_endpoint->Activate(__uuidof(IAudioClient), CLSCTX_INPROC_SERVER, NULL, reinterpret_cast<void **>(&m_audio_client));
 	if (FAILED(hr))
 	{
+		m_is_valid = false;
 		DebugLogError("Unable to activate audio client: 0x%08X.", hr);
 		goto error;
 	}
@@ -98,6 +102,7 @@ bool CKeepSession::Start()
 	hr = m_audio_client->GetMixFormat(&m_mix_format);
 	if (FAILED(hr))
 	{
+		m_is_valid = false;
 		DebugLogError("Unable to get mix format on audio client: 0x%08X.", hr);
 		goto error;
 	}
@@ -145,6 +150,7 @@ bool CKeepSession::Start()
 
 	if (FAILED(hr))
 	{
+		if (hr != AUDCLNT_E_DEVICE_IN_USE) { m_is_valid = false; }
 		DebugLogError("Unable to initialize audio client: 0x%08X.", hr);
 		goto error;
 	}
@@ -206,7 +212,7 @@ bool CKeepSession::Start()
 		DebugLogError("Unable to start render client: 0x%08X.", hr);
 		goto error;
 	}
-	m_audio_client_is_started = true;
+	m_is_started = true;
 
 	return true;
 
@@ -216,13 +222,8 @@ error:
 	return false;
 }
 
-bool CKeepSession::IsStarted()
-{
-	return m_audio_client_is_started;
-}
-
 //
-// Stop the renderer and free all the resources
+// Stop the renderer and free all the resources.
 void CKeepSession::Stop()
 {
 	if (m_stop_event)
@@ -230,9 +231,9 @@ void CKeepSession::Stop()
 		SetEvent(m_stop_event);
 	}
 
-	if (m_audio_client_is_started)
+	if (m_is_started)
 	{
-		m_audio_client_is_started = false;
+		m_is_started = false;
 		HRESULT hr = m_audio_client->Stop();
 		if (FAILED(hr))
 		{
@@ -406,16 +407,22 @@ HRESULT CKeepSession::Render()
 }
 
 //
-//  Called when an audio session is disconnected.  
-//
-//  When a session is disconnected because of a device removal or format change event, we just want 
-//  to let the render thread know that the session's gone away
-//
+// Called when an audio session is disconnected.
 HRESULT CKeepSession::OnSessionDisconnected(AudioSessionDisconnectReason DisconnectReason)
 {
-	m_audio_client_is_started = false;
+	m_is_started = false;
 	SetEvent(m_stop_event);
-	m_soundkeeper->FireRestart();
+
+	if (DisconnectReason == DisconnectReasonFormatChanged || DisconnectReason == DisconnectReasonExclusiveModeOverride)
+	{
+		m_soundkeeper->FireRetry();
+	}
+	else
+ 	{
+ 		m_is_valid = false;
+		m_soundkeeper->FireRestart();
+ 	}
+
 	return S_OK;
 }
 

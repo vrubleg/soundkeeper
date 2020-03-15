@@ -41,6 +41,7 @@ protected:
 	UINT                    m_sessions_count = 0;
 	HANDLE                  m_shutdown_event = NULL;
 	HANDLE                  m_restart_event = NULL;
+	HANDLE                  m_retry_event = NULL;
 
 	HRESULT Start();
 	HRESULT Stop();
@@ -49,6 +50,7 @@ protected:
 
 public:
 
+	void FireRetry();
 	void FireRestart();
 	void FireShutdown();
 	HRESULT Main();

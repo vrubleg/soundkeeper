@@ -24,7 +24,7 @@ int Main()
 		return hr;
 	}
 
-	CSoundKeeper *keeper = new CSoundKeeper();
+	CSoundKeeper* keeper = new CSoundKeeper();
 	hr = keeper->Main();
 	if (FAILED(hr))
 	{
