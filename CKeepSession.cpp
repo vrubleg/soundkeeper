@@ -429,10 +429,12 @@ HRESULT CKeepSession::OnSessionDisconnected(AudioSessionDisconnectReason Disconn
 
 	if (DisconnectReason == DisconnectReasonFormatChanged || DisconnectReason == DisconnectReasonExclusiveModeOverride)
 	{
+		DebugLog("Session is disconnected with reason %d. Retry.", DisconnectReason);
 		m_soundkeeper->FireRetry();
 	}
 	else
  	{
+		DebugLog("Session is disconnected with reason %d. Restart.", DisconnectReason);
  		m_is_valid = false;
 		m_soundkeeper->FireRestart();
  	}
@@ -444,7 +446,7 @@ HRESULT CKeepSession::OnSimpleVolumeChanged(float NewSimpleVolume, BOOL NewMute,
 {
 	if (NewMute)
 	{
-		// Shutdown Sound Keeper when muted
+		// Shutdown Sound Keeper when muted.
 		m_soundkeeper->FireShutdown();
 	}
 	return S_OK;

@@ -181,13 +181,13 @@ HRESULT CSoundKeeper::Restart()
 {
 	HRESULT hr = S_OK;
 
-	hr = Stop();
+	hr = this->Stop();
 	if (FAILED(hr))
 	{
 		return hr;
 	}
 
-	hr = Start();
+	hr = this->Start();
 	if (FAILED(hr))
 	{
 		return hr;
@@ -255,7 +255,7 @@ HRESULT CSoundKeeper::Main()
 
 	// Main loop
 	DebugLog("Start");
-	Start();
+	this->Start();
 	HANDLE wait[] = { m_retry_event, m_restart_event, m_shutdown_event };
 	bool working = true;
 	while (working)
