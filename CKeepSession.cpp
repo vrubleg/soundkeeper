@@ -11,12 +11,28 @@ CKeepSession::CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint)
 {
 	m_endpoint->AddRef();
 	m_soundkeeper->AddRef();
+
+	// Create stop event.
+	m_stop_event = CreateEventEx(NULL, NULL, CREATE_EVENT_MANUAL_RESET | CREATE_EVENT_INITIAL_SET, EVENT_MODIFY_STATE | SYNCHRONIZE);
+	if (m_stop_event == NULL)
+	{
+		DebugLogError("Unable to create stop event: 0x%08X.", GetLastError());
+		return;
+	}
+
 	m_is_valid = true;
 }
 
 CKeepSession::~CKeepSession(void)
 {
-	if (m_stop_event) this->Stop();
+	this->Stop();
+
+	if (m_stop_event)
+	{
+		CloseHandle(m_stop_event);
+		m_stop_event = NULL;
+	}
+
 	SafeRelease(&m_endpoint);
 	SafeRelease(&m_soundkeeper);
 }
@@ -68,18 +84,10 @@ bool CKeepSession::Start()
 	if (!m_is_valid) return false;
 	if (m_is_started) return true;
 
-	if (m_stop_event) this->Stop();
+	this->Stop();
+	ResetEvent(m_stop_event);
 
 	HRESULT hr = S_OK;
-
-	//
-	//  Create shutdown event - we want auto reset events that start in the not-signaled state.
-	m_stop_event = CreateEventEx(NULL, NULL, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
-	if (m_stop_event == NULL)
-	{
-		DebugLogError("Unable to create shutdown event: 0x%08X.", GetLastError());
-		goto error;
-	}
 
 	//
 	// Now activate an IAudioClient object on our preferred endpoint.
@@ -223,10 +231,9 @@ error:
 // Stop the renderer and free all the resources.
 void CKeepSession::Stop()
 {
-	if (m_stop_event)
-	{
-		SetEvent(m_stop_event);
-	}
+	if (!m_audio_client) return;
+
+	SetEvent(m_stop_event);
 
 	if (m_is_started)
 	{
@@ -241,15 +248,8 @@ void CKeepSession::Stop()
 	if (m_render_thread)
 	{
 		WaitForSingleObject(m_render_thread, INFINITE);
-
 		CloseHandle(m_render_thread);
 		m_render_thread = NULL;
-	}
-
-	if (m_stop_event)
-	{
-		CloseHandle(m_stop_event);
-		m_stop_event = NULL;
 	}
 
 	SafeRelease(&m_audio_client);
