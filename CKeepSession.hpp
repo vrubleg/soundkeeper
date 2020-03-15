@@ -30,6 +30,8 @@ protected:
 
 	HANDLE                  m_render_thread = NULL;
 	HANDLE                  m_stop_event = NULL;
+	HANDLE                  m_started_event = NULL;
+	HRESULT                 m_started_result = S_OK;
 
 	IAudioClient*           m_audio_client = nullptr;
 	IAudioRenderClient*     m_render_client = nullptr;

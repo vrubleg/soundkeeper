@@ -12,7 +12,12 @@ CKeepSession::CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint)
 	m_endpoint->AddRef();
 	m_soundkeeper->AddRef();
 
-	// Create stop event.
+	m_started_event = CreateEventEx(NULL, NULL, NULL, EVENT_MODIFY_STATE | SYNCHRONIZE);
+	if (m_started_event == NULL)
+	{
+		DebugLogError("Unable to create started event: 0x%08X.", GetLastError());
+		return;
+	}
 	m_stop_event = CreateEventEx(NULL, NULL, CREATE_EVENT_MANUAL_RESET | CREATE_EVENT_INITIAL_SET, EVENT_MODIFY_STATE | SYNCHRONIZE);
 	if (m_stop_event == NULL)
 	{
@@ -31,6 +36,11 @@ CKeepSession::~CKeepSession(void)
 	{
 		CloseHandle(m_stop_event);
 		m_stop_event = NULL;
+	}
+	if (m_started_event)
+	{
+		CloseHandle(m_started_event);
+		m_started_event = NULL;
 	}
 
 	SafeRelease(&m_endpoint);
@@ -152,7 +162,6 @@ bool CKeepSession::Start()
 	//
 	// Initialize WASAPI in timer driven mode.
 	hr = m_audio_client->Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_NOPERSIST, static_cast<UINT64>(m_buffer_size_in_ms) * 10000, 0, m_mix_format, NULL);
-
 	if (FAILED(hr))
 	{
 		if (hr != AUDCLNT_E_DEVICE_IN_USE) { m_is_valid = false; }
@@ -192,15 +201,6 @@ bool CKeepSession::Start()
 	}
 
 	//
-	// We want to pre-roll one buffer of data into the pipeline. That way the audio engine won't glitch on startup.  
-	hr = this->Render();
-	if (FAILED(hr))
-	{
-		DebugLogError("Can't render initial buffer: 0x%08X.", hr);
-		goto error;
-	}
-
-	//
 	// Now create the thread which is going to drive the renderer.
 	m_render_thread = CreateThread(NULL, 0, StartRenderingThread, this, 0, NULL);
 	if (m_render_thread == NULL)
@@ -209,15 +209,13 @@ bool CKeepSession::Start()
 		goto error;
 	}
 
-	//
-	// We're ready to go, start rendering!
-	hr = m_audio_client->Start();
-	if (FAILED(hr))
+	// Wait until rendering is started.
+	HANDLE wait_handles[] = { m_started_event, m_render_thread };
+	if (WaitForMultipleObjects(_countof(wait_handles), wait_handles, FALSE, INFINITE) != WAIT_OBJECT_0)
 	{
-		DebugLogError("Unable to start render client: 0x%08X.", hr);
+		DebugLogError("Unable to start rendering.");
 		goto error;
 	}
-	m_is_started = true;
 
 	return true;
 
@@ -233,17 +231,13 @@ void CKeepSession::Stop()
 {
 	if (!m_audio_client) return;
 
-	SetEvent(m_stop_event);
-
-	if (m_is_started)
+	if (m_audio_session_control)
 	{
-		m_is_started = false;
-		HRESULT hr = m_audio_client->Stop();
-		if (FAILED(hr))
-		{
-			DebugLogError("Unable to stop audio client: 0x%08X.", hr);
-		}
+		m_audio_session_control->UnregisterAudioSessionNotification(this);
+		SafeRelease(&m_audio_session_control);
 	}
+
+	SetEvent(m_stop_event);
 
 	if (m_render_thread)
 	{
@@ -259,12 +253,6 @@ void CKeepSession::Stop()
 	{
 		CoTaskMemFree(m_mix_format);
 		m_mix_format = NULL;
-	}
-
-	if (m_audio_session_control != NULL)
-	{
-		m_audio_session_control->UnregisterAudioSessionNotification(this);
-		SafeRelease(&m_audio_session_control);
 	}
 }
 
@@ -306,23 +294,42 @@ HRESULT CKeepSession::RenderingThread()
 {
 	HRESULT hr = S_OK;
 
-	bool playing = true;
-	while (playing) switch (WaitForSingleObject(m_stop_event, m_buffer_size_in_ms / 2 + m_buffer_size_in_ms / 4))
+	// We want to pre-roll one buffer of data into the pipeline. That way the audio engine won't glitch on startup.  
+	hr = this->Render();
+	if (FAILED(hr))
+	{
+		DebugLogError("Can't render initial buffer: 0x%08X.", hr);
+		return hr;
+	}
+
+	hr = m_audio_client->Start();
+	if (FAILED(hr))
+	{
+		DebugLogError("Unable to start render client: 0x%08X.", hr);
+		return hr;
+	}
+
+	m_is_started = true;
+	SetEvent(m_started_event);
+
+	while (m_is_started) switch (WaitForSingleObject(m_stop_event, m_buffer_size_in_ms / 2 + m_buffer_size_in_ms / 4))
 	{
 	case WAIT_TIMEOUT: // Timeout.
 
 		// Provide the next buffer of samples.
 		hr = this->Render();
-		playing = SUCCEEDED(hr);
+		m_is_started = SUCCEEDED(hr);
 		break;
 
 	case WAIT_OBJECT_0 + 0: // m_stop_event
 	default:
 
 		// We're done, exit the loop.
-		playing = false;
+		m_is_started = false;
 		break;
 	}
+
+	m_audio_client->Stop();
 
 	return hr;
 }
@@ -418,7 +425,6 @@ HRESULT CKeepSession::Render()
 // Called when an audio session is disconnected.
 HRESULT CKeepSession::OnSessionDisconnected(AudioSessionDisconnectReason DisconnectReason)
 {
-	m_is_started = false;
 	SetEvent(m_stop_event);
 
 	if (DisconnectReason == DisconnectReasonFormatChanged || DisconnectReason == DisconnectReasonExclusiveModeOverride)
