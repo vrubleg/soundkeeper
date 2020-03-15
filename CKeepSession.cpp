@@ -181,27 +181,20 @@ bool CKeepSession::Start()
 	}
 
 	//
-	// We want to pre-roll one buffer's worth of silence into the pipeline. That way the audio engine won't glitch on startup.  
-	BYTE* p_data;
-	hr = m_render_client->GetBuffer(m_buffer_size_in_frames, &p_data);
+	// We want to pre-roll one buffer of data into the pipeline. That way the audio engine won't glitch on startup.  
+	hr = this->Render();
 	if (FAILED(hr))
 	{
-		DebugLogError("Failed to get buffer: 0x%08X.", hr);
-		goto error;
-	}
-	hr = m_render_client->ReleaseBuffer(m_buffer_size_in_frames, AUDCLNT_BUFFERFLAGS_SILENT);
-	if (FAILED(hr))
-	{
-		DebugLogError("Failed to release buffer: 0x%08X.", hr);
+		DebugLogError("Can't render initial buffer: 0x%08X.", hr);
 		goto error;
 	}
 
 	//
-	// Now create the thread which is going to drive the renderer
+	// Now create the thread which is going to drive the renderer.
 	m_render_thread = CreateThread(NULL, 0, StartRenderingThread, this, 0, NULL);
 	if (m_render_thread == NULL)
 	{
-		DebugLogError("Unable to create transport thread: 0x%08X.", GetLastError());
+		DebugLogError("Unable to create rendering thread: 0x%08X.", GetLastError());
 		goto error;
 	}
 
@@ -318,90 +311,98 @@ HRESULT CKeepSession::RenderingThread()
 	bool playing = true;
 	while (playing) switch (WaitForSingleObject(m_stop_event, m_buffer_size_in_ms / 2 + m_buffer_size_in_ms / 4))
 	{
-	case WAIT_TIMEOUT: // Timeout - provide the next buffer of samples
+	case WAIT_TIMEOUT: // Timeout.
 
-		BYTE* p_data;
-		UINT32 padding;
-		UINT32 frames_available;
-
-		//  We want to find out how much of the buffer *isn't* available (is padding)
-		hr = m_audio_client->GetCurrentPadding(&padding);
-		if (FAILED(hr))
-		{
-			playing = false;
-			break;
-		}
-
-		//  Calculate the number of frames available
-		frames_available = m_buffer_size_in_frames - padding;
-#ifdef ENABLE_INAUDIBLE
-		frames_available &= 0xFFFFFFFC; // Must be a multiple of 4.
-#endif
-		if (frames_available == 0)
-		{
-			// It can happen right after waking PC up after sleeping, so just do nothing.
-			break;
-		}
-
-		hr = m_render_client->GetBuffer(frames_available, &p_data);
-		if (FAILED(hr))
-		{
-			playing = false;
-			break;
-		}
-
-#ifdef ENABLE_INAUDIBLE
-		if (m_sample_type == k_sample_type_int16)
-		{
-			UINT32 n = 0;
-			constexpr static INT16 tbl[] = { -1, 0, 1, 0 };
-			for (size_t i = 0; i < frames_available; i++)
-			{
-				for (size_t j = 0; j < m_mix_format->nChannels; j++)
-				{
-					*reinterpret_cast<INT16*>(p_data + j * 2) = tbl[n];
-				}
-				p_data += m_frame_size;
-				n = ++n % 4;
-			}
-		}
-		else
-		{
-			UINT32 n = 0;
-			// 0xb8000100 = -3.051851E-5 = -1.0/32767.
-			// 0x38000100 =  3.051851E-5 =  1.0/32767.
-			constexpr static UINT32 tbl[] = { 0xb8000100, 0, 0x38000100, 0 };
-			for (size_t i = 0; i < frames_available; i++)
-			{
-				for (size_t j = 0; j < m_mix_format->nChannels; j++)
-				{
-					*reinterpret_cast<UINT32*>(p_data + j * 4) = tbl[n];
-				}
-				p_data += m_frame_size;
-				n = ++n % 4;
-			}
-		}
-
-		hr = m_render_client->ReleaseBuffer(frames_available, NULL);
-#else
-		// ZeroMemory(p_data, static_cast<SIZE_T>(m_frame_size) * frames_available);
-		hr = m_render_client->ReleaseBuffer(frames_available, AUDCLNT_BUFFERFLAGS_SILENT);
-#endif
-		if (FAILED(hr))
-		{
-			playing = false;
-			break;
-		}
+		// Provide the next buffer of samples.
+		hr = this->Render();
+		playing = SUCCEEDED(hr);
 		break;
 
 	case WAIT_OBJECT_0 + 0: // m_stop_event
 	default:
 
-		playing = false; // We're done, exit the loop.
+		// We're done, exit the loop.
+		playing = false;
 		break;
 	}
 
 	return hr;
+}
+
+HRESULT CKeepSession::Render()
+{
+	HRESULT hr = S_OK;
+	BYTE* p_data;
+	UINT32 padding;
+	UINT32 frames_available;
+
+	// We want to find out how much of the buffer *isn't* available (is padding).
+	hr = m_audio_client->GetCurrentPadding(&padding);
+	if (FAILED(hr))
+	{
+		DebugLogError("Failed to get padding: 0x%08X.", hr);
+		return hr;
+	}
+
+	// Calculate the number of frames available.
+	frames_available = m_buffer_size_in_frames - padding;
+#ifdef ENABLE_INAUDIBLE
+	frames_available &= 0xFFFFFFFC; // Must be a multiple of 4.
+#endif
+	// It can happen right after waking PC up after sleeping, so just do nothing.
+	if (frames_available == 0) { return S_OK; }
+
+	hr = m_render_client->GetBuffer(frames_available, &p_data);
+	if (FAILED(hr))
+	{
+		DebugLogError("Failed to get buffer: 0x%08X.", hr);
+		return hr;
+	}
+
+#ifdef ENABLE_INAUDIBLE
+	if (m_sample_type == k_sample_type_int16)
+	{
+		UINT32 n = 0;
+		constexpr static INT16 tbl[] = { -1, 0, 1, 0 };
+		for (size_t i = 0; i < frames_available; i++)
+		{
+			for (size_t j = 0; j < m_mix_format->nChannels; j++)
+			{
+				*reinterpret_cast<INT16*>(p_data + j * 2) = tbl[n];
+			}
+			p_data += m_frame_size;
+			n = ++n % 4;
+		}
+	}
+	else
+	{
+		UINT32 n = 0;
+		// 0xb8000100 = -3.051851E-5 = -1.0/32767.
+		// 0x38000100 =  3.051851E-5 =  1.0/32767.
+		constexpr static UINT32 tbl[] = { 0xb8000100, 0, 0x38000100, 0 };
+		for (size_t i = 0; i < frames_available; i++)
+		{
+			for (size_t j = 0; j < m_mix_format->nChannels; j++)
+			{
+				*reinterpret_cast<UINT32*>(p_data + j * 4) = tbl[n];
+			}
+			p_data += m_frame_size;
+			n = ++n % 4;
+		}
+	}
+
+	hr = m_render_client->ReleaseBuffer(frames_available, NULL);
+#else
+	// ZeroMemory(p_data, static_cast<SIZE_T>(m_frame_size) * frames_available);
+	hr = m_render_client->ReleaseBuffer(frames_available, AUDCLNT_BUFFERFLAGS_SILENT);
+#endif
+	if (FAILED(hr))
+	{
+		DebugLogError("Failed to release buffer: 0x%08X.", hr);
+		return hr;
+	}
+
+	return S_OK;
 }
 
 //

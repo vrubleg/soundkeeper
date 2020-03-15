@@ -56,7 +56,8 @@ protected:
 	//
 
 	static DWORD APIENTRY StartRenderingThread(LPVOID Context);
-	HRESULT CKeepSession::RenderingThread();
+	HRESULT RenderingThread();
+	HRESULT Render();
 
 	//
 	// IAudioSessionEvents.
