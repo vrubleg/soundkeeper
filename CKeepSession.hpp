@@ -21,6 +21,7 @@ class CKeepSession : IAudioSessionEvents
 protected:
 
 	LONG                    m_ref_count = 1;
+	CriticalSection         m_mutex;
 
 	CSoundKeeper*           m_soundkeeper = nullptr;
 	IMMDevice*              m_endpoint = nullptr;

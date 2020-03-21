@@ -29,3 +29,4 @@ public:
 };
 
 #include "NtEvent.hpp"
+#include "CriticalSection.hpp"

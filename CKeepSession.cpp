@@ -65,6 +65,8 @@ ULONG STDMETHODCALLTYPE CKeepSession::Release()
 // Initialize and start the renderer.
 bool CKeepSession::Start()
 {
+	ScopedLock lock(m_mutex);
+
 	if (!m_is_valid) return false;
 	if (m_is_started) return true;
 
@@ -100,6 +102,8 @@ error:
 // Stop the renderer and free all the resources.
 void CKeepSession::Stop()
 {
+	ScopedLock lock(m_mutex);
+
 	if (!m_audio_client) return;
 
 	m_do_stop = true;

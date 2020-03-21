@@ -32,6 +32,9 @@
     <ClInclude Include="Common\NtEvent.hpp">
       <Filter>Source Files\Common</Filter>
     </ClInclude>
+    <ClInclude Include="Common\CriticalSection.hpp">
+      <Filter>Source Files\Common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="main.ico">
