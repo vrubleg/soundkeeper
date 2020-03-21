@@ -154,12 +154,8 @@ HRESULT CKeepSession::RenderingThread()
 {
 	HRESULT hr = S_OK;
 
-	hr = this->RenderingInit();
-	if (SUCCEEDED(hr))
-	{
-		hr = this->RenderingLoop();
-		this->RenderingFree();
-	}
+	// TODO: Retry!
+	hr = this->RenderingLoop();
 
 	return hr;
 }
@@ -273,7 +269,6 @@ HRESULT CKeepSession::RenderingInit()
 
 error:
 
-	this->RenderingFree();
 	return hr;
 }
 
@@ -285,33 +280,39 @@ void CKeepSession::RenderingFree()
 		SafeRelease(&m_audio_session_control);
 	}
 
-	SafeRelease(&m_audio_client);
-	SafeRelease(&m_render_client);
-
 	if (m_mix_format)
 	{
 		CoTaskMemFree(m_mix_format);
 		m_mix_format = NULL;
 	}
+
+	SafeRelease(&m_render_client);
+	SafeRelease(&m_audio_client);
 }
 
 HRESULT CKeepSession::RenderingLoop()
 {
 	HRESULT hr = S_OK;
 
+	hr = this->RenderingInit();
+	if (FAILED(hr))
+	{
+		goto free;
+	}
+
 	// We want to pre-roll one buffer of data into the pipeline. That way the audio engine won't glitch on startup.  
 	hr = this->Render();
 	if (FAILED(hr))
 	{
 		DebugLogError("Can't render initial buffer: 0x%08X.", hr);
-		return hr;
+		goto free;
 	}
 
 	hr = m_audio_client->Start();
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to start render client: 0x%08X.", hr);
-		return hr;
+		goto free;
 	}
 
 	m_is_started = true;
@@ -339,6 +340,10 @@ stop:
 
 	m_is_started = false;
 	m_audio_client->Stop();
+
+free:
+
+	this->RenderingFree();
 	return hr;
 }
 
