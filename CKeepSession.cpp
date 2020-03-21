@@ -428,7 +428,8 @@ HRESULT CKeepSession::Render()
 // Called when an audio session is disconnected.
 HRESULT CKeepSession::OnSessionDisconnected(AudioSessionDisconnectReason DisconnectReason)
 {
-	this->Stop();
+	// Can't call Stop() here because waiting of the rendering thread would cause a deadlock.
+	m_do_stop = true;
 
 	if (DisconnectReason == DisconnectReasonFormatChanged || DisconnectReason == DisconnectReasonExclusiveModeOverride)
 	{
