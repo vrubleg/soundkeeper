@@ -18,6 +18,6 @@ template <class T> void SafeRelease(T **ppT)
 #define DebugLog(...)
 #define DebugLogError(...)
 #else
-#define DebugLog(...) printf(__VA_ARGS__); printf("\n");
-#define DebugLogError(...) printf("[ERROR] "); printf(__VA_ARGS__); printf("\n");
+#define DebugLog(...) { printf("[%5d] ", GetThreadId(GetCurrentThread())); printf(__VA_ARGS__); printf("\n"); }
+#define DebugLogError(...) { printf("[%5d] ", GetThreadId(GetCurrentThread())); printf("ERROR: "); printf(__VA_ARGS__); printf("\n"); }
 #endif

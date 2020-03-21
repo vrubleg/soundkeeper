@@ -44,7 +44,7 @@ protected:
 	};
 
 	WAVEFORMATEX*           m_mix_format = nullptr;
-#ifdef ENABLE_INAUDIBLE
+#if defined(ENABLE_INAUDIBLE) || defined(_DEBUG)
 	sample_type_t           m_sample_type = k_sample_type_unknown;
 	UINT32                  m_channels_count = 0;
 	UINT32                  m_frame_size = 0;

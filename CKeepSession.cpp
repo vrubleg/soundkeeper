@@ -188,7 +188,7 @@ HRESULT CKeepSession::RenderingInit()
 		return hr;
 	}
 
-#ifdef ENABLE_INAUDIBLE
+#if defined(ENABLE_INAUDIBLE) || defined(_DEBUG)
 
 	m_frame_size = m_mix_format->nBlockAlign;
 	m_channels_count = m_mix_format->nChannels;
@@ -354,7 +354,7 @@ HRESULT CKeepSession::Render()
 
 	// Calculate the number of frames available.
 	frames_available = m_buffer_size_in_frames - padding;
-#ifdef ENABLE_INAUDIBLE
+#if defined(ENABLE_INAUDIBLE)
 	frames_available &= 0xFFFFFFFC; // Must be a multiple of 4.
 #endif
 	// It can happen right after waking PC up after sleeping, so just do nothing.
@@ -367,7 +367,7 @@ HRESULT CKeepSession::Render()
 		return hr;
 	}
 
-#ifdef ENABLE_INAUDIBLE
+#if defined(ENABLE_INAUDIBLE)
 
 	DWORD render_flags = NULL;
 
