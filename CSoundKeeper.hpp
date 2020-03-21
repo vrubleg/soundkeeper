@@ -39,9 +39,9 @@ protected:
 	bool                    m_is_retry_required = false;
 	CKeepSession**          m_sessions = nullptr;
 	UINT                    m_sessions_count = 0;
-	AutoResetEvent          m_shutdown_event = false;
-	AutoResetEvent          m_restart_event = false;
-	AutoResetEvent          m_retry_event = false;
+	AutoResetEvent          m_do_shutdown = false;
+	AutoResetEvent          m_do_restart = false;
+	AutoResetEvent          m_do_retry = false;
 
 	HRESULT Start();
 	HRESULT Stop();

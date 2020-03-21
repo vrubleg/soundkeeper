@@ -25,12 +25,11 @@ protected:
 	CSoundKeeper*           m_soundkeeper = nullptr;
 	IMMDevice*              m_endpoint = nullptr;
 
-	bool                    m_is_started = false;
 	bool                    m_is_valid = false;
 
 	HANDLE                  m_render_thread = NULL;
-	ManualResetEvent        m_stop_event = true;
-	AutoResetEvent          m_started_event = false;
+	ManualResetEvent        m_is_started = false;
+	ManualResetEvent        m_do_stop = true;
 
 	IAudioClient*           m_audio_client = nullptr;
 	IAudioRenderClient*     m_render_client = nullptr;

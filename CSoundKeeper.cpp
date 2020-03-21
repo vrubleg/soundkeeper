@@ -100,6 +100,7 @@ HRESULT CSoundKeeper::Start()
 
 		IMMDevice *device;
 		DevCollection->Item(i, &device);
+
 		IPropertyStore *properties;
 		hr = device->OpenPropertyStore(STGM_READ, &properties);
 
@@ -198,17 +199,17 @@ HRESULT CSoundKeeper::Restart()
 
 void CSoundKeeper::FireRetry()
 {
-	m_retry_event = true;
+	m_do_retry = true;
 }
 
 void CSoundKeeper::FireRestart()
 {
-	m_restart_event = true;
+	m_do_restart = true;
 }
 
 void CSoundKeeper::FireShutdown()
 {
-	m_shutdown_event = true;
+	m_do_shutdown = true;
 }
 
 HRESULT CSoundKeeper::Main()
@@ -232,7 +233,7 @@ HRESULT CSoundKeeper::Main()
 	// Main loop
 	DebugLog("Start");
 	this->Start();
-	HANDLE wait[] = { m_retry_event, m_restart_event, m_shutdown_event };
+	HANDLE wait[] = { m_do_retry, m_do_restart, m_do_shutdown };
 	bool working = true;
 	while (working)
 	{
@@ -241,7 +242,7 @@ HRESULT CSoundKeeper::Main()
 		case WAIT_OBJECT_0 + 0:
 
 			// Prevent multiple retries.
-			while (WaitForSingleObject(m_retry_event, 500) != WAIT_TIMEOUT)
+			while (WaitForSingleObject(m_do_retry, 500) != WAIT_TIMEOUT)
 			{
 				Sleep(500);
 			}
@@ -256,7 +257,7 @@ HRESULT CSoundKeeper::Main()
 		case WAIT_OBJECT_0 + 1:
 
 			// Prevent multiple restarts.
-			while (WaitForSingleObject(m_restart_event, 500) != WAIT_TIMEOUT)
+			while (WaitForSingleObject(m_do_restart, 500) != WAIT_TIMEOUT)
 			{
 				Sleep(500);
 			}

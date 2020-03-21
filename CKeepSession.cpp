@@ -69,7 +69,7 @@ bool CKeepSession::Start()
 	if (m_is_started) return true;
 
 	this->Stop();
-	m_stop_event = false;
+	m_do_stop = false;
 
 	HRESULT hr = S_OK;
 
@@ -184,7 +184,7 @@ bool CKeepSession::Start()
 	}
 
 	// Wait until rendering is started.
-	HANDLE wait_handles[] = { m_started_event, m_render_thread };
+	HANDLE wait_handles[] = { m_is_started, m_render_thread };
 	if (WaitForMultipleObjects(_countof(wait_handles), wait_handles, FALSE, INFINITE) != WAIT_OBJECT_0)
 	{
 		DebugLogError("Unable to start rendering.");
@@ -205,19 +205,19 @@ void CKeepSession::Stop()
 {
 	if (!m_audio_client) return;
 
-	if (m_audio_session_control)
-	{
-		m_audio_session_control->UnregisterAudioSessionNotification(this);
-		SafeRelease(&m_audio_session_control);
-	}
-
-	m_stop_event = true;
+	m_do_stop = true;
 
 	if (m_render_thread)
 	{
 		WaitForSingleObject(m_render_thread, INFINITE);
 		CloseHandle(m_render_thread);
 		m_render_thread = NULL;
+	}
+
+	if (m_audio_session_control)
+	{
+		m_audio_session_control->UnregisterAudioSessionNotification(this);
+		SafeRelease(&m_audio_session_control);
 	}
 
 	SafeRelease(&m_audio_client);
@@ -284,25 +284,28 @@ HRESULT CKeepSession::RenderingThread()
 	}
 
 	m_is_started = true;
-	m_started_event = true;
 
-	while (m_is_started) switch (WaitForSingleObject(m_stop_event, m_buffer_size_in_ms / 2 + m_buffer_size_in_ms / 4))
+	while (true) switch (WaitForSingleObject(m_do_stop, m_buffer_size_in_ms / 2 + m_buffer_size_in_ms / 4))
 	{
 	case WAIT_TIMEOUT: // Timeout.
 
 		// Provide the next buffer of samples.
-		hr = this->Render();
-		m_is_started = SUCCEEDED(hr);
+		if (FAILED(hr = this->Render()))
+		{
+			goto stop;
+		}
 		break;
 
-	case WAIT_OBJECT_0 + 0: // m_stop_event
+	case WAIT_OBJECT_0 + 0: // m_do_stop
 	default:
 
 		// We're done, exit the loop.
-		m_is_started = false;
-		break;
+		goto stop;
 	}
 
+stop:
+
+	m_is_started = false;
 	m_audio_client->Stop();
 
 	return hr;
@@ -399,7 +402,7 @@ HRESULT CKeepSession::Render()
 // Called when an audio session is disconnected.
 HRESULT CKeepSession::OnSessionDisconnected(AudioSessionDisconnectReason DisconnectReason)
 {
-	m_stop_event = true;
+	m_do_stop = true;
 
 	if (DisconnectReason == DisconnectReasonFormatChanged || DisconnectReason == DisconnectReasonExclusiveModeOverride)
 	{
