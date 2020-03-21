@@ -71,6 +71,97 @@ bool CKeepSession::Start()
 	this->Stop();
 	m_do_stop = false;
 
+	//
+	// Now create the thread which is going to drive the renderer.
+	m_render_thread = CreateThread(NULL, 0, StartRenderingThread, this, 0, NULL);
+	if (m_render_thread == NULL)
+	{
+		DebugLogError("Unable to create rendering thread: 0x%08X.", GetLastError());
+		goto error;
+	}
+
+	// Wait until rendering is started.
+	HANDLE wait_handles[] = { m_is_started, m_render_thread };
+	if (WaitForMultipleObjects(_countof(wait_handles), wait_handles, FALSE, INFINITE) != WAIT_OBJECT_0)
+	{
+		DebugLogError("Unable to start rendering.");
+		goto error;
+	}
+
+	return true;
+
+error:
+
+	Stop();
+	return false;
+}
+
+//
+// Stop the renderer and free all the resources.
+void CKeepSession::Stop()
+{
+	if (!m_audio_client) return;
+
+	m_do_stop = true;
+
+	if (m_render_thread)
+	{
+		WaitForSingleObject(m_render_thread, INFINITE);
+		CloseHandle(m_render_thread);
+		m_render_thread = NULL;
+	}
+}
+
+//
+// Rendering thread.
+//
+
+DWORD APIENTRY CKeepSession::StartRenderingThread(LPVOID context)
+{
+	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	if (FAILED(hr))
+	{
+		DebugLogError("Unable to initialize COM in render thread: 0x%08X.", hr);
+		return hr;
+	}
+
+#ifdef ENABLE_MMCSS
+	HANDLE mmcss_handle = NULL;
+	DWORD mmcss_task_index = 0;
+	mmcss_handle = AvSetMmThreadCharacteristics(L"Audio", &mmcss_task_index);
+	if (mmcss_handle == NULL)
+	{
+		DebugLogError("Unable to enable MMCSS on render thread: 0x%08X.", GetLastError());
+	}
+#endif
+
+	CKeepSession* renderer = static_cast<CKeepSession*>(context);
+	hr = renderer->RenderingThread();
+
+#ifdef ENABLE_MMCSS
+	if (mmcss_handle != NULL) AvRevertMmThreadCharacteristics(mmcss_handle);
+#endif
+
+	CoUninitialize();
+	return hr;
+}
+
+HRESULT CKeepSession::RenderingThread()
+{
+	HRESULT hr = S_OK;
+
+	hr = this->RenderingInit();
+	if (SUCCEEDED(hr))
+	{
+		hr = this->RenderingLoop();
+	}
+	this->RenderingFree();
+
+	return hr;
+}
+
+HRESULT CKeepSession::RenderingInit()
+{
 	HRESULT hr = S_OK;
 
 	//
@@ -80,7 +171,7 @@ bool CKeepSession::Start()
 	{
 		m_is_valid = false;
 		DebugLogError("Unable to activate audio client: 0x%08X.", hr);
-		goto error;
+		return hr;
 	}
 
 	//
@@ -90,7 +181,7 @@ bool CKeepSession::Start()
 	{
 		m_is_valid = false;
 		DebugLogError("Unable to get mix format on audio client: 0x%08X.", hr);
-		goto error;
+		return hr;
 	}
 
 #ifdef ENABLE_INAUDIBLE
@@ -140,7 +231,7 @@ bool CKeepSession::Start()
 	{
 		if (hr != AUDCLNT_E_DEVICE_IN_USE) { m_is_valid = false; }
 		DebugLogError("Unable to initialize audio client: 0x%08X.", hr);
-		goto error;
+		return hr;
 	}
 
 	//
@@ -149,14 +240,14 @@ bool CKeepSession::Start()
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to get audio client buffer: 0x%08X.", hr);
-		goto error;
+		return hr;
 	}
 
 	hr = m_audio_client->GetService(IID_PPV_ARGS(&m_render_client));
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to get new render client: 0x%08X.", hr);
-		goto error;
+		return hr;
 	}
 
 	//
@@ -165,55 +256,20 @@ bool CKeepSession::Start()
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to retrieve session control: 0x%08X.", hr);
-		goto error;
+		return hr;
 	}
 	hr = m_audio_session_control->RegisterAudioSessionNotification(this);
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to register for stream switch notifications: 0x%08X.", hr);
-		goto error;
+		return hr;
 	}
 
-	//
-	// Now create the thread which is going to drive the renderer.
-	m_render_thread = CreateThread(NULL, 0, StartRenderingThread, this, 0, NULL);
-	if (m_render_thread == NULL)
-	{
-		DebugLogError("Unable to create rendering thread: 0x%08X.", GetLastError());
-		goto error;
-	}
-
-	// Wait until rendering is started.
-	HANDLE wait_handles[] = { m_is_started, m_render_thread };
-	if (WaitForMultipleObjects(_countof(wait_handles), wait_handles, FALSE, INFINITE) != WAIT_OBJECT_0)
-	{
-		DebugLogError("Unable to start rendering.");
-		goto error;
-	}
-
-	return true;
-
-error:
-
-	Stop();
-	return false;
+	return S_OK;
 }
 
-//
-// Stop the renderer and free all the resources.
-void CKeepSession::Stop()
+void CKeepSession::RenderingFree()
 {
-	if (!m_audio_client) return;
-
-	m_do_stop = true;
-
-	if (m_render_thread)
-	{
-		WaitForSingleObject(m_render_thread, INFINITE);
-		CloseHandle(m_render_thread);
-		m_render_thread = NULL;
-	}
-
 	if (m_audio_session_control)
 	{
 		m_audio_session_control->UnregisterAudioSessionNotification(this);
@@ -230,41 +286,7 @@ void CKeepSession::Stop()
 	}
 }
 
-//
-// Rendering thread.
-//
-
-DWORD APIENTRY CKeepSession::StartRenderingThread(LPVOID context)
-{
-	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
-	if (FAILED(hr))
-	{
-		DebugLogError("Unable to initialize COM in render thread: 0x%08X.", hr);
-		return hr;
-	}
-
-#ifdef ENABLE_MMCSS
-	HANDLE mmcss_handle = NULL;
-	DWORD mmcss_task_index = 0;
-	mmcss_handle = AvSetMmThreadCharacteristics(L"Audio", &mmcss_task_index);
-	if (mmcss_handle == NULL)
-	{
-		DebugLogError("Unable to enable MMCSS on render thread: 0x%08X.", GetLastError());
-	}
-#endif
-
-	CKeepSession* renderer = static_cast<CKeepSession*>(context);
-	hr = renderer->RenderingThread();
-
-#ifdef ENABLE_MMCSS
-	if (mmcss_handle != NULL) AvRevertMmThreadCharacteristics(mmcss_handle);
-#endif
-
-	CoUninitialize();
-	return hr;
-}
-
-HRESULT CKeepSession::RenderingThread()
+HRESULT CKeepSession::RenderingLoop()
 {
 	HRESULT hr = S_OK;
 
@@ -290,7 +312,8 @@ HRESULT CKeepSession::RenderingThread()
 	case WAIT_TIMEOUT: // Timeout.
 
 		// Provide the next buffer of samples.
-		if (FAILED(hr = this->Render()))
+		hr = this->Render();
+		if (FAILED(hr))
 		{
 			goto stop;
 		}
@@ -307,7 +330,6 @@ stop:
 
 	m_is_started = false;
 	m_audio_client->Stop();
-
 	return hr;
 }
 
@@ -402,7 +424,7 @@ HRESULT CKeepSession::Render()
 // Called when an audio session is disconnected.
 HRESULT CKeepSession::OnSessionDisconnected(AudioSessionDisconnectReason DisconnectReason)
 {
-	m_do_stop = true;
+	this->Stop();
 
 	if (DisconnectReason == DisconnectReasonFormatChanged || DisconnectReason == DisconnectReasonExclusiveModeOverride)
 	{
