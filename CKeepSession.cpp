@@ -158,8 +158,8 @@ HRESULT CKeepSession::RenderingThread()
 	if (SUCCEEDED(hr))
 	{
 		hr = this->RenderingLoop();
+		this->RenderingFree();
 	}
-	this->RenderingFree();
 
 	return hr;
 }
@@ -175,7 +175,7 @@ HRESULT CKeepSession::RenderingInit()
 	{
 		m_is_valid = false;
 		DebugLogError("Unable to activate audio client: 0x%08X.", hr);
-		return hr;
+		goto error;
 	}
 
 	//
@@ -185,7 +185,7 @@ HRESULT CKeepSession::RenderingInit()
 	{
 		m_is_valid = false;
 		DebugLogError("Unable to get mix format on audio client: 0x%08X.", hr);
-		return hr;
+		goto error;
 	}
 
 #if defined(ENABLE_INAUDIBLE) || defined(_DEBUG)
@@ -235,7 +235,7 @@ HRESULT CKeepSession::RenderingInit()
 	{
 		if (hr != AUDCLNT_E_DEVICE_IN_USE) { m_is_valid = false; }
 		DebugLogError("Unable to initialize audio client: 0x%08X.", hr);
-		return hr;
+		goto error;
 	}
 
 	//
@@ -244,14 +244,14 @@ HRESULT CKeepSession::RenderingInit()
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to get audio client buffer: 0x%08X.", hr);
-		return hr;
+		goto error;
 	}
 
 	hr = m_audio_client->GetService(IID_PPV_ARGS(&m_render_client));
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to get new render client: 0x%08X.", hr);
-		return hr;
+		goto error;
 	}
 
 	//
@@ -260,16 +260,21 @@ HRESULT CKeepSession::RenderingInit()
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to retrieve session control: 0x%08X.", hr);
-		return hr;
+		goto error;
 	}
 	hr = m_audio_session_control->RegisterAudioSessionNotification(this);
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to register for stream switch notifications: 0x%08X.", hr);
-		return hr;
+		goto error;
 	}
 
 	return S_OK;
+
+error:
+
+	this->RenderingFree();
+	return hr;
 }
 
 void CKeepSession::RenderingFree()
