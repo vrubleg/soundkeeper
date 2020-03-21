@@ -11,38 +11,12 @@ CKeepSession::CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint)
 {
 	m_endpoint->AddRef();
 	m_soundkeeper->AddRef();
-
-	m_started_event = CreateEventEx(NULL, NULL, NULL, EVENT_MODIFY_STATE | SYNCHRONIZE);
-	if (m_started_event == NULL)
-	{
-		DebugLogError("Unable to create started event: 0x%08X.", GetLastError());
-		return;
-	}
-	m_stop_event = CreateEventEx(NULL, NULL, CREATE_EVENT_MANUAL_RESET | CREATE_EVENT_INITIAL_SET, EVENT_MODIFY_STATE | SYNCHRONIZE);
-	if (m_stop_event == NULL)
-	{
-		DebugLogError("Unable to create stop event: 0x%08X.", GetLastError());
-		return;
-	}
-
 	m_is_valid = true;
 }
 
 CKeepSession::~CKeepSession(void)
 {
 	this->Stop();
-
-	if (m_stop_event)
-	{
-		CloseHandle(m_stop_event);
-		m_stop_event = NULL;
-	}
-	if (m_started_event)
-	{
-		CloseHandle(m_started_event);
-		m_started_event = NULL;
-	}
-
 	SafeRelease(&m_endpoint);
 	SafeRelease(&m_soundkeeper);
 }
@@ -95,7 +69,7 @@ bool CKeepSession::Start()
 	if (m_is_started) return true;
 
 	this->Stop();
-	ResetEvent(m_stop_event);
+	m_stop_event = false;
 
 	HRESULT hr = S_OK;
 
@@ -237,7 +211,7 @@ void CKeepSession::Stop()
 		SafeRelease(&m_audio_session_control);
 	}
 
-	SetEvent(m_stop_event);
+	m_stop_event = true;
 
 	if (m_render_thread)
 	{
@@ -310,7 +284,7 @@ HRESULT CKeepSession::RenderingThread()
 	}
 
 	m_is_started = true;
-	SetEvent(m_started_event);
+	m_started_event = true;
 
 	while (m_is_started) switch (WaitForSingleObject(m_stop_event, m_buffer_size_in_ms / 2 + m_buffer_size_in_ms / 4))
 	{
@@ -425,7 +399,7 @@ HRESULT CKeepSession::Render()
 // Called when an audio session is disconnected.
 HRESULT CKeepSession::OnSessionDisconnected(AudioSessionDisconnectReason DisconnectReason)
 {
-	SetEvent(m_stop_event);
+	m_stop_event = true;
 
 	if (DisconnectReason == DisconnectReasonFormatChanged || DisconnectReason == DisconnectReasonExclusiveModeOverride)
 	{

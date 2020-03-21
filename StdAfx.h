@@ -1,9 +1,7 @@
 #pragma once
 
-#define _WIN32_WINNT 0x0600
-
 #include <new>
-#include <windows.h>
+#include "Common/Win32.hpp"
 #include <strsafe.h>
 #include <objbase.h>
 

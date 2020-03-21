@@ -29,9 +29,8 @@ protected:
 	bool                    m_is_valid = false;
 
 	HANDLE                  m_render_thread = NULL;
-	HANDLE                  m_stop_event = NULL;
-	HANDLE                  m_started_event = NULL;
-	HRESULT                 m_started_result = S_OK;
+	ManualResetEvent        m_stop_event = true;
+	AutoResetEvent          m_started_event = false;
 
 	IAudioClient*           m_audio_client = nullptr;
 	IAudioRenderClient*     m_render_client = nullptr;

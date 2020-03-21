@@ -26,6 +26,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CKeepSession.hpp" />
+    <ClInclude Include="Common\NtEvent.hpp" />
+    <ClInclude Include="Common\Win32.hpp" />
     <ClInclude Include="CSoundKeeper.hpp" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="StdAfx.h" />
@@ -123,7 +125,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>avrt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>avrt.lib;ntdll.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <MinimumRequiredVersion>6.0</MinimumRequiredVersion>
     </Link>
   </ItemDefinitionGroup>
@@ -139,7 +141,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>avrt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>avrt.lib;ntdll.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <MinimumRequiredVersion>6.0</MinimumRequiredVersion>
     </Link>
   </ItemDefinitionGroup>
@@ -165,7 +167,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
-      <AdditionalDependencies>msvcrt32.lib;avrt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>msvcrt32.lib;avrt.lib;ntdll.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <AdditionalOptions>/NOCOFFGRPINFO %(AdditionalOptions)</AdditionalOptions>
       <MinimumRequiredVersion>6.0</MinimumRequiredVersion>
@@ -199,7 +201,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
-      <AdditionalDependencies>msvcrt64.lib;avrt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>msvcrt64.lib;avrt.lib;ntdll.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <AdditionalOptions>/NOCOFFGRPINFO %(AdditionalOptions)</AdditionalOptions>
       <MinimumRequiredVersion>6.0</MinimumRequiredVersion>

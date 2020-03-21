@@ -198,17 +198,17 @@ HRESULT CSoundKeeper::Restart()
 
 void CSoundKeeper::FireRetry()
 {
-	SetEvent(m_retry_event);
+	m_retry_event = true;
 }
 
 void CSoundKeeper::FireRestart()
 {
-	SetEvent(m_restart_event);
+	m_restart_event = true;
 }
 
 void CSoundKeeper::FireShutdown()
 {
-	SetEvent(m_shutdown_event);
+	m_shutdown_event = true;
 }
 
 HRESULT CSoundKeeper::Main()
@@ -219,30 +219,6 @@ HRESULT CSoundKeeper::Main()
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to instantiate device enumerator: 0x%08X.", hr);
-		goto exit;
-	}
-
-	m_shutdown_event = CreateEventEx(NULL, NULL, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
-	if (m_shutdown_event == NULL)
-	{
-		DebugLogError("Unable to create shutdown event: 0x%08X.", GetLastError());
-		hr = E_FAIL;
-		goto exit;
-	}
-
-	m_restart_event = CreateEventEx(NULL, NULL, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
-	if (m_restart_event == NULL)
-	{
-		DebugLogError("Unable to create restart event: 0x%08X.", GetLastError());
-		hr = E_FAIL;
-		goto exit;
-	}
-
-	m_retry_event = CreateEventEx(NULL, NULL, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
-	if (m_retry_event == NULL)
-	{
-		DebugLogError("Unable to create retry event: 0x%08X.", GetLastError());
-		hr = E_FAIL;
 		goto exit;
 	}
 
@@ -302,21 +278,6 @@ HRESULT CSoundKeeper::Main()
 
 exit:
 
-	if (m_shutdown_event)
-	{
-		CloseHandle(m_shutdown_event);
-		m_shutdown_event = NULL;
-	}
-	if (m_restart_event)
-	{
-		CloseHandle(m_restart_event);
-		m_restart_event = NULL;
-	}
-	if (m_retry_event)
-	{
-		CloseHandle(m_retry_event);
-		m_retry_event = NULL;
-	}
 	if (m_dev_enumerator)
 	{
 		m_dev_enumerator->UnregisterEndpointNotificationCallback(this);
