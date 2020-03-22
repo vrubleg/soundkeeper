@@ -11,7 +11,6 @@ CKeepSession::CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint)
 {
 	m_endpoint->AddRef();
 	m_soundkeeper->AddRef();
-	m_is_valid = true;
 }
 
 CKeepSession::~CKeepSession(void)
@@ -67,11 +66,10 @@ bool CKeepSession::Start()
 {
 	ScopedLock lock(m_mutex);
 
-	if (!m_is_valid) return false;
-	if (m_is_started) return true;
+	if (!this->IsValid()) { return false; }
+	if (this->IsStarted()) { return true; }
 
 	this->Stop();
-	m_do_stop = false;
 
 	//
 	// Now create the thread which is going to drive the renderer.
@@ -103,13 +101,13 @@ void CKeepSession::Stop()
 {
 	ScopedLock lock(m_mutex);
 
-	m_do_stop = true;
-
 	if (m_render_thread)
 	{
+		this->DeferNextMode(RenderingMode::Stop);
 		WaitForOne(m_render_thread, INFINITE);
 		CloseHandle(m_render_thread);
 		m_render_thread = NULL;
+		m_interrupt = false;
 	}
 }
 
@@ -119,11 +117,13 @@ void CKeepSession::Stop()
 
 DWORD APIENTRY CKeepSession::StartRenderingThread(LPVOID context)
 {
+	DebugLog("Rendering thread started.");
+
 	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to initialize COM in render thread: 0x%08X.", hr);
-		return hr;
+		return 1;
 	}
 
 #ifdef ENABLE_MMCSS
@@ -137,40 +137,110 @@ DWORD APIENTRY CKeepSession::StartRenderingThread(LPVOID context)
 #endif
 
 	CKeepSession* renderer = static_cast<CKeepSession*>(context);
-	hr = renderer->RenderingThread();
+	DWORD result = renderer->RenderingThread();
 
 #ifdef ENABLE_MMCSS
 	if (mmcss_handle != NULL) AvRevertMmThreadCharacteristics(mmcss_handle);
 #endif
 
 	CoUninitialize();
-	return hr;
+
+	DebugLog("Rendering thread finished. Return code: %d.", result);
+	return result;
 }
 
-HRESULT CKeepSession::RenderingThread()
+DWORD CKeepSession::RenderingThread()
 {
-	HRESULT hr = S_OK;
+	m_is_started = true;
+	m_curr_mode = RenderingMode::Render;
+	m_attempts = 0;
 
-	// TODO: Retry!
-	hr = this->Rendering();
+	DWORD delay = 0;
+	bool loop = true;
 
-	return hr;
+	while (loop)
+	{
+		switch (WaitForOne(m_interrupt, delay))
+		{
+		case WAIT_OBJECT_0:
+
+			m_curr_mode = m_next_mode;
+			break;
+
+		case WAIT_TIMEOUT:
+
+			break;
+
+		default:
+
+			// Shouldn't happen.
+			m_curr_mode = RenderingMode::Invalid;
+			break;
+		}
+		delay = 0;
+
+		switch (m_curr_mode)
+		{
+		case RenderingMode::Render:
+
+			DebugLog("Render.");
+			m_curr_mode = this->Rendering();
+			break;
+
+		case RenderingMode::WaitExclusive:
+
+			// TODO: Wait until exclusive session is over.
+
+		case RenderingMode::Retry:
+
+			/*
+			if (m_attempts > 3)
+			{
+				DebugLog("Attempts limit. Stop.");
+				m_curr_mode = RenderingMode::Stop;
+				break;
+			}
+			*/
+
+			// m_attempts is 0 when it was interrupted while playing (when rendering was initialized without errors).
+			delay = (m_attempts == 0 ? 100UL : 750UL);
+
+			DebugLog("Retry in %dms. Attempts: #%d.", delay, m_attempts);
+			m_curr_mode = RenderingMode::Render;
+			break;
+
+		// case RenderingMode::Stop:
+		// case RenderingMode::Invalid:
+		default:
+
+			loop = false;
+			break;
+		}
+	}
+
+	m_is_started = false;
+	return m_curr_mode == RenderingMode::Invalid;
 }
 
-HRESULT CKeepSession::Rendering()
+CKeepSession::RenderingMode CKeepSession::Rendering()
 {
-	HRESULT hr = S_OK;
+	RenderingMode exit_mode;
+	HRESULT hr;
+
+	m_attempts++;
 
 	// -------------------------------------------------------------------------
 	// Rendering Init
 	// -------------------------------------------------------------------------
+
+	// Any errors below should invalidate this session.
+	exit_mode = RenderingMode::Invalid;
 
 	//
 	// Now activate an IAudioClient object on our preferred endpoint.
 	hr = m_endpoint->Activate(__uuidof(IAudioClient), CLSCTX_INPROC_SERVER, NULL, reinterpret_cast<void **>(&m_audio_client));
 	if (FAILED(hr))
 	{
-		m_is_valid = false;
 		DebugLogError("Unable to activate audio client: 0x%08X.", hr);
 		goto free;
 	}
@@ -180,7 +250,6 @@ HRESULT CKeepSession::Rendering()
 	hr = m_audio_client->GetMixFormat(&m_mix_format);
 	if (FAILED(hr))
 	{
-		m_is_valid = false;
 		DebugLogError("Unable to get mix format on audio client: 0x%08X.", hr);
 		goto free;
 	}
@@ -230,10 +299,16 @@ HRESULT CKeepSession::Rendering()
 	hr = m_audio_client->Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_NOPERSIST, static_cast<UINT64>(m_buffer_size_in_ms) * 10000, 0, m_mix_format, NULL);
 	if (FAILED(hr))
 	{
-		if (hr != AUDCLNT_E_DEVICE_IN_USE) { m_is_valid = false; }
+		if (hr == AUDCLNT_E_DEVICE_IN_USE)
+		{
+			exit_mode = RenderingMode::WaitExclusive;
+		}
 		DebugLogError("Unable to initialize audio client: 0x%08X.", hr);
 		goto free;
 	}
+
+	// Retry on any errors below.
+	exit_mode = RenderingMode::Retry;
 
 	//
 	// Retrieve the buffer size for the audio client.
@@ -285,9 +360,9 @@ HRESULT CKeepSession::Rendering()
 		goto free;
 	}
 
-	m_is_started = true;
+	m_attempts = 0;
 
-	while (true) switch (WaitForOne(m_do_stop, m_buffer_size_in_ms / 2 + m_buffer_size_in_ms / 4))
+	while (true) switch (WaitForOne(m_interrupt, m_buffer_size_in_ms / 2 + m_buffer_size_in_ms / 4))
 	{
 	case WAIT_TIMEOUT: // Timeout.
 
@@ -299,16 +374,21 @@ HRESULT CKeepSession::Rendering()
 		}
 		break;
 
-	case WAIT_OBJECT_0 + 0: // m_do_stop
-	default:
+	case WAIT_OBJECT_0 + 0: // m_interrupt.
 
 		// We're done, exit the loop.
+		exit_mode = m_next_mode;
+		goto stop;
+
+	default:
+
+		// Should never happen.
+		exit_mode = RenderingMode::Invalid;
 		goto stop;
 	}
 
 stop:
 
-	m_is_started = false;
 	m_audio_client->Stop();
 
 	// -------------------------------------------------------------------------
@@ -332,7 +412,7 @@ free:
 	SafeRelease(&m_render_client);
 	SafeRelease(&m_audio_client);
 
-	return hr;
+	return exit_mode;
 }
 
 HRESULT CKeepSession::Render()
@@ -426,20 +506,27 @@ HRESULT CKeepSession::Render()
 // Called when an audio session is disconnected.
 HRESULT CKeepSession::OnSessionDisconnected(AudioSessionDisconnectReason DisconnectReason)
 {
-	// Can't call Stop() here because waiting of the rendering thread would cause a deadlock.
-	m_do_stop = true;
-
-	if (DisconnectReason == DisconnectReasonFormatChanged || DisconnectReason == DisconnectReasonExclusiveModeOverride)
+	switch (DisconnectReason)
 	{
+	case DisconnectReasonFormatChanged:
+
 		DebugLog("Session is disconnected with reason %d. Retry.", DisconnectReason);
-		m_soundkeeper->FireRetry();
-	}
-	else
- 	{
+		this->DeferNextMode(RenderingMode::Retry);
+		break;
+
+	case DisconnectReasonExclusiveModeOverride:
+
+		DebugLog("Session is disconnected with reason %d. WaitExclusive.", DisconnectReason);
+		this->DeferNextMode(RenderingMode::WaitExclusive);
+		break;
+
+	default:
+
 		DebugLog("Session is disconnected with reason %d. Restart.", DisconnectReason);
- 		m_is_valid = false;
+ 		this->DeferNextMode(RenderingMode::Invalid);
 		m_soundkeeper->FireRestart();
- 	}
+		break;
+	}
 
 	return S_OK;
 }

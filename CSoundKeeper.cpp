@@ -214,6 +214,7 @@ void CSoundKeeper::FireShutdown()
 
 HRESULT CSoundKeeper::Main()
 {
+	DebugLog("Main started.");
 	HRESULT hr = S_OK;
 
 	hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&m_dev_enumerator));
@@ -231,7 +232,6 @@ HRESULT CSoundKeeper::Main()
 	}
 
 	// Main loop
-	DebugLog("Start");
 	this->Start();
 	bool working = true;
 	while (working)
@@ -249,7 +249,7 @@ HRESULT CSoundKeeper::Main()
 
 		case WAIT_TIMEOUT:
 
-			DebugLog("Retry");
+			DebugLog("Retry.");
 			this->Retry();
 			break;
 
@@ -261,14 +261,14 @@ HRESULT CSoundKeeper::Main()
 				Sleep(500);
 			}
 
-			DebugLog("Restart");
+			DebugLog("Restart.");
 			this->Restart();
 			break;
 
 		case WAIT_OBJECT_0 + 2:
 		default:
 
-			DebugLog("Shutdown");
+			DebugLog("Shutdown.");
 			// Shutdown
 			working = false; // We're done, exit the loop
 			break;
@@ -284,5 +284,6 @@ exit:
 	}
 	SafeRelease(&m_dev_enumerator);
 
+	DebugLog("Main finished.");
 	return hr;
 }

@@ -26,11 +26,20 @@ protected:
 	CSoundKeeper*           m_soundkeeper = nullptr;
 	IMMDevice*              m_endpoint = nullptr;
 
-	bool                    m_is_valid = false;
-
 	HANDLE                  m_render_thread = NULL;
 	ManualResetEvent        m_is_started = false;
-	ManualResetEvent        m_do_stop = true;
+
+	enum class RenderingMode { Stop, Render, Retry, WaitExclusive, Invalid };
+	RenderingMode           m_curr_mode = RenderingMode::Stop;
+	RenderingMode           m_next_mode = RenderingMode::Stop;
+	AutoResetEvent          m_interrupt = false;
+	DWORD                   m_attempts = 0;
+
+	void DeferNextMode(RenderingMode next_mode)
+	{
+		m_next_mode = next_mode;
+		m_interrupt = true;
+	}
 
 	IAudioClient*           m_audio_client = nullptr;
 	IAudioRenderClient*     m_render_client = nullptr;
@@ -61,7 +70,7 @@ public:
 	bool Start();
 	void Stop();
 	bool IsStarted() const { return m_is_started; }
-	bool IsValid() const { return m_is_valid; };
+	bool IsValid() const { return m_curr_mode != RenderingMode::Invalid; };
 
 protected:
 
@@ -70,8 +79,8 @@ protected:
 	//
 
 	static DWORD APIENTRY StartRenderingThread(LPVOID Context);
-	HRESULT RenderingThread();
-	HRESULT Rendering();
+	DWORD RenderingThread();
+	RenderingMode Rendering();
 	HRESULT Render();
 
 	//
