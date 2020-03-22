@@ -152,7 +152,7 @@ public:
 		{
 			NtResetEvent(m_handle, &prev);
 		}
-		return &prev;
+		return prev;
 	}
 
 	void Pulse()
@@ -164,6 +164,7 @@ public:
 	{
 		LONG prev = 0;
 		NtPulseEvent(m_handle, &prev);
+		return prev;
 	}
 };
 
