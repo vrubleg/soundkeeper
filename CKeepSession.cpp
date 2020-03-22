@@ -153,7 +153,8 @@ DWORD CKeepSession::RenderingThread()
 {
 	m_is_started = true;
 	m_curr_mode = RenderingMode::Render;
-	m_attempts = 0;
+	m_play_attempts = 0;
+	m_wait_attempts = 0;
 
 	DWORD delay = 0;
 	bool loop = true;
@@ -185,27 +186,35 @@ DWORD CKeepSession::RenderingThread()
 
 			DebugLog("Render.");
 			m_curr_mode = this->Rendering();
+			if (m_curr_mode == RenderingMode::WaitExclusive)
+			{
+				delay = 30;
+			}
 			break;
 
 		case RenderingMode::WaitExclusive:
 
-			// TODO: Wait until exclusive session is over.
+			DebugLog("Wait until exclusive session is finised.");
+			m_curr_mode = this->WaitExclusive();
+			if (m_curr_mode == RenderingMode::WaitExclusive)
+			{
+				delay = 100;
+			}
+			break;
 
 		case RenderingMode::Retry:
 
-			/*
-			if (m_attempts > 3)
+			if (m_play_attempts > 10)
 			{
 				DebugLog("Attempts limit. Stop.");
 				m_curr_mode = RenderingMode::Stop;
 				break;
 			}
-			*/
 
-			// m_attempts is 0 when it was interrupted while playing (when rendering was initialized without errors).
-			delay = (m_attempts == 0 ? 100UL : 750UL);
+			// m_play_attempts is 0 when it was interrupted while playing (when rendering was initialized without errors).
+			delay = (m_play_attempts == 0 ? 100UL : 750UL);
 
-			DebugLog("Retry in %dms. Attempts: #%d.", delay, m_attempts);
+			DebugLog("Retry in %dms. Attempt: #%d.", delay, m_play_attempts);
 			m_curr_mode = RenderingMode::Render;
 			break;
 
@@ -227,7 +236,7 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 	RenderingMode exit_mode;
 	HRESULT hr;
 
-	m_attempts++;
+	m_play_attempts++;
 
 	// -------------------------------------------------------------------------
 	// Rendering Init
@@ -360,7 +369,7 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 		goto free;
 	}
 
-	m_attempts = 0;
+	m_play_attempts = 0;
 
 	while (true) switch (WaitForOne(m_interrupt, m_buffer_size_in_ms / 2 + m_buffer_size_in_ms / 4))
 	{
@@ -502,10 +511,147 @@ HRESULT CKeepSession::Render()
 	return S_OK;
 }
 
+CKeepSession::RenderingMode CKeepSession::WaitExclusive()
+{
+	RenderingMode exit_mode;
+	HRESULT hr;
+
+	// Any errors below should invalidate this session.
+	exit_mode = RenderingMode::Invalid;
+
+	IAudioSessionManager2* as_manager = nullptr;
+	hr = m_endpoint->Activate(__uuidof(IAudioSessionManager2), CLSCTX_INPROC_SERVER, NULL, reinterpret_cast<void**>(&as_manager));
+	if (FAILED(hr))
+	{
+		DebugLogError("Unable to activate audio session manager: 0x%08X.", hr);
+		goto free;
+	}
+
+	IAudioSessionEnumerator* session_list = NULL;
+	hr = as_manager->GetSessionEnumerator(&session_list);
+	if (FAILED(hr))
+	{
+		DebugLogError("Unable to get session enumerator: 0x%08X.", hr);
+		goto free;
+	}
+
+	int session_count = 0;
+	hr = session_list->GetCount(&session_count);
+	if (FAILED(hr))
+	{
+		DebugLogError("Unable to get session count: 0x%08X.", hr);
+		goto free;
+	}
+
+	// Retry on any errors below.
+	exit_mode = RenderingMode::Retry;
+
+	IAudioSessionControl* session_control = nullptr;
+
+	// Find active session on this device.
+	for (int index = 0 ; index < session_count ; index++)
+	{
+		hr = session_list->GetSession(index, &session_control);
+		if (FAILED(hr))
+		{
+			DebugLogError("Unable to get session #%d: 0x%08X.", index, hr);
+			goto free;
+		}
+
+		AudioSessionState state = AudioSessionStateInactive;
+		hr = session_control->GetState(&state);
+		if (FAILED(hr))
+		{
+			DebugLogError("Unable to get session #%d state: 0x%08X.", index, hr);
+			goto free;
+		}
+
+		if (state != AudioSessionStateActive)
+		{
+			SafeRelease(&session_control);
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	if (!session_control)
+	{
+		if (++m_wait_attempts < 100)
+		{
+			DebugLog("No active sessions found, try again.");
+			exit_mode = RenderingMode::WaitExclusive;
+		}
+		else
+		{
+			DebugLog("No active sessions found, tried too many times. Try to play.");
+			m_wait_attempts = 0;
+			exit_mode = RenderingMode::Retry;
+		}
+	}
+	else
+	{
+		m_wait_attempts = 0;
+		hr = session_control->RegisterAudioSessionNotification(this);
+		if (FAILED(hr))
+		{
+			DebugLogError("Unable to register for stream switch notifications: 0x%08X.", hr);
+			goto free;
+		}
+
+		// Wait until we receive a notification that the streem is inactive.
+		switch (WaitForOne(m_interrupt))
+		{
+		case WAIT_OBJECT_0: // m_interrupt.
+
+			// We're done, exit the loop.
+			exit_mode = m_next_mode;
+			break;
+
+		default:
+
+			// Should never happen.
+			exit_mode = RenderingMode::Invalid;
+			break;
+		}
+
+		session_control->UnregisterAudioSessionNotification(this);
+	}
+
+free:
+
+	SafeRelease(&session_control);
+	SafeRelease(&session_list);
+	SafeRelease(&as_manager);
+
+	return exit_mode;
+}
+
+//
+// Called when state of an audio session is changed.
+HRESULT CKeepSession::OnStateChanged(AudioSessionState NewState)
+{
+	if (m_curr_mode != RenderingMode::WaitExclusive)
+	{
+		return S_OK;
+	}
+
+	// On stop, it becomes AudioSessionStateInactive (0), and then AudioSessionStateExpired (2).
+	DebugLog("State of the exclusive mode session is changed: %d.", NewState);
+	this->DeferNextMode(RenderingMode::Retry);
+	return S_OK;
+};
+
 //
 // Called when an audio session is disconnected.
 HRESULT CKeepSession::OnSessionDisconnected(AudioSessionDisconnectReason DisconnectReason)
 {
+	if (m_curr_mode != RenderingMode::Render)
+	{
+		return S_OK;
+	}
+
 	switch (DisconnectReason)
 	{
 	case DisconnectReasonFormatChanged:
@@ -523,7 +669,7 @@ HRESULT CKeepSession::OnSessionDisconnected(AudioSessionDisconnectReason Disconn
 	default:
 
 		DebugLog("Session is disconnected with reason %d. Restart.", DisconnectReason);
- 		this->DeferNextMode(RenderingMode::Invalid);
+		this->DeferNextMode(RenderingMode::Invalid);
 		m_soundkeeper->FireRestart();
 		break;
 	}

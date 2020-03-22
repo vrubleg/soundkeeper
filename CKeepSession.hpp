@@ -33,7 +33,8 @@ protected:
 	RenderingMode           m_curr_mode = RenderingMode::Stop;
 	RenderingMode           m_next_mode = RenderingMode::Stop;
 	AutoResetEvent          m_interrupt = false;
-	DWORD                   m_attempts = 0;
+	DWORD                   m_play_attempts = 0;
+	DWORD                   m_wait_attempts = 0;
 
 	void DeferNextMode(RenderingMode next_mode)
 	{
@@ -76,6 +77,7 @@ protected:
 	DWORD RenderingThread();
 	RenderingMode Rendering();
 	HRESULT Render();
+	RenderingMode WaitExclusive();
 
 	//
 	// IAudioSessionEvents.
@@ -86,7 +88,7 @@ protected:
 	STDMETHOD(OnSimpleVolumeChanged) (float /*NewSimpleVolume*/, BOOL /*NewMute*/, LPCGUID /*EventContext*/);
 	STDMETHOD(OnChannelVolumeChanged) (DWORD /*ChannelCount*/, float /*NewChannelVolumes*/[], DWORD /*ChangedChannel*/, LPCGUID /*EventContext*/) { return S_OK; };
 	STDMETHOD(OnGroupingParamChanged) (LPCGUID /*NewGroupingParam*/, LPCGUID /*EventContext*/) { return S_OK; };
-	STDMETHOD(OnStateChanged) (AudioSessionState /*NewState*/) { return S_OK; };
+	STDMETHOD(OnStateChanged) (AudioSessionState NewState);
 	STDMETHOD(OnSessionDisconnected) (AudioSessionDisconnectReason DisconnectReason);
 
 	//
