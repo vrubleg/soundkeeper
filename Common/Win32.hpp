@@ -28,5 +28,20 @@ public:
 	~Handle() { if (m_handle) { CloseHandle(m_handle); } }
 };
 
+inline DWORD WaitForOne(HANDLE handle, DWORD timeout = INFINITE)
+{
+	return WaitForSingleObject(handle, timeout);
+}
+
+inline DWORD WaitForAny(std::initializer_list<HANDLE> handles, DWORD timeout = INFINITE)
+{
+	return WaitForMultipleObjects((DWORD)handles.size(), handles.begin(), FALSE, timeout);
+}
+
+inline DWORD WaitForAll(std::initializer_list<HANDLE> handles, DWORD timeout = INFINITE)
+{
+	return WaitForMultipleObjects((DWORD)handles.size(), handles.begin(), TRUE, timeout);
+}
+
 #include "NtEvent.hpp"
 #include "CriticalSection.hpp"

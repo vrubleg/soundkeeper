@@ -233,16 +233,15 @@ HRESULT CSoundKeeper::Main()
 	// Main loop
 	DebugLog("Start");
 	this->Start();
-	HANDLE wait[] = { m_do_retry, m_do_restart, m_do_shutdown };
 	bool working = true;
 	while (working)
 	{
-		switch (WaitForMultipleObjects(_countof(wait), wait, FALSE, m_is_retry_required ? 500 : INFINITE))
+		switch (WaitForAny({ m_do_retry, m_do_restart, m_do_shutdown }, m_is_retry_required ? 500 : INFINITE))
 		{
 		case WAIT_OBJECT_0 + 0:
 
 			// Prevent multiple retries.
-			while (WaitForSingleObject(m_do_retry, 500) != WAIT_TIMEOUT)
+			while (WaitForOne(m_do_retry, 500) != WAIT_TIMEOUT)
 			{
 				Sleep(500);
 			}
@@ -257,7 +256,7 @@ HRESULT CSoundKeeper::Main()
 		case WAIT_OBJECT_0 + 1:
 
 			// Prevent multiple restarts.
-			while (WaitForSingleObject(m_do_restart, 500) != WAIT_TIMEOUT)
+			while (WaitForOne(m_do_restart, 500) != WAIT_TIMEOUT)
 			{
 				Sleep(500);
 			}

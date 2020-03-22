@@ -83,8 +83,7 @@ bool CKeepSession::Start()
 	}
 
 	// Wait until rendering is started.
-	HANDLE wait_handles[] = { m_is_started, m_render_thread };
-	if (WaitForMultipleObjects(_countof(wait_handles), wait_handles, FALSE, INFINITE) != WAIT_OBJECT_0)
+	if (WaitForAny({ m_is_started, m_render_thread }, INFINITE) != WAIT_OBJECT_0)
 	{
 		DebugLogError("Unable to start rendering.");
 		goto error;
@@ -110,7 +109,7 @@ void CKeepSession::Stop()
 
 	if (m_render_thread)
 	{
-		WaitForSingleObject(m_render_thread, INFINITE);
+		WaitForOne(m_render_thread, INFINITE);
 		CloseHandle(m_render_thread);
 		m_render_thread = NULL;
 	}
@@ -317,7 +316,7 @@ HRESULT CKeepSession::RenderingLoop()
 
 	m_is_started = true;
 
-	while (true) switch (WaitForSingleObject(m_do_stop, m_buffer_size_in_ms / 2 + m_buffer_size_in_ms / 4))
+	while (true) switch (WaitForOne(m_do_stop, m_buffer_size_in_ms / 2 + m_buffer_size_in_ms / 4))
 	{
 	case WAIT_TIMEOUT: // Timeout.
 
