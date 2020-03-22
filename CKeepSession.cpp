@@ -260,14 +260,14 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 	m_channels_count = m_mix_format->nChannels;
 
 	// Determine what kind of samples are being rendered.
-	m_sample_type = k_sample_type_unknown;
+	m_sample_type = SampleType::Unknown;
 	if (m_mix_format->wFormatTag == WAVE_FORMAT_PCM
 		|| m_mix_format->wFormatTag == WAVE_FORMAT_EXTENSIBLE && reinterpret_cast<WAVEFORMATEXTENSIBLE *>(m_mix_format)->SubFormat == KSDATAFORMAT_SUBTYPE_PCM)
 	{
 		DebugLog("Format: PCM %d-bit integer.", m_mix_format->wBitsPerSample);
 		if (m_mix_format->wBitsPerSample == 16)
 		{
-			m_sample_type = k_sample_type_int16;
+			m_sample_type = SampleType::Int16;
 		}
 		else
 		{
@@ -280,7 +280,7 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 		DebugLog("Format: PCM %d-bit float.", m_mix_format->wBitsPerSample);
 		if (m_mix_format->wBitsPerSample == 32)
 		{
-			m_sample_type = k_sample_type_float32;
+			m_sample_type = SampleType::Float32;
 		}
 		else
 		{
@@ -449,7 +449,7 @@ HRESULT CKeepSession::Render()
 
 	DWORD render_flags = NULL;
 
-	if (m_sample_type == k_sample_type_int16)
+	if (m_sample_type == SampleType::Int16)
 	{
 		UINT32 n = 0;
 		constexpr static INT16 tbl[] = { -1, 0, 1, 0 };
@@ -463,7 +463,7 @@ HRESULT CKeepSession::Render()
 			n = ++n % 4;
 		}
 	}
-	else if (m_sample_type == k_sample_type_float32)
+	else if (m_sample_type == SampleType::Float32)
 	{
 		UINT32 n = 0;
 		// 0xb8000100 = -3.051851E-5 = -1.0/32767.

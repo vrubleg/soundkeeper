@@ -45,16 +45,10 @@ protected:
 	IAudioRenderClient*     m_render_client = nullptr;
 	IAudioSessionControl*   m_audio_session_control = nullptr;
 
-	enum sample_type_t
-	{
-		k_sample_type_unknown,
-		k_sample_type_float32,
-		k_sample_type_int16,
-	};
-
 	WAVEFORMATEX*           m_mix_format = nullptr;
 #if defined(ENABLE_INAUDIBLE) || defined(_DEBUG)
-	sample_type_t           m_sample_type = k_sample_type_unknown;
+	enum class SampleType { Unknown, Float32, Int16 };
+	SampleType              m_sample_type = SampleType::Unknown;
 	UINT32                  m_channels_count = 0;
 	UINT32                  m_frame_size = 0;
 #endif
