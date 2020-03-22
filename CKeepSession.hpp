@@ -71,9 +71,7 @@ protected:
 
 	static DWORD APIENTRY StartRenderingThread(LPVOID Context);
 	HRESULT RenderingThread();
-	HRESULT RenderingInit();
-	HRESULT RenderingLoop();
-	void    RenderingFree();
+	HRESULT Rendering();
 	HRESULT Render();
 
 	//

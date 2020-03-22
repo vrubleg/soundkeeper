@@ -93,7 +93,7 @@ bool CKeepSession::Start()
 
 error:
 
-	Stop();
+	this->Stop();
 	return false;
 }
 
@@ -102,8 +102,6 @@ error:
 void CKeepSession::Stop()
 {
 	ScopedLock lock(m_mutex);
-
-	if (!m_audio_client) return;
 
 	m_do_stop = true;
 
@@ -154,14 +152,18 @@ HRESULT CKeepSession::RenderingThread()
 	HRESULT hr = S_OK;
 
 	// TODO: Retry!
-	hr = this->RenderingLoop();
+	hr = this->Rendering();
 
 	return hr;
 }
 
-HRESULT CKeepSession::RenderingInit()
+HRESULT CKeepSession::Rendering()
 {
 	HRESULT hr = S_OK;
+
+	// -------------------------------------------------------------------------
+	// Rendering Init
+	// -------------------------------------------------------------------------
 
 	//
 	// Now activate an IAudioClient object on our preferred endpoint.
@@ -170,7 +172,7 @@ HRESULT CKeepSession::RenderingInit()
 	{
 		m_is_valid = false;
 		DebugLogError("Unable to activate audio client: 0x%08X.", hr);
-		goto error;
+		goto free;
 	}
 
 	//
@@ -180,7 +182,7 @@ HRESULT CKeepSession::RenderingInit()
 	{
 		m_is_valid = false;
 		DebugLogError("Unable to get mix format on audio client: 0x%08X.", hr);
-		goto error;
+		goto free;
 	}
 
 #if defined(ENABLE_INAUDIBLE) || defined(_DEBUG)
@@ -230,7 +232,7 @@ HRESULT CKeepSession::RenderingInit()
 	{
 		if (hr != AUDCLNT_E_DEVICE_IN_USE) { m_is_valid = false; }
 		DebugLogError("Unable to initialize audio client: 0x%08X.", hr);
-		goto error;
+		goto free;
 	}
 
 	//
@@ -239,14 +241,14 @@ HRESULT CKeepSession::RenderingInit()
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to get audio client buffer: 0x%08X.", hr);
-		goto error;
+		goto free;
 	}
 
 	hr = m_audio_client->GetService(IID_PPV_ARGS(&m_render_client));
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to get new render client: 0x%08X.", hr);
-		goto error;
+		goto free;
 	}
 
 	//
@@ -255,49 +257,18 @@ HRESULT CKeepSession::RenderingInit()
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to retrieve session control: 0x%08X.", hr);
-		goto error;
+		goto free;
 	}
 	hr = m_audio_session_control->RegisterAudioSessionNotification(this);
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to register for stream switch notifications: 0x%08X.", hr);
-		goto error;
-	}
-
-	return S_OK;
-
-error:
-
-	return hr;
-}
-
-void CKeepSession::RenderingFree()
-{
-	if (m_audio_session_control)
-	{
-		m_audio_session_control->UnregisterAudioSessionNotification(this);
-		SafeRelease(&m_audio_session_control);
-	}
-
-	if (m_mix_format)
-	{
-		CoTaskMemFree(m_mix_format);
-		m_mix_format = NULL;
-	}
-
-	SafeRelease(&m_render_client);
-	SafeRelease(&m_audio_client);
-}
-
-HRESULT CKeepSession::RenderingLoop()
-{
-	HRESULT hr = S_OK;
-
-	hr = this->RenderingInit();
-	if (FAILED(hr))
-	{
 		goto free;
 	}
+
+	// -------------------------------------------------------------------------
+	// Rendering Loop
+	// -------------------------------------------------------------------------
 
 	// We want to pre-roll one buffer of data into the pipeline. That way the audio engine won't glitch on startup.  
 	hr = this->Render();
@@ -340,9 +311,27 @@ stop:
 	m_is_started = false;
 	m_audio_client->Stop();
 
+	// -------------------------------------------------------------------------
+	// Rendering Cleanup
+	// -------------------------------------------------------------------------
+
 free:
 
-	this->RenderingFree();
+	if (m_audio_session_control)
+	{
+		m_audio_session_control->UnregisterAudioSessionNotification(this);
+		SafeRelease(&m_audio_session_control);
+	}
+
+	if (m_mix_format)
+	{
+		CoTaskMemFree(m_mix_format);
+		m_mix_format = NULL;
+	}
+
+	SafeRelease(&m_render_client);
+	SafeRelease(&m_audio_client);
+
 	return hr;
 }
 
