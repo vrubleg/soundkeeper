@@ -45,6 +45,7 @@ HRESULT STDMETHODCALLTYPE CSoundKeeper::QueryInterface(REFIID riid, VOID **ppvIn
 
 HRESULT STDMETHODCALLTYPE CSoundKeeper::OnDefaultDeviceChanged(EDataFlow flow, ERole role, LPCWSTR pwstrDeviceId)
 {
+	if (m_cfg_device_type == KeepDeviceType::Primary) { FireRestart(); }
 	return S_OK;
 }
 
@@ -77,51 +78,76 @@ HRESULT CSoundKeeper::Start()
 	HRESULT hr = S_OK;
 	m_is_retry_required = false;
 
-	IMMDeviceCollection *DevCollection = NULL;
-	hr = m_dev_enumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &DevCollection);
-	if (FAILED(hr))
+	IMMDeviceCollection *dev_collection = NULL;
+
+	if (m_cfg_device_type == KeepDeviceType::Primary)
 	{
-		DebugLogError("Unable to retrieve device collection: 0x%08X.", hr);
-		goto exit;
-	}
-
-	hr = DevCollection->GetCount(&m_sessions_count);
-	if (FAILED(hr))
-	{
-		DebugLogError("Unable to get device collection length: 0x%08X.", hr);
-		goto exit;
-	}
-
-	m_sessions = new CKeepSession*[m_sessions_count]();
-
-	for (UINT i = 0; i < m_sessions_count; i++)
-	{
-		m_sessions[i] = nullptr;
-
-		IMMDevice *device;
-		DevCollection->Item(i, &device);
-
-		IPropertyStore *properties;
-		hr = device->OpenPropertyStore(STGM_READ, &properties);
-
-		PROPVARIANT formfactor;
-		PropVariantInit(&formfactor);
-		hr = properties->GetValue(PKEY_AudioEndpoint_FormFactor, &formfactor);
-		SafeRelease(&properties);
-		if (FAILED(hr) || formfactor.vt != VT_UI4 || formfactor.uintVal != SPDIF && formfactor.uintVal != HDMI)
+		IMMDevice* device;
+		hr = m_dev_enumerator->GetDefaultAudioEndpoint(eRender, eConsole, &device);
+		if (FAILED(hr))
 		{
-			PropVariantClear(&formfactor);
-			SafeRelease(&device);
-			continue;
+			DebugLogError("Unable to retrieve default render device: 0x%08X.", hr);
+			goto exit;
 		}
-		PropVariantClear(&formfactor);
-
-		m_sessions[i] = new CKeepSession(this, device);
+		m_sessions_count = 1;
+		m_sessions = new CKeepSession*[m_sessions_count]();
+		m_sessions[0] = new CKeepSession(this, device, m_cfg_stream_type);
 		SafeRelease(&device);
-
-		if (!m_sessions[i]->Start())
+		if (!m_sessions[0]->Start())
 		{
 			m_is_retry_required = true;
+		}
+	}
+	else
+	{
+		hr = m_dev_enumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &dev_collection);
+		if (FAILED(hr))
+		{
+			DebugLogError("Unable to retrieve device collection: 0x%08X.", hr);
+			goto exit;
+		}
+
+		hr = dev_collection->GetCount(&m_sessions_count);
+		if (FAILED(hr))
+		{
+			DebugLogError("Unable to get device collection length: 0x%08X.", hr);
+			goto exit;
+		}
+
+		m_sessions = new CKeepSession*[m_sessions_count]();
+
+		for (UINT i = 0; i < m_sessions_count; i++)
+		{
+			m_sessions[i] = nullptr;
+
+			IMMDevice* device;
+			dev_collection->Item(i, &device);
+
+			if (m_cfg_device_type != KeepDeviceType::All)
+			{
+				IPropertyStore* properties;
+				hr = device->OpenPropertyStore(STGM_READ, &properties);
+
+				PROPVARIANT formfactor;
+				PropVariantInit(&formfactor);
+				hr = properties->GetValue(PKEY_AudioEndpoint_FormFactor, &formfactor);
+				SafeRelease(&properties);
+				if (FAILED(hr) || formfactor.vt != VT_UI4 || (m_cfg_device_type == KeepDeviceType::Digital) != (formfactor.uintVal == SPDIF || formfactor.uintVal == HDMI))
+				{
+					PropVariantClear(&formfactor);
+					SafeRelease(&device);
+					continue;
+				}
+				PropVariantClear(&formfactor);
+			}
+
+			m_sessions[i] = new CKeepSession(this, device, m_cfg_stream_type);
+			SafeRelease(&device);
+
+			if (!m_sessions[i]->Start())
+			{
+				m_is_retry_required = true;
+			}
 		}
 	}
 
@@ -129,7 +155,7 @@ HRESULT CSoundKeeper::Start()
 
 exit:
 
-	SafeRelease(&DevCollection);
+	SafeRelease(&dev_collection);
 	return hr;
 }
 

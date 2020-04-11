@@ -1,5 +1,7 @@
 #pragma once
 
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <new>
 #include "Common/Win32.hpp"
 #include <strsafe.h>

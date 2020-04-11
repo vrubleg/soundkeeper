@@ -3,11 +3,10 @@
 #include <mmdeviceapi.h>
 #include <audioclient.h>
 
-// Inaudible tone generation.
-// #define ENABLE_INAUDIBLE
-
 // Enable Multimedia Class Scheduler Service.
 #define ENABLE_MMCSS
+
+enum class KeepStreamType { Silence, Inaudible };
 
 class CKeepSession;
 #include "CSoundKeeper.hpp"
@@ -25,6 +24,7 @@ protected:
 
 	CSoundKeeper*           m_soundkeeper = nullptr;
 	IMMDevice*              m_endpoint = nullptr;
+	KeepStreamType          m_stream_type = KeepStreamType::Silence;
 
 	HANDLE                  m_render_thread = NULL;
 	ManualResetEvent        m_is_started = false;
@@ -47,12 +47,10 @@ protected:
 	IAudioSessionControl*   m_audio_session_control = nullptr;
 
 	WAVEFORMATEX*           m_mix_format = nullptr;
-#if defined(ENABLE_INAUDIBLE) || defined(_DEBUG)
 	enum class SampleType { Unknown, Float32, Int16 };
 	SampleType              m_sample_type = SampleType::Unknown;
 	UINT32                  m_channels_count = 0;
 	UINT32                  m_frame_size = 0;
-#endif
 
 	UINT32                  m_buffer_size_in_ms = 1000;
 	UINT32                  m_buffer_size_in_frames = 0;
@@ -61,7 +59,7 @@ protected:
 
 public:
 
-	CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint);
+	CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint, KeepStreamType stream_type);
 	bool Start();
 	void Stop();
 	bool IsStarted() const { return m_is_started; }

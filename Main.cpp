@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------------------------------------------------
-// Digital Sound Keeper v1.0.4 [2020/03/12]
+// Digital Sound Keeper v1.1.0 [2020/04/11]
 // Prevents SPDIF/HDMI digital playback devices from falling asleep. Uses WASAPI, requires Windows 7+.
 // (C) 2014-2020 Evgeny Vrublevsky <me@veg.by>
 // ---------------------------------------------------------------------------------------------------------------------
@@ -25,6 +25,24 @@ int Main()
 	}
 
 	CSoundKeeper* keeper = new CSoundKeeper();
+	keeper->SetDeviceType(KeepDeviceType::Primary);
+	keeper->SetStreamType(KeepStreamType::Inaudible);
+
+	char fn_buffer[MAX_PATH];
+	DWORD fn_size = GetModuleFileNameA(NULL, fn_buffer, MAX_PATH);
+	if (fn_size != 0 && fn_size != MAX_PATH)
+	{
+		char* filename = strrchr(fn_buffer, '\\');
+		if (filename)
+		{
+			filename++;
+			_strlwr(filename);
+			if (strstr(filename, "all"))     { keeper->SetDeviceType(KeepDeviceType::All); }
+			if (strstr(filename, "digital")) { keeper->SetDeviceType(KeepDeviceType::Digital); }
+			if (strstr(filename, "zero"))    { keeper->SetStreamType(KeepStreamType::Silence); }
+		}
+	}
+
 	hr = keeper->Main();
 	if (FAILED(hr))
 	{

@@ -6,6 +6,8 @@
 class CSoundKeeper;
 #include "CKeepSession.hpp"
 
+enum class KeepDeviceType { Primary, Digital, Analog, All };
+
 class CSoundKeeper : public IMMNotificationClient
 {
 protected:
@@ -43,6 +45,9 @@ protected:
 	AutoResetEvent          m_do_restart = false;
 	AutoResetEvent          m_do_retry = false;
 
+	KeepDeviceType          m_cfg_device_type = KeepDeviceType::Primary;
+	KeepStreamType          m_cfg_stream_type = KeepStreamType::Silence;
+
 	HRESULT Start();
 	HRESULT Stop();
 	HRESULT Restart();
@@ -50,6 +55,8 @@ protected:
 
 public:
 
+	void SetDeviceType(KeepDeviceType cfg_device_type) { m_cfg_device_type = cfg_device_type; }
+	void SetStreamType(KeepStreamType cfg_stream_type) { m_cfg_stream_type = cfg_stream_type; }
 	void FireRetry();
 	void FireRestart();
 	void FireShutdown();

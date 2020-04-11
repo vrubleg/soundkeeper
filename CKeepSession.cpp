@@ -6,8 +6,8 @@
 #include <avrt.h>
 #endif
 
-CKeepSession::CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint)
-	: m_soundkeeper(soundkeeper), m_endpoint(endpoint)
+CKeepSession::CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint, KeepStreamType stream_type)
+	: m_soundkeeper(soundkeeper), m_endpoint(endpoint), m_stream_type(stream_type)
 {
 	m_endpoint->AddRef();
 	m_soundkeeper->AddRef();
@@ -263,8 +263,6 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 		goto free;
 	}
 
-#if defined(ENABLE_INAUDIBLE) || defined(_DEBUG)
-
 	m_frame_size = m_mix_format->nBlockAlign;
 	m_channels_count = m_mix_format->nChannels;
 
@@ -300,8 +298,6 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 	{
 		DebugLogError("Unrecognized sample format.");
 	}
-
-#endif
 
 	//
 	// Initialize WASAPI in timer driven mode.
@@ -441,9 +437,10 @@ HRESULT CKeepSession::Render()
 
 	// Calculate the number of frames available.
 	frames_available = m_buffer_size_in_frames - padding;
-#if defined(ENABLE_INAUDIBLE)
-	frames_available &= 0xFFFFFFFC; // Must be a multiple of 4.
-#endif
+	if (m_stream_type == KeepStreamType::Inaudible)
+	{
+		frames_available &= 0xFFFFFFFC; // Must be a multiple of 4.
+	}
 	// It can happen right after waking PC up after sleeping, so just do nothing.
 	if (frames_available == 0) { return S_OK; }
 
@@ -454,53 +451,52 @@ HRESULT CKeepSession::Render()
 		return hr;
 	}
 
-#if defined(ENABLE_INAUDIBLE)
-
-	DWORD render_flags = NULL;
-
-	if (m_sample_type == SampleType::Int16)
+	if (m_stream_type == KeepStreamType::Inaudible)
 	{
-		UINT32 n = 0;
-		constexpr static INT16 tbl[] = { -1, 0, 1, 0 };
-		for (size_t i = 0; i < frames_available; i++)
+		DWORD render_flags = NULL;
+
+		if (m_sample_type == SampleType::Int16)
 		{
-			for (size_t j = 0; j < m_channels_count; j++)
+			UINT32 n = 0;
+			constexpr static INT16 tbl[] = { -1, 0, 1, 0 };
+			for (size_t i = 0; i < frames_available; i++)
 			{
-				*reinterpret_cast<INT16*>(p_data + j * 2) = tbl[n];
+				for (size_t j = 0; j < m_channels_count; j++)
+				{
+					*reinterpret_cast<INT16*>(p_data + j * 2) = tbl[n];
+				}
+				p_data += m_frame_size;
+				n = ++n % 4;
 			}
-			p_data += m_frame_size;
-			n = ++n % 4;
 		}
-	}
-	else if (m_sample_type == SampleType::Float32)
-	{
-		UINT32 n = 0;
-		// 0xb8000100 = -3.051851E-5 = -1.0/32767.
-		// 0x38000100 =  3.051851E-5 =  1.0/32767.
-		constexpr static UINT32 tbl[] = { 0xb8000100, 0, 0x38000100, 0 };
-		for (size_t i = 0; i < frames_available; i++)
+		else if (m_sample_type == SampleType::Float32)
 		{
-			for (size_t j = 0; j < m_channels_count; j++)
+			UINT32 n = 0;
+			// 0xb8000100 = -3.051851E-5 = -1.0/32767.
+			// 0x38000100 =  3.051851E-5 =  1.0/32767.
+			constexpr static UINT32 tbl[] = { 0xb8000100, 0, 0x38000100, 0 };
+			for (size_t i = 0; i < frames_available; i++)
 			{
-				*reinterpret_cast<UINT32*>(p_data + j * 4) = tbl[n];
+				for (size_t j = 0; j < m_channels_count; j++)
+				{
+					*reinterpret_cast<UINT32*>(p_data + j * 4) = tbl[n];
+				}
+				p_data += m_frame_size;
+				n = ++n % 4;
 			}
-			p_data += m_frame_size;
-			n = ++n % 4;
 		}
+		else
+		{
+			render_flags = AUDCLNT_BUFFERFLAGS_SILENT;
+		}
+
+		hr = m_render_client->ReleaseBuffer(frames_available, render_flags);
 	}
 	else
 	{
-		render_flags = AUDCLNT_BUFFERFLAGS_SILENT;
+		// ZeroMemory(p_data, static_cast<SIZE_T>(m_frame_size) * frames_available);
+		hr = m_render_client->ReleaseBuffer(frames_available, AUDCLNT_BUFFERFLAGS_SILENT);
 	}
-
-	hr = m_render_client->ReleaseBuffer(frames_available, render_flags);
-
-#else
-
-	// ZeroMemory(p_data, static_cast<SIZE_T>(m_frame_size) * frames_available);
-	hr = m_render_client->ReleaseBuffer(frames_available, AUDCLNT_BUFFERFLAGS_SILENT);
-
-#endif
 
 	if (FAILED(hr))
 	{
