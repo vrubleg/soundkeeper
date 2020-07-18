@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------------------------------------------------
-// Digital Sound Keeper v1.1.0 [2020/04/11]
+// Digital Sound Keeper v1.1.0 [2020/07/18]
 // Prevents SPDIF/HDMI digital playback devices from falling asleep. Uses WASAPI, requires Windows 7+.
 // (C) 2014-2020 Evgeny Vrublevsky <me@veg.by>
 // ---------------------------------------------------------------------------------------------------------------------
