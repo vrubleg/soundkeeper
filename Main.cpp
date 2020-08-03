@@ -7,7 +7,7 @@
 #include "StdAfx.h"
 #include "CSoundKeeper.hpp"
 
-int Main()
+__forceinline int Main()
 {
 	// Prevent from multiple instances (the mutex will be destroyed automatically on program exit)
 	CreateMutexA(NULL, FALSE, "DigitalSoundKeeper");
@@ -63,9 +63,9 @@ int main()
 
 #else
 
-EXTERN_C void APIENTRY EntryPoint()
+int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
-	ExitProcess(Main());
+	return Main();
 }
 
 #endif
