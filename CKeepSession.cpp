@@ -255,53 +255,42 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 	}
 
 	//
-	// Load the MixFormat. This may differ depending on the shared mode used.
-	hr = m_audio_client->GetMixFormat(&m_mix_format);
+	// Get the output format. This may be int16 or int24 depending on the shared mode used.
+	{
+		IPropertyStore* properties = nullptr;
+		hr = m_endpoint->OpenPropertyStore(STGM_READ, &properties);
+		if (SUCCEEDED(hr))
+		{
+			PROPVARIANT out_format;
+			PropVariantInit(&out_format);
+			hr = properties->GetValue(PKEY_AudioEngine_DeviceFormat, &out_format);
+			if (SUCCEEDED(hr) && out_format.vt == VT_BLOB)
+			{
+				m_out_sample_type = GetSampleType((WAVEFORMATEX*)out_format.blob.pBlobData);
+			}
+			PropVariantClear(&out_format);
+			SafeRelease(&properties);
+		}
+	}
+
+	//
+	// Get the mixer format. This is usually float32.
+	WAVEFORMATEX* mix_format = nullptr;
+	hr = m_audio_client->GetMixFormat(&mix_format);
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to get mix format on audio client: 0x%08X.", hr);
 		goto free;
 	}
 
-	m_frame_size = m_mix_format->nBlockAlign;
-	m_channels_count = m_mix_format->nChannels;
-
-	// Determine what kind of samples are being rendered.
-	m_sample_type = SampleType::Unknown;
-	if (m_mix_format->wFormatTag == WAVE_FORMAT_PCM
-		|| m_mix_format->wFormatTag == WAVE_FORMAT_EXTENSIBLE && reinterpret_cast<WAVEFORMATEXTENSIBLE *>(m_mix_format)->SubFormat == KSDATAFORMAT_SUBTYPE_PCM)
-	{
-		DebugLog("Format: PCM %d-bit integer.", m_mix_format->wBitsPerSample);
-		if (m_mix_format->wBitsPerSample == 16)
-		{
-			m_sample_type = SampleType::Int16;
-		}
-		else
-		{
-			DebugLogError("Unsupported PCM integer sample type.");
-		}
-	}
-	else if (m_mix_format->wFormatTag == WAVE_FORMAT_IEEE_FLOAT
-		|| (m_mix_format->wFormatTag == WAVE_FORMAT_EXTENSIBLE && reinterpret_cast<WAVEFORMATEXTENSIBLE *>(m_mix_format)->SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT))
-	{
-		DebugLog("Format: PCM %d-bit float.", m_mix_format->wBitsPerSample);
-		if (m_mix_format->wBitsPerSample == 32)
-		{
-			m_sample_type = SampleType::Float32;
-		}
-		else
-		{
-			DebugLogError("Unsupported PCM float sample type.");
-		}
-	}
-	else
-	{
-		DebugLogError("Unrecognized sample format.");
-	}
+	m_mix_sample_type = GetSampleType(mix_format);
+	m_frame_size = mix_format->nBlockAlign;
+	m_channels_count = mix_format->nChannels;
 
 	//
 	// Initialize WASAPI in timer driven mode.
-	hr = m_audio_client->Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_NOPERSIST, static_cast<UINT64>(m_buffer_size_in_ms) * 10000, 0, m_mix_format, NULL);
+	hr = m_audio_client->Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_NOPERSIST, static_cast<UINT64>(m_buffer_size_in_ms) * 10000, 0, mix_format, NULL);
+	CoTaskMemFree(mix_format); mix_format = nullptr;
 	if (FAILED(hr))
 	{
 		if (hr == AUDCLNT_E_DEVICE_IN_USE)
@@ -408,16 +397,50 @@ free:
 		SafeRelease(&m_audio_session_control);
 	}
 
-	if (m_mix_format)
-	{
-		CoTaskMemFree(m_mix_format);
-		m_mix_format = NULL;
-	}
-
 	SafeRelease(&m_render_client);
 	SafeRelease(&m_audio_client);
 
 	return exit_mode;
+}
+
+CKeepSession::SampleType CKeepSession::GetSampleType(WAVEFORMATEX* format)
+{
+	SampleType result = SampleType::Unknown;
+	if (format->wFormatTag == WAVE_FORMAT_PCM
+		|| format->wFormatTag == WAVE_FORMAT_EXTENSIBLE && reinterpret_cast<WAVEFORMATEXTENSIBLE*>(format)->SubFormat == KSDATAFORMAT_SUBTYPE_PCM)
+	{
+		DebugLog("Format: PCM %d-bit integer.", format->wBitsPerSample);
+		if (format->wBitsPerSample == 16)
+		{
+			result = SampleType::Int16;
+		}
+		else if (format->wBitsPerSample == 24)
+		{
+			result = SampleType::Int24;
+		}
+		else
+		{
+			DebugLogError("Unsupported PCM integer sample type.");
+		}
+	}
+	else if (format->wFormatTag == WAVE_FORMAT_IEEE_FLOAT
+		|| (format->wFormatTag == WAVE_FORMAT_EXTENSIBLE && reinterpret_cast<WAVEFORMATEXTENSIBLE*>(format)->SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT))
+	{
+		DebugLog("Format: PCM %d-bit float.", format->wBitsPerSample);
+		if (format->wBitsPerSample == 32)
+		{
+			result = SampleType::Float32;
+		}
+		else
+		{
+			DebugLogError("Unsupported PCM float sample type.");
+		}
+	}
+	else
+	{
+		DebugLogError("Unrecognized sample format.");
+	}
+	return result;
 }
 
 HRESULT CKeepSession::Render()
@@ -455,7 +478,7 @@ HRESULT CKeepSession::Render()
 	{
 		DWORD render_flags = NULL;
 
-		if (m_sample_type == SampleType::Int16)
+		if (m_mix_sample_type == SampleType::Int16)
 		{
 			UINT32 n = 0;
 			constexpr static INT16 tbl[] = { -1, 0, 1, 0 };
@@ -469,12 +492,18 @@ HRESULT CKeepSession::Render()
 				n = ++n % 4;
 			}
 		}
-		else if (m_sample_type == SampleType::Float32)
+		else if (m_mix_sample_type == SampleType::Float32)
 		{
-			UINT32 n = 0;
 			// 0xb8000100 = -3.051851E-5 = -1.0/32767.
 			// 0x38000100 =  3.051851E-5 =  1.0/32767.
-			constexpr static UINT32 tbl[] = { 0xb8000100, 0, 0x38000100, 0 };
+			constexpr static UINT32 tbl16[] = { 0xb8000100, 0, 0x38000100, 0 };
+			// 0xb4000001 = -1.192093E-7 = -1.0/8388607.
+			// 0x34000001 =  1.192093E-7 =  1.0/8388607.
+			constexpr static UINT32 tbl24[] = { 0xb4000001, 0, 0x34000001, 0 };
+
+			UINT32 n = 0;
+			const UINT32* tbl = (m_out_sample_type == SampleType::Int24) ? tbl24 : tbl16;
+
 			for (size_t i = 0; i < frames_available; i++)
 			{
 				for (size_t j = 0; j < m_channels_count; j++)

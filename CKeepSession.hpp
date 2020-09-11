@@ -46,13 +46,15 @@ protected:
 	IAudioRenderClient*     m_render_client = nullptr;
 	IAudioSessionControl*   m_audio_session_control = nullptr;
 
-	WAVEFORMATEX*           m_mix_format = nullptr;
-	enum class SampleType { Unknown, Float32, Int16 };
-	SampleType              m_sample_type = SampleType::Unknown;
+	enum class SampleType { Unknown, Float32, Int16, Int24 };
+	static SampleType GetSampleType(WAVEFORMATEX* format);
+	SampleType              m_mix_sample_type = SampleType::Unknown;
+	SampleType              m_out_sample_type = SampleType::Unknown;
+
 	UINT32                  m_channels_count = 0;
 	UINT32                  m_frame_size = 0;
 
-	UINT32                  m_buffer_size_in_ms = 1000;
+	const UINT32            m_buffer_size_in_ms = 1000;
 	UINT32                  m_buffer_size_in_frames = 0;
 
 	~CKeepSession(void);

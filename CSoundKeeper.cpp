@@ -125,8 +125,12 @@ HRESULT CSoundKeeper::Start()
 
 			if (m_cfg_device_type != KeepDeviceType::All)
 			{
-				IPropertyStore* properties;
+				IPropertyStore* properties = nullptr;
 				hr = device->OpenPropertyStore(STGM_READ, &properties);
+				if (FAILED(hr))
+				{
+					continue;
+				}
 
 				PROPVARIANT formfactor;
 				PropVariantInit(&formfactor);

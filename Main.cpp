@@ -54,7 +54,7 @@ __forceinline int Main()
 	return hr;
 }
 
-#if _DEBUG
+#ifdef _DEBUG
 
 int main()
 {
