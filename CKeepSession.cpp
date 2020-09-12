@@ -418,6 +418,10 @@ CKeepSession::SampleType CKeepSession::GetSampleType(WAVEFORMATEX* format)
 		{
 			result = SampleType::Int24;
 		}
+		else if (format->wBitsPerSample == 32)
+		{
+			result = SampleType::Int32;
+		}
 		else
 		{
 			DebugLogError("Unsupported PCM integer sample type.");
@@ -500,9 +504,14 @@ HRESULT CKeepSession::Render()
 			// 0xb4000001 = -1.192093E-7 = -1.0/8388607.
 			// 0x34000001 =  1.192093E-7 =  1.0/8388607.
 			constexpr static UINT32 tbl24[] = { 0xb4000001, 0, 0x34000001, 0 };
+			// 0xb0000000 = -4.656612E-10 = -1.0/2147483647.
+			// 0x30000000 =  4.656612E-10 =  1.0/2147483647.
+			constexpr static UINT32 tbl32[] = { 0xb0000000, 0, 0x30000000, 0 };
 
 			UINT32 n = 0;
-			const UINT32* tbl = (m_out_sample_type == SampleType::Int24) ? tbl24 : tbl16;
+			const UINT32* tbl = (m_out_sample_type == SampleType::Int24) ? tbl24
+				: (m_out_sample_type == SampleType::Int32 || m_out_sample_type == SampleType::Float32) ? tbl32
+				: tbl16;
 
 			for (size_t i = 0; i < frames_available; i++)
 			{

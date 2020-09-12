@@ -46,7 +46,7 @@ protected:
 	IAudioRenderClient*     m_render_client = nullptr;
 	IAudioSessionControl*   m_audio_session_control = nullptr;
 
-	enum class SampleType { Unknown, Float32, Int16, Int24 };
+	enum class SampleType { Unknown, Int16, Int24, Int32, Float32 };
 	static SampleType GetSampleType(WAVEFORMATEX* format);
 	SampleType              m_mix_sample_type = SampleType::Unknown;
 	SampleType              m_out_sample_type = SampleType::Unknown;
