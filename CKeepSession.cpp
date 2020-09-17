@@ -6,6 +6,35 @@
 #include <avrt.h>
 #endif
 
+extern "C" NTSYSAPI NTSTATUS RtlGetVersion(PRTL_OSVERSIONINFOW lpVersionInformation);
+
+ULONG GetWinBuildNumber()
+{
+	static ULONG build_number = 0;
+
+	if (build_number != 0)
+	{
+		return build_number;
+	}
+
+	RTL_OSVERSIONINFOW os_info = {0};
+	os_info.dwOSVersionInfoSize = sizeof(os_info);
+	RtlGetVersion(&os_info);
+	build_number = os_info.dwBuildNumber;
+	return build_number;
+}
+
+bool IsBuggyWasapi()
+{
+	ULONG build_number = GetWinBuildNumber();
+	// Windows 7 is not buggy. Windows 8.1 leaks handles. Windows 10 up to 20H2 leaks shared memory.
+	bool is_buggy = 7601 < build_number && build_number < 19042;
+	DebugLog("Windows Build Number: %u%s.", build_number, is_buggy ? " (buggy)" : "");
+	return is_buggy;
+}
+
+static bool g_is_buggy_wasapi = IsBuggyWasapi();
+
 CKeepSession::CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint, KeepStreamType stream_type)
 	: m_soundkeeper(soundkeeper), m_endpoint(endpoint), m_stream_type(stream_type)
 {
@@ -186,7 +215,7 @@ DWORD CKeepSession::RenderingThread()
 
 			DebugLog("Render.");
 			m_curr_mode = this->Rendering();
-			if (m_curr_mode == RenderingMode::WaitExclusive)
+			if (g_is_buggy_wasapi && m_curr_mode == RenderingMode::WaitExclusive)
 			{
 				delay = 30;
 			}
@@ -194,17 +223,21 @@ DWORD CKeepSession::RenderingThread()
 
 		case RenderingMode::WaitExclusive:
 
-			DebugLog("Wait until exclusive session is finised.");
-			m_curr_mode = this->WaitExclusive();
-			if (m_curr_mode == RenderingMode::WaitExclusive)
+			if (g_is_buggy_wasapi)
 			{
-				delay = 100;
+				DebugLog("Wait until exclusive session is finised.");
+				m_curr_mode = this->WaitExclusive();
+				if (m_curr_mode == RenderingMode::WaitExclusive)
+				{
+					delay = 100;
+				}
+				break;
 			}
-			break;
+			[[fallthrough]];
 
 		case RenderingMode::Retry:
 
-			if (m_play_attempts > 10)
+			if (g_is_buggy_wasapi && m_play_attempts > 10)
 			{
 				DebugLog("Attempts limit. Stop.");
 				m_curr_mode = RenderingMode::Stop;
