@@ -1,0 +1,9 @@
+**~**
+.vs/**
+Build/**
+Release/**
+Debug/**
+Work/**
+*.aps
+*.suo
+*.vcxproj.user
