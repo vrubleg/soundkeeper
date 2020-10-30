@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.hpp"
 #include "CSoundKeeper.hpp"
 
 CSoundKeeper::CSoundKeeper() { }

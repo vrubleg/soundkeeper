@@ -4,7 +4,7 @@
 // (C) 2014-2020 Evgeny Vrublevsky <me@veg.by>
 // ---------------------------------------------------------------------------------------------------------------------
 
-#include "StdAfx.h"
+#include "Common.hpp"
 #include "CSoundKeeper.hpp"
 
 __forceinline int Main()

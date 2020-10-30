@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "Common.hpp"
 #define INITGUID
 #include "CKeepSession.hpp"
 
