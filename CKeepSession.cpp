@@ -36,17 +36,11 @@ bool IsBuggyWasapi()
 
 static bool g_is_buggy_wasapi = IsBuggyWasapi();
 
-CKeepSession::CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint, KeepStreamType stream_type)
-	: m_soundkeeper(soundkeeper), m_endpoint(endpoint), m_stream_type(stream_type)
+CKeepSession::CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint)
+	: m_soundkeeper(soundkeeper), m_endpoint(endpoint)
 {
 	m_endpoint->AddRef();
 	m_soundkeeper->AddRef();
-
-	if (stream_type == KeepStreamType::Sine)
-	{
-		m_frequency = 1.0;
-		m_amplitude = 0.01;
-	}
 }
 
 CKeepSession::~CKeepSession(void)
@@ -142,6 +136,7 @@ void CKeepSession::Stop()
 		this->DeferNextMode(RenderingMode::Stop);
 		WaitForOne(m_render_thread, INFINITE);
 		CloseHandle(m_render_thread);
+		m_theta = 0;
 		m_render_thread = NULL;
 		m_interrupt = false;
 	}

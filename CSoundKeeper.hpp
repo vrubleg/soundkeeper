@@ -48,6 +48,10 @@ protected:
 	KeepDeviceType          m_cfg_device_type = KeepDeviceType::Primary;
 	KeepStreamType          m_cfg_stream_type = KeepStreamType::Silence;
 
+	// Members for the KeepStreamType::Sine.
+	double                  m_cfg_frequency = 0.0;
+	double                  m_cfg_amplitude = 0.0;
+
 	HRESULT Start();
 	HRESULT Stop();
 	HRESULT Restart();
@@ -55,8 +59,17 @@ protected:
 
 public:
 
-	void SetDeviceType(KeepDeviceType cfg_device_type) { m_cfg_device_type = cfg_device_type; }
-	void SetStreamType(KeepStreamType cfg_stream_type) { m_cfg_stream_type = cfg_stream_type; }
+	void SetDeviceType(KeepDeviceType device_type) { m_cfg_device_type = device_type; }
+	void SetStreamType(KeepStreamType stream_type) { m_cfg_stream_type = stream_type; }
+	KeepDeviceType GetDeviceType() { return m_cfg_device_type; }
+	KeepStreamType GetStreamType() { return m_cfg_stream_type; }
+
+	// Methods for the KeepStreamType::Sine.
+	void SetFrequency(double frequency) { m_cfg_frequency = frequency; }
+	void SetAmplitude(double amplitude) { m_cfg_amplitude = amplitude; }
+	double GetFrequency() { return m_cfg_frequency; }
+	double GetAmplitude() { return m_cfg_amplitude; }
+
 	void FireRetry();
 	void FireRestart();
 	void FireShutdown();

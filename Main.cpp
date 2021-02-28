@@ -40,7 +40,12 @@ __forceinline int Main()
 			if (strstr(filename, "all"))     { keeper->SetDeviceType(KeepDeviceType::All); }
 			if (strstr(filename, "digital")) { keeper->SetDeviceType(KeepDeviceType::Digital); }
 			if (strstr(filename, "zero"))    { keeper->SetStreamType(KeepStreamType::Silence); }
-			if (strstr(filename, "sine"))    { keeper->SetStreamType(KeepStreamType::Sine); }
+			if (strstr(filename, "sine"))
+			{
+				keeper->SetStreamType(KeepStreamType::Sine);
+				keeper->SetFrequency(1.00);
+				keeper->SetAmplitude(0.01);
+			}
 		}
 	}
 

@@ -67,11 +67,20 @@ protected:
 
 public:
 
-	CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint, KeepStreamType stream_type);
+	CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint);
 	bool Start();
 	void Stop();
 	bool IsStarted() const { return m_is_started; }
 	bool IsValid() const { return m_curr_mode != RenderingMode::Invalid; };
+
+	void SetStreamType(KeepStreamType stream_type) { m_stream_type = stream_type; }
+	KeepStreamType GetStreamType() { return m_stream_type; }
+
+	// Methods for the KeepStreamType::Sine.
+	void SetFrequency(double frequency) { m_frequency = frequency; }
+	void SetAmplitude(double amplitude) { m_amplitude = amplitude; }
+	double GetFrequency() { return m_frequency; }
+	double GetAmplitude() { return m_amplitude; }
 
 protected:
 

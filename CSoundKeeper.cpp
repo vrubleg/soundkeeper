@@ -91,12 +91,18 @@ HRESULT CSoundKeeper::Start()
 		}
 		m_sessions_count = 1;
 		m_sessions = new CKeepSession*[m_sessions_count]();
-		m_sessions[0] = new CKeepSession(this, device, m_cfg_stream_type);
-		SafeRelease(&device);
+
+		m_sessions[0] = new CKeepSession(this, device);
+		m_sessions[0]->SetStreamType(m_cfg_stream_type);
+		m_sessions[0]->SetFrequency(m_cfg_frequency);
+		m_sessions[0]->SetAmplitude(m_cfg_amplitude);
+
 		if (!m_sessions[0]->Start())
 		{
 			m_is_retry_required = true;
 		}
+
+		SafeRelease(&device);
 	}
 	else
 	{
@@ -145,13 +151,17 @@ HRESULT CSoundKeeper::Start()
 				PropVariantClear(&formfactor);
 			}
 
-			m_sessions[i] = new CKeepSession(this, device, m_cfg_stream_type);
-			SafeRelease(&device);
+			m_sessions[i] = new CKeepSession(this, device);
+			m_sessions[i]->SetStreamType(m_cfg_stream_type);
+			m_sessions[i]->SetFrequency(m_cfg_frequency);
+			m_sessions[i]->SetAmplitude(m_cfg_amplitude);
 
 			if (!m_sessions[i]->Start())
 			{
 				m_is_retry_required = true;
 			}
+
+			SafeRelease(&device);
 		}
 	}
 
