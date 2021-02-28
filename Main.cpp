@@ -7,6 +7,53 @@
 #include "Common.hpp"
 #include "CSoundKeeper.hpp"
 
+void ParseMode(CSoundKeeper* keeper, const char* args)
+{
+	char buf[MAX_PATH];
+	strcpy_s(buf, args);
+	_strlwr(buf);
+
+	if (strstr(buf, "all"))     { keeper->SetDeviceType(KeepDeviceType::All); }
+	if (strstr(buf, "digital")) { keeper->SetDeviceType(KeepDeviceType::Digital); }
+
+	if (strstr(buf, "zero") || strstr(buf, "null"))
+	{
+		keeper->SetStreamType(KeepStreamType::Silence);
+	}
+	else if (char* p = strstr(buf, "sine"))
+	{
+		keeper->SetStreamType(KeepStreamType::Sine);
+		keeper->SetFrequency(1.00);
+		keeper->SetAmplitude(0.01);
+
+		// Parse arguments.
+		p += 4;
+		while (*p)
+		{
+			if (*p == ' ' || *p == '-') { p++; }
+			else if (*p == 'f' || *p == 'a')
+			{
+				char type = *p;
+				p++;
+				while (*p == ' ' || *p == '=') { p++; }
+				double value = fabs(strtod(p, &p));
+				if (type == 'f')
+				{
+					keeper->SetFrequency(std::min(value, 96000.0));
+				}
+				else
+				{
+					keeper->SetAmplitude(std::min(value, 1.0));
+				}
+			}
+			else
+			{
+				break;
+			}
+		}
+	}
+}
+
 __forceinline int Main()
 {
 	// Prevent from multiple instances (the mutex will be destroyed automatically on program exit)
@@ -28,56 +75,41 @@ __forceinline int Main()
 	keeper->SetDeviceType(KeepDeviceType::Primary);
 	keeper->SetStreamType(KeepStreamType::Inaudible);
 
+	// Parse file name for defaults.
 	char fn_buffer[MAX_PATH];
 	DWORD fn_size = GetModuleFileNameA(NULL, fn_buffer, MAX_PATH);
 	if (fn_size != 0 && fn_size != MAX_PATH)
 	{
 		char* filename = strrchr(fn_buffer, '\\');
-		char* p = nullptr;
 		if (filename)
 		{
 			filename++;
-			_strlwr(filename);
+			DebugLog("Exe File Name: %s.", filename);
+			ParseMode(keeper, filename);
+		}
+	}
 
-			if (strstr(filename, "all"))     { keeper->SetDeviceType(KeepDeviceType::All); }
-			if (strstr(filename, "digital")) { keeper->SetDeviceType(KeepDeviceType::Digital); }
+	// Parse command line for arguments.
+	if (const char* cmdln = GetCommandLineA())
+	{
+		// Skip program file name.
+		while (*cmdln == ' ') { cmdln++; }
+		if (cmdln[0] == '"')
+		{
+			cmdln++;
+			while (*cmdln != '"' && *cmdln != 0) { cmdln++; }
+			if (*cmdln == '"') { cmdln++; }
+		}
+		else
+		{
+			while (*cmdln != ' ' && *cmdln != 0) { cmdln++; }
+		}
+		while (*cmdln == ' ') { cmdln++; }
 
-			if (strstr(filename, "zero") || strstr(filename, "null"))
-			{
-				keeper->SetStreamType(KeepStreamType::Silence);
-			}
-			else if (p = strstr(filename, "sine"))
-			{
-				keeper->SetStreamType(KeepStreamType::Sine);
-				keeper->SetFrequency(1.00);
-				keeper->SetAmplitude(0.01);
-
-				// Parse arguments.
-				p += 4;
-				while (*p)
-				{
-					if (*p == ' ' || *p == '-') { p++; }
-					else if (*p == 'f' || *p == 'a')
-					{
-						char type = *p;
-						p++;
-						while (*p == ' ' || *p == '=') { p++; }
-						double value = fabs(strtod(p, &p));
-						if (type == 'f')
-						{
-							keeper->SetFrequency(std::min(value, 96000.0));
-						}
-						else
-						{
-							keeper->SetAmplitude(std::min(value, 1.0));
-						}
-					}
-					else
-					{
-						break;
-					}
-				}
-			}
+		if (*cmdln != 0)
+		{
+			DebugLog("Command Line: %s.", cmdln);
+			ParseMode(keeper, cmdln);
 		}
 	}
 
