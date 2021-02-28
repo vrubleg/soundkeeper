@@ -519,64 +519,55 @@ HRESULT CKeepSession::Render()
 		return hr;
 	}
 
-	if (m_stream_type == KeepStreamType::Inaudible)
+	DWORD render_flags = NULL;
+
+	if (m_stream_type == KeepStreamType::Inaudible && m_mix_sample_type == SampleType::Int16)
 	{
-		DWORD render_flags = NULL;
-
-		if (m_mix_sample_type == SampleType::Int16)
+		UINT32 n = 0;
+		constexpr static INT16 tbl[] = { -1, 0, 1, 0 };
+		for (size_t i = 0; i < frames_available; i++)
 		{
-			UINT32 n = 0;
-			constexpr static INT16 tbl[] = { -1, 0, 1, 0 };
-			for (size_t i = 0; i < frames_available; i++)
+			for (size_t j = 0; j < m_channels_count; j++)
 			{
-				for (size_t j = 0; j < m_channels_count; j++)
-				{
-					*reinterpret_cast<INT16*>(p_data + j * 2) = tbl[n];
-				}
-				p_data += m_frame_size;
-				n = ++n % 4;
+				*reinterpret_cast<INT16*>(p_data + j * 2) = tbl[n];
 			}
+			p_data += m_frame_size;
+			n = ++n % 4;
 		}
-		else if (m_mix_sample_type == SampleType::Float32)
+	}
+	else if (m_stream_type == KeepStreamType::Inaudible && m_mix_sample_type == SampleType::Float32)
+	{
+		// 0xb8000100 = -3.051851E-5 = -1.0/32767.
+		// 0x38000100 =  3.051851E-5 =  1.0/32767.
+		constexpr static UINT32 tbl16[] = { 0xb8000100, 0, 0x38000100, 0 };
+		// 0xb4000001 = -1.192093E-7 = -1.0/8388607.
+		// 0x34000001 =  1.192093E-7 =  1.0/8388607.
+		constexpr static UINT32 tbl24[] = { 0xb4000001, 0, 0x34000001, 0 };
+		// 0xb0000000 = -4.656612E-10 = -1.0/2147483647.
+		// 0x30000000 =  4.656612E-10 =  1.0/2147483647.
+		constexpr static UINT32 tbl32[] = { 0xb0000000, 0, 0x30000000, 0 };
+
+		UINT32 n = 0;
+		const UINT32* tbl = (m_out_sample_type == SampleType::Int24) ? tbl24
+			: (m_out_sample_type == SampleType::Int32 || m_out_sample_type == SampleType::Float32) ? tbl32
+			: tbl16;
+
+		for (size_t i = 0; i < frames_available; i++)
 		{
-			// 0xb8000100 = -3.051851E-5 = -1.0/32767.
-			// 0x38000100 =  3.051851E-5 =  1.0/32767.
-			constexpr static UINT32 tbl16[] = { 0xb8000100, 0, 0x38000100, 0 };
-			// 0xb4000001 = -1.192093E-7 = -1.0/8388607.
-			// 0x34000001 =  1.192093E-7 =  1.0/8388607.
-			constexpr static UINT32 tbl24[] = { 0xb4000001, 0, 0x34000001, 0 };
-			// 0xb0000000 = -4.656612E-10 = -1.0/2147483647.
-			// 0x30000000 =  4.656612E-10 =  1.0/2147483647.
-			constexpr static UINT32 tbl32[] = { 0xb0000000, 0, 0x30000000, 0 };
-
-			UINT32 n = 0;
-			const UINT32* tbl = (m_out_sample_type == SampleType::Int24) ? tbl24
-				: (m_out_sample_type == SampleType::Int32 || m_out_sample_type == SampleType::Float32) ? tbl32
-				: tbl16;
-
-			for (size_t i = 0; i < frames_available; i++)
+			for (size_t j = 0; j < m_channels_count; j++)
 			{
-				for (size_t j = 0; j < m_channels_count; j++)
-				{
-					*reinterpret_cast<UINT32*>(p_data + j * 4) = tbl[n];
-				}
-				p_data += m_frame_size;
-				n = ++n % 4;
+				*reinterpret_cast<UINT32*>(p_data + j * 4) = tbl[n];
 			}
+			p_data += m_frame_size;
+			n = ++n % 4;
 		}
-		else
-		{
-			render_flags = AUDCLNT_BUFFERFLAGS_SILENT;
-		}
-
-		hr = m_render_client->ReleaseBuffer(frames_available, render_flags);
 	}
 	else if (m_stream_type == KeepStreamType::Sine && m_mix_sample_type == SampleType::Float32)
 	{
 		double theta_increment = (m_frequency * (M_PI*2)) / (double)m_sample_rate;
 		for (size_t i = 0; i < frames_available; i++)
 		{
-			float sample = (float)(sin( m_theta ) * m_amplitude);
+			float sample = (float)(sin(m_theta) * m_amplitude);
 			for (size_t j = 0; j < m_channels_count; j++)
 			{
 				*reinterpret_cast<float*>(p_data + j * sizeof(float)) = sample;
@@ -584,14 +575,14 @@ HRESULT CKeepSession::Render()
 			p_data += m_frame_size;
 			m_theta += theta_increment;
 		}
-		hr = m_render_client->ReleaseBuffer(frames_available, NULL);
 	}
 	else
 	{
 		// ZeroMemory(p_data, static_cast<SIZE_T>(m_frame_size) * frames_available);
-		hr = m_render_client->ReleaseBuffer(frames_available, AUDCLNT_BUFFERFLAGS_SILENT);
+		render_flags = AUDCLNT_BUFFERFLAGS_SILENT;
 	}
 
+	hr = m_render_client->ReleaseBuffer(frames_available, render_flags);
 	if (FAILED(hr))
 	{
 		DebugLogError("Failed to release buffer: 0x%08X.", hr);
