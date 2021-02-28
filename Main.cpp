@@ -43,7 +43,7 @@ void ParseMode(CSoundKeeper* keeper, const char* args)
 				}
 				else
 				{
-					keeper->SetAmplitude(std::min(value, 1.0));
+					keeper->SetAmplitude(std::min(value / 100.0, 1.0));
 				}
 			}
 			else
