@@ -7,7 +7,7 @@
 #include <avrt.h>
 #endif
 
-extern "C" NTSYSAPI NTSTATUS RtlGetVersion(PRTL_OSVERSIONINFOW lpVersionInformation);
+extern "C" NTSYSAPI NTSTATUS WINAPI RtlGetVersion(PRTL_OSVERSIONINFOW lpVersionInformation);
 
 ULONG GetWinBuildNumber()
 {
