@@ -1,7 +1,8 @@
 #include "Common.hpp"
 #define INITGUID
 #include "CKeepSession.hpp"
-
+#define _USE_MATH_DEFINES
+#include <math.h>
 #ifdef ENABLE_MMCSS
 #include <avrt.h>
 #endif
@@ -40,6 +41,12 @@ CKeepSession::CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint, KeepS
 {
 	m_endpoint->AddRef();
 	m_soundkeeper->AddRef();
+
+	if (stream_type == KeepStreamType::Sine)
+	{
+		m_frequency = 1.0;
+		m_amplitude = 0.01;
+	}
 }
 
 CKeepSession::~CKeepSession(void)
@@ -318,6 +325,7 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 
 	m_mix_sample_type = GetSampleType(mix_format);
 	m_frame_size = mix_format->nBlockAlign;
+	m_sample_rate = mix_format->nSamplesPerSec;
 	m_channels_count = mix_format->nChannels;
 
 	//
@@ -562,6 +570,21 @@ HRESULT CKeepSession::Render()
 		}
 
 		hr = m_render_client->ReleaseBuffer(frames_available, render_flags);
+	}
+	else if (m_stream_type == KeepStreamType::Sine && m_mix_sample_type == SampleType::Float32)
+	{
+		double theta_increment = (m_frequency * (M_PI*2)) / (double)m_sample_rate;
+		for (size_t i = 0; i < frames_available; i++)
+		{
+			float sample = (float)(sin( m_theta ) * m_amplitude);
+			for (size_t j = 0; j < m_channels_count; j++)
+			{
+				*reinterpret_cast<float*>(p_data + j * sizeof(float)) = sample;
+			}
+			p_data += m_frame_size;
+			m_theta += theta_increment;
+		}
+		hr = m_render_client->ReleaseBuffer(frames_available, NULL);
 	}
 	else
 	{

@@ -6,7 +6,7 @@
 // Enable Multimedia Class Scheduler Service.
 #define ENABLE_MMCSS
 
-enum class KeepStreamType { Silence, Inaudible };
+enum class KeepStreamType { Silence, Inaudible, Sine };
 
 class CKeepSession;
 #include "CSoundKeeper.hpp"
@@ -51,11 +51,17 @@ protected:
 	SampleType              m_mix_sample_type = SampleType::Unknown;
 	SampleType              m_out_sample_type = SampleType::Unknown;
 
+	UINT32                  m_sample_rate = 0;
 	UINT32                  m_channels_count = 0;
 	UINT32                  m_frame_size = 0;
 
 	const UINT32            m_buffer_size_in_ms = 1000;
 	UINT32                  m_buffer_size_in_frames = 0;
+
+	// Members for the KeepStreamType::Sine.
+	double                  m_frequency = 0.0;
+	double                  m_amplitude = 0.0;
+	double                  m_theta = 0.0;
 
 	~CKeepSession(void);
 
