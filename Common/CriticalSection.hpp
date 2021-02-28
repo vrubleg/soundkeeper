@@ -44,14 +44,14 @@ public:
 
 	bool TryLock(DWORD timeout)
 	{
-		DWORD start = GetTickCount();
+		ULONGLONG start = GetTickCount64();
 		while (true)
 		{
 			if (TryLock())
 			{
 				return true;
 			}
-			if ((GetTickCount() - start) >= timeout)
+			if ((GetTickCount64() - start) >= timeout)
 			{
 				return false;
 			}

@@ -286,6 +286,7 @@ HRESULT CSoundKeeper::Main()
 				Sleep(500);
 			}
 			m_is_retry_required = true;
+			[[fallthrough]];
 
 		case WAIT_TIMEOUT:
 
