@@ -6,6 +6,7 @@
 #include "Common/Win32.hpp"
 #include <strsafe.h>
 #include <objbase.h>
+#include <algorithm> // std::min and std::max.
 
 template <class T> void SafeRelease(T **ppT)
 {

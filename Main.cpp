@@ -33,21 +33,74 @@ __forceinline int Main()
 	if (fn_size != 0 && fn_size != MAX_PATH)
 	{
 		char* filename = strrchr(fn_buffer, '\\');
+		char* p = nullptr;
 		if (filename)
 		{
 			filename++;
 			_strlwr(filename);
+
 			if (strstr(filename, "all"))     { keeper->SetDeviceType(KeepDeviceType::All); }
 			if (strstr(filename, "digital")) { keeper->SetDeviceType(KeepDeviceType::Digital); }
-			if (strstr(filename, "zero"))    { keeper->SetStreamType(KeepStreamType::Silence); }
-			if (strstr(filename, "sine"))
+
+			if (strstr(filename, "zero") || strstr(filename, "null"))
+			{
+				keeper->SetStreamType(KeepStreamType::Silence);
+			}
+			else if (p = strstr(filename, "sine"))
 			{
 				keeper->SetStreamType(KeepStreamType::Sine);
 				keeper->SetFrequency(1.00);
 				keeper->SetAmplitude(0.01);
+
+				// Parse arguments.
+				p += 4;
+				while (*p)
+				{
+					if (*p == ' ' || *p == '-') { p++; }
+					else if (*p == 'f' || *p == 'a')
+					{
+						char type = *p;
+						p++;
+						while (*p == ' ' || *p == '=') { p++; }
+						double value = fabs(strtod(p, &p));
+						if (type == 'f')
+						{
+							keeper->SetFrequency(std::min(value, 96000.0));
+						}
+						else
+						{
+							keeper->SetAmplitude(std::min(value, 1.0));
+						}
+					}
+					else
+					{
+						break;
+					}
+				}
 			}
 		}
 	}
+
+#ifdef _DEBUG
+
+	switch (keeper->GetDeviceType())
+	{
+		case KeepDeviceType::Primary:   DebugLog("Device Type: Primary."); break;
+		case KeepDeviceType::All:       DebugLog("Device Type: All."); break;
+		case KeepDeviceType::Analog:    DebugLog("Device Type: Analog."); break;
+		case KeepDeviceType::Digital:   DebugLog("Device Type: Digital."); break;
+		default:                        DebugLogError("Unknown Device Type."); break;
+	}
+
+	switch (keeper->GetStreamType())
+	{
+		case KeepStreamType::Silence:   DebugLog("Stream Type: Silence."); break;
+		case KeepStreamType::Inaudible: DebugLog("Stream Type: Inaudible."); break;
+		case KeepStreamType::Sine:      DebugLog("Stream Type: Sine (Frequency: %.3fHz; Amplitude: %.3f%%).", keeper->GetFrequency(), keeper->GetAmplitude() * 100.0); break;
+		default:                        DebugLogError("Unknown Stream Type."); break;
+	}
+
+#endif
 
 	hr = keeper->Main();
 	if (FAILED(hr))
