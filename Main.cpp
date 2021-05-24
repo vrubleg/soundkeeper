@@ -60,14 +60,22 @@ __forceinline int Main()
 	CreateMutexA(NULL, FALSE, "DigitalSoundKeeper");
 	if (GetLastError() == ERROR_ALREADY_EXISTS || GetLastError() == ERROR_ACCESS_DENIED)
 	{
+#ifndef _DEBUG
 		MessageBoxA(0, "The program is already running.", "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL);
+#else
+		DebugLogError("The program is already running.");
+#endif
 		return 1;
 	}
 
 	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED); // A GUI application should use COINIT_APARTMENTTHREADED
 	if (FAILED(hr))
 	{
+#ifndef _DEBUG
 		MessageBoxA(0, "Cannot initialize COM.", "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL);
+#else
+		DebugLogError("Cannot initialize COM: 0x%08X.", hr);
+#endif
 		return hr;
 	}
 
@@ -137,7 +145,9 @@ __forceinline int Main()
 	hr = keeper->Main();
 	if (FAILED(hr))
 	{
+#ifndef _DEBUG
 		MessageBoxA(0, "Cannot run main code.", "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL);
+#endif
 	}
 	keeper->Release(); // Destroys the object
 
