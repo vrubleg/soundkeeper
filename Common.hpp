@@ -18,9 +18,33 @@ template <class T> void SafeRelease(T **ppT)
 }
 
 #ifdef NDEBUG
+
 #define DebugLog(...)
 #define DebugLogError(...)
+
 #else
-#define DebugLog(...) { printf("[%5d] ", GetThreadId(GetCurrentThread())); printf(__VA_ARGS__); printf("\n"); }
-#define DebugLogError(...) { printf("[%5d] ", GetThreadId(GetCurrentThread())); printf("ERROR: "); printf(__VA_ARGS__); printf("\n"); }
+
+inline void DebugLog(const char * format, ...)
+{
+	printf("[%5d] ", GetThreadId(GetCurrentThread()));
+
+	va_list argptr;
+	va_start(argptr, format);
+	vprintf(format, argptr);
+
+	printf("\n");
+}
+
+inline void DebugLogError(const char * format, ...)
+{
+	printf("[%5d] ", GetThreadId(GetCurrentThread()));
+	printf("ERROR: ");
+
+	va_list argptr;
+	va_start(argptr, format);
+	vprintf(format, argptr);
+
+	printf("\n");
+}
+
 #endif
