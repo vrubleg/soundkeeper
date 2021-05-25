@@ -26,7 +26,10 @@ template <class T> void SafeRelease(T **ppT)
 
 inline void DebugLog(const char * format, ...)
 {
-	printf("[%5d] ", GetThreadId(GetCurrentThread()));
+	SYSTEMTIME now = {0};
+	GetSystemTime(&now);
+	printf("%02d:%02d:%02d.%03d", now.wHour, now.wMinute, now.wSecond, now.wMilliseconds);
+	printf(" [%5d] ", GetThreadId(GetCurrentThread()));
 
 	va_list argptr;
 	va_start(argptr, format);
@@ -35,16 +38,6 @@ inline void DebugLog(const char * format, ...)
 	printf("\n");
 }
 
-inline void DebugLogError(const char * format, ...)
-{
-	printf("[%5d] ", GetThreadId(GetCurrentThread()));
-	printf("ERROR: ");
-
-	va_list argptr;
-	va_start(argptr, format);
-	vprintf(format, argptr);
-
-	printf("\n");
-}
+#define DebugLogError(...) DebugLog("ERROR: "__VA_ARGS__)
 
 #endif
