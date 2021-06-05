@@ -38,6 +38,6 @@ inline void DebugLog(const char * format, ...)
 	printf("\n");
 }
 
-#define DebugLogError(...) DebugLog("ERROR: "__VA_ARGS__)
+#define DebugLogError(...) DebugLog("ERROR: " __VA_ARGS__)
 
 #endif

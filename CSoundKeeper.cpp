@@ -288,7 +288,6 @@ void CSoundKeeper::FireShutdown()
 
 HRESULT CSoundKeeper::Main()
 {
-	DebugLog("Main started.");
 	HRESULT hr = S_OK;
 
 	hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&m_dev_enumerator));
@@ -305,15 +304,40 @@ HRESULT CSoundKeeper::Main()
 		goto exit;
 	}
 
-	// Main loop
-	this->Start();
-	bool working = true;
-	while (working)
+	while (bool working = true)
 	{
-		DWORD timeout = (GetSecondsToSleeping() < 20 || m_is_retry_required) ? 500 : 15000;
+		ULONG seconds_to_sleeping = GetSecondsToSleeping();
+
+		if (seconds_to_sleeping == 0)
+		{
+			if (m_is_started)
+			{
+				DebugLog("Going to sleep...");
+				this->Stop();
+			}
+		}
+		else
+		{
+			if (!m_is_started)
+			{
+				DebugLog("Starting...");
+				this->Start();
+			}
+			else if (m_is_retry_required)
+			{
+				DebugLog("Retrying...");
+				this->Retry();
+			}
+		}
+
+		DWORD timeout = (seconds_to_sleeping <= 15 || m_is_retry_required) ? 500 : 5000;
 
 		switch (WaitForAny({ m_do_retry, m_do_restart, m_do_shutdown }, timeout))
 		{
+		case WAIT_TIMEOUT:
+
+			break;
+
 		case WAIT_OBJECT_0 + 0:
 
 			// Prevent multiple retries.
@@ -322,31 +346,6 @@ HRESULT CSoundKeeper::Main()
 				Sleep(500);
 			}
 			m_is_retry_required = true;
-			[[fallthrough]];
-
-		case WAIT_TIMEOUT:
-
-			if (GetSecondsToSleeping() == 0)
-			{
-				if (m_is_started)
-				{
-					DebugLog("Going to sleep...");
-					this->Stop();
-				}
-			}
-			else
-			{
-				if (!m_is_started)
-				{
-					DebugLog("Starting again...");
-					this->Start();
-				}
-				else if (m_is_retry_required)
-				{
-					DebugLog("Retry.");
-					this->Retry();
-				}
-			}
 			break;
 
 		case WAIT_OBJECT_0 + 1:
@@ -357,7 +356,7 @@ HRESULT CSoundKeeper::Main()
 				Sleep(500);
 			}
 
-			DebugLog("Restart.");
+			DebugLog("Restarting...");
 			this->Restart();
 			break;
 
@@ -365,11 +364,11 @@ HRESULT CSoundKeeper::Main()
 		default:
 
 			DebugLog("Shutdown.");
-			// Shutdown
 			working = false; // We're done, exit the loop
 			break;
 		}
 	}
+
 	Stop();
 
 exit:
@@ -380,6 +379,5 @@ exit:
 	}
 	SafeRelease(&m_dev_enumerator);
 
-	DebugLog("Main finished.");
 	return hr;
 }
