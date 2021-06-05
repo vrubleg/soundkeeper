@@ -1,6 +1,39 @@
 #include "Common.hpp"
 #include "CSoundKeeper.hpp"
 
+//
+// Get time to sleeping (in seconds). It is not precise and updated just once in 15 seconds!
+//
+
+#include <powrprof.h>
+
+#ifndef NT_SUCCESS
+#define NT_SUCCESS(Status) ((NTSTATUS)(Status) >= 0)
+#endif
+
+ULONG GetSecondsToSleeping()
+{
+	struct SYSTEM_POWER_INFORMATION {
+		ULONG MaxIdlenessAllowed;
+		ULONG Idleness;
+		LONG TimeRemaining;
+		UCHAR CoolingMode;
+	} spi = {0};
+
+	if (NT_SUCCESS(CallNtPowerInformation(SystemPowerInformation, NULL, 0, &spi, sizeof(spi))))
+	{
+		return spi.TimeRemaining;
+	}
+	else
+	{
+		return 0xFFFFFFFF;
+	}
+}
+
+//
+// CSoundKeeper implementation.
+//
+
 CSoundKeeper::CSoundKeeper() { }
 CSoundKeeper::~CSoundKeeper() { }
 
@@ -215,6 +248,7 @@ HRESULT CSoundKeeper::Stop()
 	m_sessions = nullptr;
 	m_sessions_count = 0;
 	m_is_started = false;
+	m_is_retry_required = false;
 	return S_OK;
 }
 
@@ -276,7 +310,9 @@ HRESULT CSoundKeeper::Main()
 	bool working = true;
 	while (working)
 	{
-		switch (WaitForAny({ m_do_retry, m_do_restart, m_do_shutdown }, m_is_retry_required ? 500 : INFINITE))
+		DWORD timeout = (GetSecondsToSleeping() < 20 || m_is_retry_required) ? 500 : 15000;
+
+		switch (WaitForAny({ m_do_retry, m_do_restart, m_do_shutdown }, timeout))
 		{
 		case WAIT_OBJECT_0 + 0:
 
@@ -290,8 +326,27 @@ HRESULT CSoundKeeper::Main()
 
 		case WAIT_TIMEOUT:
 
-			DebugLog("Retry.");
-			this->Retry();
+			if (GetSecondsToSleeping() == 0)
+			{
+				if (m_is_started)
+				{
+					DebugLog("Going to sleep...");
+					this->Stop();
+				}
+			}
+			else
+			{
+				if (!m_is_started)
+				{
+					DebugLog("Starting again...");
+					this->Start();
+				}
+				else if (m_is_retry_required)
+				{
+					DebugLog("Retry.");
+					this->Retry();
+				}
+			}
 			break;
 
 		case WAIT_OBJECT_0 + 1:
