@@ -288,7 +288,7 @@ void CSoundKeeper::FireShutdown()
 
 HRESULT CSoundKeeper::Main()
 {
-	HRESULT hr = S_OK;
+	// Stop another instance.
 
 	Handle global_stop_event = CreateEventA(NULL, TRUE, FALSE, "SoundKeeperStopEvent");
 	if (!global_stop_event)
@@ -308,7 +308,7 @@ HRESULT CSoundKeeper::Main()
 
 	if (GetLastError() == ERROR_ALREADY_EXISTS)
 	{
-		DebugLog("Stopping other instance...");
+		DebugLog("Stopping another instance...");
 		SetEvent(global_stop_event);
 		bool is_timeout = WaitForOne(global_mutex, 1000) == WAIT_TIMEOUT;
 		ResetEvent(global_stop_event);
@@ -317,6 +317,15 @@ HRESULT CSoundKeeper::Main()
 			DebugLogError("Time out.");
 			return HRESULT_FROM_WIN32(WAIT_TIMEOUT);
 		}
+	}
+
+	// Initialization.
+
+	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED); // A GUI application should use COINIT_APARTMENTTHREADED
+	if (FAILED(hr))
+	{
+		DebugLogError("Cannot initialize COM: 0x%08X.", hr);
+		return hr;
 	}
 
 	hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&m_dev_enumerator));
@@ -332,6 +341,8 @@ HRESULT CSoundKeeper::Main()
 		DebugLogError("Unable to register for stream switch notifications: 0x%08X.", hr);
 		goto exit;
 	}
+
+	// Working loop.
 
 	for (bool working = true; working; )
 	{
@@ -408,6 +419,7 @@ exit:
 		m_dev_enumerator->UnregisterEndpointNotificationCallback(this);
 	}
 	SafeRelease(&m_dev_enumerator);
+	CoUninitialize();
 	ReleaseMutex(global_mutex);
 
 	return hr;

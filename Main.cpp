@@ -56,17 +56,6 @@ void ParseMode(CSoundKeeper* keeper, const char* args)
 
 __forceinline int Main()
 {
-	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED); // A GUI application should use COINIT_APARTMENTTHREADED
-	if (FAILED(hr))
-	{
-#ifndef _DEBUG
-		MessageBoxA(0, "Cannot initialize COM.", "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL);
-#else
-		DebugLogError("Cannot initialize COM: 0x%08X.", hr);
-#endif
-		return hr;
-	}
-
 	CSoundKeeper* keeper = new CSoundKeeper();
 	keeper->SetDeviceType(KeepDeviceType::Primary);
 	keeper->SetStreamType(KeepStreamType::Inaudible);
@@ -130,16 +119,16 @@ __forceinline int Main()
 
 #endif
 
-	hr = keeper->Main();
+	HRESULT hr = keeper->Main();
+	keeper->Release(); // Destroys the object.
+
+#ifndef _DEBUG
 	if (FAILED(hr))
 	{
-#ifndef _DEBUG
-		MessageBoxA(0, "Cannot run main code.", "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL);
-#endif
+		MessageBoxA(0, "Cannot initialize WASAPI.", "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL);
 	}
-	keeper->Release(); // Destroys the object
+#endif
 
-	CoUninitialize();
 	return hr;
 }
 
