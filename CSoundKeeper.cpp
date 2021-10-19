@@ -321,7 +321,7 @@ HRESULT CSoundKeeper::Main()
 
 	// Initialization.
 
-	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED); // A GUI application should use COINIT_APARTMENTTHREADED
+	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE); // A GUI application should use COINIT_APARTMENTTHREADED
 	if (FAILED(hr))
 	{
 		DebugLogError("Cannot initialize COM: 0x%08X.", hr);
