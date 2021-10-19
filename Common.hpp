@@ -8,12 +8,12 @@
 #include <objbase.h>
 #include <algorithm> // std::min and std::max.
 
-template <class T> void SafeRelease(T **ppT)
+template <class T> void SafeRelease(T*& com_obj_ptr)
 {
-	if (*ppT)
+	if (com_obj_ptr)
 	{
-		(*ppT)->Release();
-		*ppT = NULL;
+		com_obj_ptr->Release();
+		com_obj_ptr = NULL;
 	}
 }
 

@@ -120,7 +120,7 @@ __forceinline int Main()
 #endif
 
 	HRESULT hr = keeper->Main();
-	keeper->Release(); // Destroys the object.
+	SafeRelease(keeper);
 
 #ifndef _DEBUG
 	if (FAILED(hr))

@@ -46,8 +46,8 @@ CKeepSession::CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint)
 CKeepSession::~CKeepSession(void)
 {
 	this->Stop();
-	SafeRelease(&m_endpoint);
-	SafeRelease(&m_soundkeeper);
+	SafeRelease(m_endpoint);
+	SafeRelease(m_soundkeeper);
 }
 
 HRESULT STDMETHODCALLTYPE CKeepSession::QueryInterface(REFIID iid, void **object)
@@ -304,7 +304,7 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 				m_out_sample_type = GetSampleType((WAVEFORMATEX*)out_format.blob.pBlobData);
 			}
 			PropVariantClear(&out_format);
-			SafeRelease(&properties);
+			SafeRelease(properties);
 		}
 	}
 
@@ -430,11 +430,11 @@ free:
 	if (m_audio_session_control)
 	{
 		m_audio_session_control->UnregisterAudioSessionNotification(this);
-		SafeRelease(&m_audio_session_control);
+		SafeRelease(m_audio_session_control);
 	}
 
-	SafeRelease(&m_render_client);
-	SafeRelease(&m_audio_client);
+	SafeRelease(m_render_client);
+	SafeRelease(m_audio_client);
 
 	return exit_mode;
 }
@@ -644,7 +644,7 @@ CKeepSession::RenderingMode CKeepSession::WaitExclusive()
 
 		if (state != AudioSessionStateActive)
 		{
-			SafeRelease(&session_control);
+			SafeRelease(session_control);
 		}
 		else
 		{
@@ -697,9 +697,9 @@ CKeepSession::RenderingMode CKeepSession::WaitExclusive()
 
 free:
 
-	SafeRelease(&session_control);
-	SafeRelease(&session_list);
-	SafeRelease(&as_manager);
+	SafeRelease(session_control);
+	SafeRelease(session_list);
+	SafeRelease(as_manager);
 
 	return exit_mode;
 }

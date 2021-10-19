@@ -135,7 +135,7 @@ HRESULT CSoundKeeper::Start()
 			m_is_retry_required = true;
 		}
 
-		SafeRelease(&device);
+		SafeRelease(device);
 	}
 	else
 	{
@@ -174,11 +174,11 @@ HRESULT CSoundKeeper::Start()
 				PROPVARIANT formfactor;
 				PropVariantInit(&formfactor);
 				hr = properties->GetValue(PKEY_AudioEndpoint_FormFactor, &formfactor);
-				SafeRelease(&properties);
+				SafeRelease(properties);
 				if (FAILED(hr) || formfactor.vt != VT_UI4 || (m_cfg_device_type == KeepDeviceType::Digital) != (formfactor.uintVal == SPDIF || formfactor.uintVal == HDMI))
 				{
 					PropVariantClear(&formfactor);
-					SafeRelease(&device);
+					SafeRelease(device);
 					continue;
 				}
 				PropVariantClear(&formfactor);
@@ -194,7 +194,7 @@ HRESULT CSoundKeeper::Start()
 				m_is_retry_required = true;
 			}
 
-			SafeRelease(&device);
+			SafeRelease(device);
 		}
 	}
 
@@ -202,7 +202,7 @@ HRESULT CSoundKeeper::Start()
 
 exit:
 
-	SafeRelease(&dev_collection);
+	SafeRelease(dev_collection);
 	return hr;
 }
 
@@ -418,7 +418,7 @@ exit:
 	{
 		m_dev_enumerator->UnregisterEndpointNotificationCallback(this);
 	}
-	SafeRelease(&m_dev_enumerator);
+	SafeRelease(m_dev_enumerator);
 	CoUninitialize();
 	ReleaseMutex(global_mutex);
 
