@@ -56,18 +56,6 @@ void ParseMode(CSoundKeeper* keeper, const char* args)
 
 __forceinline int Main()
 {
-	// Prevent from multiple instances (the mutex will be destroyed automatically on program exit)
-	CreateMutexA(NULL, FALSE, "DigitalSoundKeeper");
-	if (GetLastError() == ERROR_ALREADY_EXISTS || GetLastError() == ERROR_ACCESS_DENIED)
-	{
-#ifndef _DEBUG
-		MessageBoxA(0, "The program is already running.", "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL);
-#else
-		DebugLogError("The program is already running.");
-#endif
-		return 1;
-	}
-
 	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED); // A GUI application should use COINIT_APARTMENTTHREADED
 	if (FAILED(hr))
 	{

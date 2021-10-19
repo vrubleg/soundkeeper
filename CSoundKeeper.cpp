@@ -290,6 +290,35 @@ HRESULT CSoundKeeper::Main()
 {
 	HRESULT hr = S_OK;
 
+	Handle global_stop_event = CreateEventA(NULL, TRUE, FALSE, "SoundKeeperStopEvent");
+	if (!global_stop_event)
+	{
+		DWORD le = GetLastError();
+		DebugLogError("Unable to open global stop event. Error code: %d.", le);
+		return HRESULT_FROM_WIN32(le);
+	}
+
+	Handle global_mutex = CreateMutexA(NULL, TRUE, "SoundKeeperMutex");
+	if (!global_mutex)
+	{
+		DWORD le = GetLastError();
+		DebugLogError("Unable to open global mutex. Error code: %d.", le);
+		return HRESULT_FROM_WIN32(le);
+	}
+
+	if (GetLastError() == ERROR_ALREADY_EXISTS)
+	{
+		DebugLog("Stopping other instance...");
+		SetEvent(global_stop_event);
+		bool is_timeout = WaitForOne(global_mutex, 1000) == WAIT_TIMEOUT;
+		ResetEvent(global_stop_event);
+		if (is_timeout)
+		{
+			DebugLogError("Time out.");
+			return HRESULT_FROM_WIN32(WAIT_TIMEOUT);
+		}
+	}
+
 	hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&m_dev_enumerator));
 	if (FAILED(hr))
 	{
@@ -304,7 +333,7 @@ HRESULT CSoundKeeper::Main()
 		goto exit;
 	}
 
-	while (bool working = true)
+	for (bool working = true; working; )
 	{
 		ULONG seconds_to_sleeping = GetSecondsToSleeping();
 
@@ -332,7 +361,7 @@ HRESULT CSoundKeeper::Main()
 
 		DWORD timeout = (seconds_to_sleeping <= 15 || m_is_retry_required) ? 500 : 5000;
 
-		switch (WaitForAny({ m_do_retry, m_do_restart, m_do_shutdown }, timeout))
+		switch (WaitForAny({ m_do_retry, m_do_restart, m_do_shutdown, global_stop_event }, timeout))
 		{
 		case WAIT_TIMEOUT:
 
@@ -361,6 +390,7 @@ HRESULT CSoundKeeper::Main()
 			break;
 
 		case WAIT_OBJECT_0 + 2:
+		case WAIT_OBJECT_0 + 3:
 		default:
 
 			DebugLog("Shutdown.");
@@ -378,6 +408,7 @@ exit:
 		m_dev_enumerator->UnregisterEndpointNotificationCallback(this);
 	}
 	SafeRelease(&m_dev_enumerator);
+	ReleaseMutex(global_mutex);
 
 	return hr;
 }
