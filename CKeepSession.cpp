@@ -150,8 +150,7 @@ DWORD APIENTRY CKeepSession::StartRenderingThread(LPVOID context)
 {
 	DebugLog("Rendering thread started.");
 
-	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE);
-	if (FAILED(hr))
+	if (HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE); FAILED(hr))
 	{
 		DebugLogError("Unable to initialize COM in rendering thread: 0x%08X.", hr);
 		return 1;

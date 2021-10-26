@@ -58,9 +58,7 @@ __forceinline int Main()
 {
 	DebugLog("Main thread started.");
 
-	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE);
-
-	if (FAILED(hr))
+	if (HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE); FAILED(hr))
 	{
 #ifndef _DEBUG
 		MessageBoxA(0, "Cannot initialize COM.", "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL);
@@ -133,17 +131,27 @@ __forceinline int Main()
 
 #endif
 
-	hr = keeper->Main();
+	HRESULT hr = keeper->Main();
 	SafeRelease(keeper);
+
+	CoUninitialize();
 
 #ifndef _DEBUG
 	if (FAILED(hr))
 	{
 		MessageBoxA(0, "Cannot initialize WASAPI.", "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL);
 	}
+#else
+	if (hr == S_OK)
+	{
+		DebugLog("Main thread finished. Exit code: 0.", hr);
+	}
+	else
+	{
+		DebugLog("Main thread finished. Exit code: 0x%08X.", hr);
+	}
 #endif
 
-	CoUninitialize();
 	return hr;
 }
 

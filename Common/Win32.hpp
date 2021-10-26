@@ -10,6 +10,7 @@
 #define NOKANJI
 #define NOSOUND
 #include <windows.h>
+#include <objbase.h>
 
 class Handle
 {
