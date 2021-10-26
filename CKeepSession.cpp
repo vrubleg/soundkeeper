@@ -28,8 +28,8 @@ ULONG GetWinBuildNumber()
 bool IsBuggyWasapi()
 {
 	ULONG build_number = GetWinBuildNumber();
-	// Windows 7 is not buggy. Newer Windows versions leak handles and shared memory.
-	bool is_buggy = 7601 < build_number;
+	// Windows 7 is not buggy. Windows 8-10 leak handles and shared memory. Windows 11 has this bug fixed.
+	bool is_buggy = 7601 < build_number && build_number < 22000;
 	DebugLog("Windows Build Number: %u%s.", build_number, is_buggy ? " (buggy)" : "");
 	return is_buggy;
 }
