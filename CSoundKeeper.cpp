@@ -321,14 +321,7 @@ HRESULT CSoundKeeper::Main()
 
 	// Initialization.
 
-	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE); // A GUI application should use COINIT_APARTMENTTHREADED
-	if (FAILED(hr))
-	{
-		DebugLogError("Cannot initialize COM: 0x%08X.", hr);
-		return hr;
-	}
-
-	hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&m_dev_enumerator));
+	HRESULT hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&m_dev_enumerator));
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to instantiate device enumerator: 0x%08X.", hr);
@@ -419,7 +412,6 @@ exit:
 		m_dev_enumerator->UnregisterEndpointNotificationCallback(this);
 	}
 	SafeRelease(m_dev_enumerator);
-	CoUninitialize();
 	ReleaseMutex(global_mutex);
 
 	return hr;

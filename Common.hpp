@@ -4,7 +4,6 @@
 
 #include <new>
 #include "Common/Win32.hpp"
-#include <strsafe.h>
 #include <objbase.h>
 #include <algorithm> // std::min and std::max.
 
@@ -13,7 +12,7 @@ template <class T> void SafeRelease(T*& com_obj_ptr)
 	if (com_obj_ptr)
 	{
 		com_obj_ptr->Release();
-		com_obj_ptr = NULL;
+		com_obj_ptr = nullptr;
 	}
 }
 

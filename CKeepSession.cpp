@@ -153,7 +153,7 @@ DWORD APIENTRY CKeepSession::StartRenderingThread(LPVOID context)
 	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE);
 	if (FAILED(hr))
 	{
-		DebugLogError("Unable to initialize COM in render thread: 0x%08X.", hr);
+		DebugLogError("Unable to initialize COM in rendering thread: 0x%08X.", hr);
 		return 1;
 	}
 
@@ -163,7 +163,7 @@ DWORD APIENTRY CKeepSession::StartRenderingThread(LPVOID context)
 	mmcss_handle = AvSetMmThreadCharacteristics(L"Audio", &mmcss_task_index);
 	if (mmcss_handle == NULL)
 	{
-		DebugLogError("Unable to enable MMCSS on render thread: 0x%08X.", GetLastError());
+		DebugLogError("Unable to enable MMCSS on rendering thread: 0x%08X.", GetLastError());
 	}
 #endif
 

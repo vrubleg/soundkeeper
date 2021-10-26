@@ -56,6 +56,20 @@ void ParseMode(CSoundKeeper* keeper, const char* args)
 
 __forceinline int Main()
 {
+	DebugLog("Main thread started.");
+
+	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE);
+
+	if (FAILED(hr))
+	{
+#ifndef _DEBUG
+		MessageBoxA(0, "Cannot initialize COM.", "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL);
+#else
+		DebugLogError("Cannot initialize COM: 0x%08X.", hr);
+#endif
+		return hr;
+	}
+
 	CSoundKeeper* keeper = new CSoundKeeper();
 	keeper->SetDeviceType(KeepDeviceType::Primary);
 	keeper->SetStreamType(KeepStreamType::Inaudible);
@@ -119,7 +133,7 @@ __forceinline int Main()
 
 #endif
 
-	HRESULT hr = keeper->Main();
+	hr = keeper->Main();
 	SafeRelease(keeper);
 
 #ifndef _DEBUG
@@ -129,6 +143,7 @@ __forceinline int Main()
 	}
 #endif
 
+	CoUninitialize();
 	return hr;
 }
 
