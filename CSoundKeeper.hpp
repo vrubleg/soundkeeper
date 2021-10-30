@@ -46,7 +46,7 @@ protected:
 	AutoResetEvent          m_do_retry = false;
 
 	KeepDeviceType          m_cfg_device_type = KeepDeviceType::Primary;
-	KeepStreamType          m_cfg_stream_type = KeepStreamType::Silence;
+	KeepStreamType          m_cfg_stream_type = KeepStreamType::Zero;
 
 	// Members for the KeepStreamType::Sine.
 	double                  m_cfg_frequency = 0.0;

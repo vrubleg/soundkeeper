@@ -18,7 +18,7 @@ void ParseMode(CSoundKeeper* keeper, const char* args)
 
 	if (strstr(buf, "zero") || strstr(buf, "null"))
 	{
-		keeper->SetStreamType(KeepStreamType::Silence);
+		keeper->SetStreamType(KeepStreamType::Zero);
 	}
 	else if (char* p = strstr(buf, "sine"))
 	{
@@ -70,7 +70,7 @@ __forceinline int Main()
 
 	CSoundKeeper* keeper = new CSoundKeeper();
 	keeper->SetDeviceType(KeepDeviceType::Primary);
-	keeper->SetStreamType(KeepStreamType::Inaudible);
+	keeper->SetStreamType(KeepStreamType::Fluctuate);
 
 	// Parse file name for defaults.
 	char fn_buffer[MAX_PATH];
@@ -123,8 +123,8 @@ __forceinline int Main()
 
 	switch (keeper->GetStreamType())
 	{
-		case KeepStreamType::Silence:   DebugLog("Stream Type: Silence."); break;
-		case KeepStreamType::Inaudible: DebugLog("Stream Type: Inaudible."); break;
+		case KeepStreamType::Zero:      DebugLog("Stream Type: Zero."); break;
+		case KeepStreamType::Fluctuate: DebugLog("Stream Type: Fluctuate."); break;
 		case KeepStreamType::Sine:      DebugLog("Stream Type: Sine (Frequency: %.3fHz; Amplitude: %.3f%%).", keeper->GetFrequency(), keeper->GetAmplitude() * 100.0); break;
 		default:                        DebugLogError("Unknown Stream Type."); break;
 	}

@@ -499,7 +499,7 @@ HRESULT CKeepSession::Render()
 
 	// Calculate the number of frames available.
 	frames_available = m_buffer_size_in_frames - padding;
-	if (m_stream_type == KeepStreamType::Inaudible)
+	if (m_stream_type == KeepStreamType::Fluctuate)
 	{
 		frames_available &= 0xFFFFFFFC; // Must be a multiple of 4.
 	}
@@ -515,7 +515,7 @@ HRESULT CKeepSession::Render()
 
 	DWORD render_flags = NULL;
 
-	if (m_stream_type == KeepStreamType::Inaudible && m_mix_sample_type == SampleType::Int16)
+	if (m_stream_type == KeepStreamType::Fluctuate && m_mix_sample_type == SampleType::Int16)
 	{
 		UINT32 n = 0;
 		constexpr static INT16 tbl[] = { -1, 0, 1, 0 };
@@ -529,7 +529,7 @@ HRESULT CKeepSession::Render()
 			n = ++n % 4;
 		}
 	}
-	else if (m_stream_type == KeepStreamType::Inaudible && m_mix_sample_type == SampleType::Float32)
+	else if (m_stream_type == KeepStreamType::Fluctuate && m_mix_sample_type == SampleType::Float32)
 	{
 		// 0xb8000100 = -3.051851E-5 = -1.0/32767.
 		// 0x38000100 =  3.051851E-5 =  1.0/32767.
@@ -556,7 +556,7 @@ HRESULT CKeepSession::Render()
 			n = ++n % 4;
 		}
 	}
-	else if (m_stream_type == KeepStreamType::Sine && m_mix_sample_type == SampleType::Float32)
+	else if (m_stream_type == KeepStreamType::Sine && m_mix_sample_type == SampleType::Float32 && m_frequency != 0.0 && m_amplitude != 0.0)
 	{
 		double theta_increment = (m_frequency * (M_PI*2)) / (double)m_sample_rate;
 		for (size_t i = 0; i < frames_available; i++)
