@@ -25,16 +25,14 @@ ULONG GetWinBuildNumber()
 	return build_number;
 }
 
-bool IsBuggyWasapi()
+static bool g_is_buggy_wasapi = []()
 {
 	ULONG build_number = GetWinBuildNumber();
 	// Windows 7 is not buggy. Windows 8-10 leak handles and shared memory. Windows 11 has this bug fixed.
 	bool is_buggy = 7601 < build_number && build_number < 22000;
 	DebugLog("Windows Build Number: %u%s.", build_number, is_buggy ? " (buggy)" : "");
 	return is_buggy;
-}
-
-static bool g_is_buggy_wasapi = IsBuggyWasapi();
+}();
 
 CKeepSession::CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint)
 	: m_soundkeeper(soundkeeper), m_endpoint(endpoint)
