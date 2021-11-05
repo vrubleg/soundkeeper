@@ -30,6 +30,9 @@ ULONG GetSecondsToSleeping()
 	}
 }
 
+// On Windows 11, the TimeRemaining field is always 0 for some reason.
+static bool g_is_buggy_powerinfo = (GetSecondsToSleeping() == 0);
+
 //
 // CSoundKeeper implementation.
 //
@@ -337,9 +340,11 @@ HRESULT CSoundKeeper::Main()
 
 	// Working loop.
 
+	DebugLog("Main loop started.");
+
 	for (bool working = true; working; )
 	{
-		ULONG seconds_to_sleeping = GetSecondsToSleeping();
+		ULONG seconds_to_sleeping = (g_is_buggy_powerinfo ? 0xFFFFFFFF : GetSecondsToSleeping());
 
 		if (seconds_to_sleeping == 0)
 		{
