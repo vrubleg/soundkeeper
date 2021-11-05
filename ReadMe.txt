@@ -1,4 +1,4 @@
-Sound Keeper v1.2.0 [2021/10/30]
+Sound Keeper v1.2.1 [2021/11/05]
 https://veg.by/en/projects/soundkeeper/
 
 Prevents SPDIF/HDMI digital audio playback devices from sleeping. Uses WASAPI, requires Windows 7+.
@@ -32,6 +32,10 @@ Examples:
 - SoundKeeperSineF1000A100.exe generates 1000Hz sine wave with 100% amplitude. It is audible! Use it for testing.
 
 What's new
+
+[2021/11/05] v1.2.1:
+- Sound Keeper works on Windows 11.
+- The code which allowed PC to sleep automatically had to be disabled on Windows 11 because of a bug in the OS.
 
 [2021/10/30] v1.2.0:
 - Sound Keeper doesn't prevent PC from automatic going into sleep mode.

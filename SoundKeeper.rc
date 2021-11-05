@@ -52,8 +52,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2021,10,30,0
- PRODUCTVERSION 1,2,0,0
+ FILEVERSION 2021,11,5,0
+ PRODUCTVERSION 1,2,1,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -70,12 +70,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Vegalogic Software"
             VALUE "FileDescription", "Sound Keeper"
-            VALUE "FileVersion", "2021.10.30"
+            VALUE "FileVersion", "2021.11.05"
             VALUE "InternalName", "SoundKeeper"
             VALUE "LegalCopyright", "(C) 2014-2021 Evgeny Vrublevsky <me@veg.by>"
             VALUE "OriginalFilename", "soundkeeper.exe"
             VALUE "ProductName", "Sound Keeper"
-            VALUE "ProductVersion", "1.2.0"
+            VALUE "ProductVersion", "1.2.1"
         END
     END
     BLOCK "VarFileInfo"
