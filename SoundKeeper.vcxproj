@@ -30,7 +30,7 @@
     <ClInclude Include="Common\NtEvent.hpp" />
     <ClInclude Include="Common\Win32.hpp" />
     <ClInclude Include="CSoundKeeper.hpp" />
-    <ClInclude Include="Resource.h" />
+    <ClInclude Include="Resources.hpp" />
     <ClInclude Include="Common.hpp" />
   </ItemGroup>
   <ItemGroup>

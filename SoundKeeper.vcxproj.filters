@@ -14,7 +14,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Resource.h">
+    <ClInclude Include="Resources.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="CSoundKeeper.hpp">
