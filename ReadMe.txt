@@ -1,5 +1,5 @@
 Sound Keeper v1.2.1 [2021/11/05]
-https://veg.by/en/projects/soundkeeper/
+https://veg.by/projects/soundkeeper/
 
 Prevents SPDIF/HDMI digital audio playback devices from sleeping. Uses WASAPI, requires Windows 7+.
 
