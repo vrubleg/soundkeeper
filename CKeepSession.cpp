@@ -442,7 +442,7 @@ CKeepSession::SampleType CKeepSession::GetSampleType(WAVEFORMATEX* format)
 	if (format->wFormatTag == WAVE_FORMAT_PCM
 		|| format->wFormatTag == WAVE_FORMAT_EXTENSIBLE && reinterpret_cast<WAVEFORMATEXTENSIBLE*>(format)->SubFormat == KSDATAFORMAT_SUBTYPE_PCM)
 	{
-		DebugLog("Format: PCM %d-bit integer.", format->wBitsPerSample);
+		DebugLog("Format: PCM %dch %dHz %d-bit integer.", format->nChannels, format->nSamplesPerSec, format->wBitsPerSample);
 		if (format->wBitsPerSample == 16)
 		{
 			result = SampleType::Int16;
@@ -463,7 +463,7 @@ CKeepSession::SampleType CKeepSession::GetSampleType(WAVEFORMATEX* format)
 	else if (format->wFormatTag == WAVE_FORMAT_IEEE_FLOAT
 		|| (format->wFormatTag == WAVE_FORMAT_EXTENSIBLE && reinterpret_cast<WAVEFORMATEXTENSIBLE*>(format)->SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT))
 	{
-		DebugLog("Format: PCM %d-bit float.", format->wBitsPerSample);
+		DebugLog("Format: PCM %dch %dHz %d-bit float.", format->nChannels, format->nSamplesPerSec, format->wBitsPerSample);
 		if (format->wBitsPerSample == 32)
 		{
 			result = SampleType::Float32;
