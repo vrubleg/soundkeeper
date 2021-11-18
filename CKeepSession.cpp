@@ -293,37 +293,39 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 		hr = m_endpoint->OpenPropertyStore(STGM_READ, &properties);
 		if (SUCCEEDED(hr))
 		{
-			PROPVARIANT out_format;
-			PropVariantInit(&out_format);
-			hr = properties->GetValue(PKEY_AudioEngine_DeviceFormat, &out_format);
-			if (SUCCEEDED(hr) && out_format.vt == VT_BLOB)
+			PROPVARIANT out_format_prop;
+			PropVariantInit(&out_format_prop);
+			hr = properties->GetValue(PKEY_AudioEngine_DeviceFormat, &out_format_prop);
+			if (SUCCEEDED(hr) && out_format_prop.vt == VT_BLOB)
 			{
-				m_out_sample_type = GetSampleType((WAVEFORMATEX*)out_format.blob.pBlobData);
+				auto out_format = reinterpret_cast<WAVEFORMATEX*>(out_format_prop.blob.pBlobData);
+				m_out_sample_type = GetSampleType(out_format);
 			}
-			PropVariantClear(&out_format);
+			PropVariantClear(&out_format_prop);
 			SafeRelease(properties);
 		}
 	}
 
-	//
-	// Get the mixer format. This is usually float32.
-	WAVEFORMATEX* mix_format = nullptr;
-	hr = m_audio_client->GetMixFormat(&mix_format);
-	if (FAILED(hr))
 	{
-		DebugLogError("Unable to get mix format on audio client: 0x%08X.", hr);
-		goto free;
+		// Get the mixer format. This is usually float32.
+		WAVEFORMATEX* mix_format = nullptr;
+		hr = m_audio_client->GetMixFormat(&mix_format);
+		if (FAILED(hr))
+		{
+			DebugLogError("Unable to get mix format on audio client: 0x%08X.", hr);
+			goto free;
+		}
+
+		m_mix_sample_type = GetSampleType(mix_format);
+		m_frame_size = mix_format->nBlockAlign;
+		m_sample_rate = mix_format->nSamplesPerSec;
+		m_channels_count = mix_format->nChannels;
+
+		// Initialize WASAPI in timer driven mode.
+		hr = m_audio_client->Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_NOPERSIST, static_cast<UINT64>(m_buffer_size_in_ms) * 10000, 0, mix_format, NULL);
+		CoTaskMemFree(mix_format);
 	}
 
-	m_mix_sample_type = GetSampleType(mix_format);
-	m_frame_size = mix_format->nBlockAlign;
-	m_sample_rate = mix_format->nSamplesPerSec;
-	m_channels_count = mix_format->nChannels;
-
-	//
-	// Initialize WASAPI in timer driven mode.
-	hr = m_audio_client->Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_NOPERSIST, static_cast<UINT64>(m_buffer_size_in_ms) * 10000, 0, mix_format, NULL);
-	CoTaskMemFree(mix_format); mix_format = nullptr;
 	if (FAILED(hr))
 	{
 		if (hr == AUDCLNT_E_DEVICE_IN_USE)
@@ -593,6 +595,10 @@ CKeepSession::RenderingMode CKeepSession::WaitExclusive()
 	exit_mode = RenderingMode::Invalid;
 
 	IAudioSessionManager2* as_manager = nullptr;
+	IAudioSessionEnumerator* session_list = nullptr;
+	IAudioSessionControl* session_control = nullptr;
+	int session_count = 0;
+
 	hr = m_endpoint->Activate(__uuidof(IAudioSessionManager2), CLSCTX_INPROC_SERVER, NULL, reinterpret_cast<void**>(&as_manager));
 	if (FAILED(hr))
 	{
@@ -600,7 +606,6 @@ CKeepSession::RenderingMode CKeepSession::WaitExclusive()
 		goto free;
 	}
 
-	IAudioSessionEnumerator* session_list = NULL;
 	hr = as_manager->GetSessionEnumerator(&session_list);
 	if (FAILED(hr))
 	{
@@ -608,7 +613,6 @@ CKeepSession::RenderingMode CKeepSession::WaitExclusive()
 		goto free;
 	}
 
-	int session_count = 0;
 	hr = session_list->GetCount(&session_count);
 	if (FAILED(hr))
 	{
@@ -618,8 +622,6 @@ CKeepSession::RenderingMode CKeepSession::WaitExclusive()
 
 	// Retry on any errors below.
 	exit_mode = RenderingMode::Retry;
-
-	IAudioSessionControl* session_control = nullptr;
 
 	// Find active session on this device.
 	for (int index = 0 ; index < session_count ; index++)
