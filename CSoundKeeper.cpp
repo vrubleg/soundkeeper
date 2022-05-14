@@ -11,7 +11,10 @@
 #define NT_SUCCESS(Status) ((NTSTATUS)(Status) >= 0)
 #endif
 
-ULONG GetSecondsToSleeping()
+// On Windows 7-10, it outputs -1 when auto sleep mode is disabled.
+// On Windows 10, it may output negative values (-30, -60, ...) when sleeping was postponed not by user input.
+// On Windows 11, the TimeRemaining field is always 0 for some reason.
+LONG GetSecondsToSleeping()
 {
 	struct SYSTEM_POWER_INFORMATION {
 		ULONG MaxIdlenessAllowed;
@@ -22,25 +25,18 @@ ULONG GetSecondsToSleeping()
 
 	if (!NT_SUCCESS(CallNtPowerInformation(SystemPowerInformation, NULL, 0, &spi, sizeof(spi))))
 	{
-		spi.TimeRemaining = 0xFFFFFFFF;
+		DebugLogError("Cannot get remaining time to sleeping.");
+		return 0;
 	}
 
 #ifdef _DEBUG
 
-	static ULONG last_result = 0xFFFFFFF0;
+	static LONG last_result = 0x80000000;
 
 	if (last_result != spi.TimeRemaining)
 	{
 		last_result = spi.TimeRemaining;
-
-		if (spi.TimeRemaining == 0xFFFFFFFF)
-		{
-			DebugLogWarning("Cannot get remaining time to sleeping.");
-		}
-		else
-		{
-			DebugLog("Remaining time to sleeping: %lu seconds.", spi.TimeRemaining);
-		}
+		DebugLog("Remaining time to sleeping: %d seconds.", spi.TimeRemaining);
 	}
 
 #endif
@@ -48,7 +44,6 @@ ULONG GetSecondsToSleeping()
 	return spi.TimeRemaining;
 }
 
-// On Windows 11, the TimeRemaining field is always 0 for some reason.
 static bool g_is_buggy_powerinfo = []()
 {
 	bool result = (GetSecondsToSleeping() == 0);
@@ -370,9 +365,9 @@ HRESULT CSoundKeeper::Main()
 
 	for (bool working = true; working; )
 	{
-		ULONG seconds_to_sleeping = (g_is_buggy_powerinfo ? 0xFFFFFFFF : GetSecondsToSleeping());
+		LONG seconds_to_sleeping = (g_is_buggy_powerinfo ? -1 : GetSecondsToSleeping());
 
-		if (seconds_to_sleeping == 0)
+		if (seconds_to_sleeping != -1 && seconds_to_sleeping <= 0)
 		{
 			if (m_is_started)
 			{
@@ -394,7 +389,7 @@ HRESULT CSoundKeeper::Main()
 			}
 		}
 
-		DWORD timeout = (seconds_to_sleeping <= 15 || m_is_retry_required) ? 500 : 5000;
+		DWORD timeout = (seconds_to_sleeping != -1 && seconds_to_sleeping <= 30 || m_is_retry_required) ? 500 : 5000;
 
 		switch (WaitForAny({ m_do_retry, m_do_restart, m_do_shutdown, global_stop_event }, timeout))
 		{
