@@ -15,12 +15,7 @@ template <class T> void SafeRelease(T*& com_obj_ptr)
 	}
 }
 
-#ifdef NDEBUG
-
-#define DebugLog(...)
-#define DebugLogError(...)
-
-#else
+#ifdef _DEBUG
 
 inline void DebugLog(const char * format, ...)
 {
@@ -36,6 +31,13 @@ inline void DebugLog(const char * format, ...)
 	printf("\n");
 }
 
+#define DebugLogWarning(...) DebugLog("WARNING: " __VA_ARGS__)
 #define DebugLogError(...) DebugLog("ERROR: " __VA_ARGS__)
+
+#else
+
+#define DebugLog(...)
+#define DebugLogWarning(...)
+#define DebugLogError(...)
 
 #endif

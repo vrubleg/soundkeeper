@@ -20,14 +20,32 @@ ULONG GetSecondsToSleeping()
 		UCHAR CoolingMode;
 	} spi = {0};
 
-	if (NT_SUCCESS(CallNtPowerInformation(SystemPowerInformation, NULL, 0, &spi, sizeof(spi))))
+	if (!NT_SUCCESS(CallNtPowerInformation(SystemPowerInformation, NULL, 0, &spi, sizeof(spi))))
 	{
-		return spi.TimeRemaining;
+		spi.TimeRemaining = 0xFFFFFFFF;
 	}
-	else
+
+#ifdef _DEBUG
+
+	static ULONG last_result = 0xFFFFFFF0;
+
+	if (last_result != spi.TimeRemaining)
 	{
-		return 0xFFFFFFFF;
+		last_result = spi.TimeRemaining;
+
+		if (spi.TimeRemaining == 0xFFFFFFFF)
+		{
+			DebugLogWarning("Cannot get remaining time to sleeping.");
+		}
+		else
+		{
+			DebugLog("Remaining time to sleeping: %lu seconds.", spi.TimeRemaining);
+		}
 	}
+
+#endif
+
+	return spi.TimeRemaining;
 }
 
 // On Windows 11, the TimeRemaining field is always 0 for some reason.
@@ -36,7 +54,7 @@ static bool g_is_buggy_powerinfo = []()
 	bool result = (GetSecondsToSleeping() == 0);
 	if (result)
 	{
-		DebugLog("Warning! Buggy power information.");
+		DebugLogWarning("Buggy power information.");
 	}
 	return result;
 }();
