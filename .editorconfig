@@ -8,3 +8,6 @@ indent_size = 4
 trim_trailing_whitespace = true
 insert_final_newline = true
 guidelines = 80, 120
+
+[*.{sln,vcxproj,filters,user}]
+insert_final_newline = unset
