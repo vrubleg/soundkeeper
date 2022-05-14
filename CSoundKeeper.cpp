@@ -108,18 +108,21 @@ HRESULT STDMETHODCALLTYPE CSoundKeeper::OnDefaultDeviceChanged(EDataFlow flow, E
 
 HRESULT STDMETHODCALLTYPE CSoundKeeper::OnDeviceAdded(LPCWSTR pwstrDeviceId)
 {
+	DebugLog("Device '%S' was added.", pwstrDeviceId);
 	FireRestart();
 	return S_OK;
 };
 
 HRESULT STDMETHODCALLTYPE CSoundKeeper::OnDeviceRemoved(LPCWSTR pwstrDeviceId)
 {
+	DebugLog("Device '%S' was removed.", pwstrDeviceId);
 	FireRestart();
 	return S_OK;
 }
 
 HRESULT STDMETHODCALLTYPE CSoundKeeper::OnDeviceStateChanged(LPCWSTR pwstrDeviceId, DWORD dwNewState)
 {
+	DebugLog("Device '%S' new state: %d.", pwstrDeviceId, dwNewState);
 	FireRestart();
 	return S_OK;
 }

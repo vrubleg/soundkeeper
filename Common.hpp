@@ -19,6 +19,9 @@ template <class T> void SafeRelease(T*& com_obj_ptr)
 
 inline void DebugLog(const char * format, ...)
 {
+	static CriticalSection mutex;
+	ScopedLock lock(mutex);
+
 	SYSTEMTIME now = {0};
 	GetSystemTime(&now);
 	printf("%02d:%02d:%02d.%03d", now.wHour, now.wMinute, now.wSecond, now.wMilliseconds);

@@ -165,6 +165,26 @@ DWORD APIENTRY CKeepSession::StartRenderingThread(LPVOID context)
 #endif
 
 	CKeepSession* renderer = static_cast<CKeepSession*>(context);
+
+#ifdef _DEBUG
+
+	LPWSTR devid = nullptr;
+
+	if (HRESULT hr = renderer->m_endpoint->GetId(&devid); SUCCEEDED(hr))
+	{
+		DWORD state = 0;
+		renderer->m_endpoint->GetState(&state);
+		DebugLog("Device: '%S' (state: %d).", devid, state);
+		CoTaskMemFree(devid);
+		devid = nullptr;
+	}
+	else
+	{
+		DebugLogError("Unable to get device ID: 0x%08X.", hr);
+	}
+
+#endif
+
 	DWORD result = renderer->RenderingThread();
 
 #ifdef ENABLE_MMCSS
