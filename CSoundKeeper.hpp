@@ -12,7 +12,8 @@ class CSoundKeeper : public IMMNotificationClient
 {
 protected:
 
-	LONG m_ref_count = 1;
+	LONG                    m_ref_count = 1;
+	CriticalSection         m_mutex;
 
 	~CSoundKeeper();
 
@@ -28,11 +29,11 @@ public:
 
 	// Callback methods for device-event notifications.
 
-	HRESULT STDMETHODCALLTYPE OnDefaultDeviceChanged(EDataFlow flow, ERole role, LPCWSTR pwstrDeviceId);
-	HRESULT STDMETHODCALLTYPE OnDeviceAdded(LPCWSTR pwstrDeviceId);
-	HRESULT STDMETHODCALLTYPE OnDeviceRemoved(LPCWSTR pwstrDeviceId);
-	HRESULT STDMETHODCALLTYPE OnDeviceStateChanged(LPCWSTR pwstrDeviceId, DWORD dwNewState);
-	HRESULT STDMETHODCALLTYPE OnPropertyValueChanged(LPCWSTR pwstrDeviceId, const PROPERTYKEY key);
+	HRESULT STDMETHODCALLTYPE OnDefaultDeviceChanged(EDataFlow flow, ERole role, LPCWSTR device_id);
+	HRESULT STDMETHODCALLTYPE OnDeviceAdded(LPCWSTR device_id);
+	HRESULT STDMETHODCALLTYPE OnDeviceRemoved(LPCWSTR device_id);
+	HRESULT STDMETHODCALLTYPE OnDeviceStateChanged(LPCWSTR device_id, DWORD new_state);
+	HRESULT STDMETHODCALLTYPE OnPropertyValueChanged(LPCWSTR device_id, const PROPERTYKEY key);
 
 protected:
 
@@ -56,6 +57,7 @@ protected:
 	HRESULT Stop();
 	HRESULT Restart();
 	bool Retry();
+	CKeepSession* FindSession(LPCWSTR device_id);
 
 public:
 

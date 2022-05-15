@@ -24,6 +24,7 @@ protected:
 
 	CSoundKeeper*           m_soundkeeper = nullptr;
 	IMMDevice*              m_endpoint = nullptr;
+	LPWSTR                  m_device_id = nullptr;
 	KeepStreamType          m_stream_type = KeepStreamType::Zero;
 
 	HANDLE                  m_render_thread = NULL;
@@ -72,6 +73,8 @@ public:
 	void Stop();
 	bool IsStarted() const { return m_is_started; }
 	bool IsValid() const { return m_curr_mode != RenderingMode::Invalid; };
+	LPCWSTR GetDeviceId() { return m_device_id; }
+	DWORD GetDeviceState() { DWORD state = 0; m_endpoint->GetState(&state); return state; }
 
 	void SetStreamType(KeepStreamType stream_type) { m_stream_type = stream_type; }
 	KeepStreamType GetStreamType() { return m_stream_type; }

@@ -15,6 +15,18 @@ template <class T> void SafeRelease(T*& com_obj_ptr)
 	}
 }
 
+inline bool StringEquals(const char *l, const char *r)
+{
+	for (; *l == *r && *l; l++, r++);
+	return (*(unsigned char *)l - *(unsigned char *)r) == 0;
+}
+
+inline bool StringEquals(const wchar_t *l, const wchar_t *r)
+{
+	for (; *l == *r && *l; l++, r++);
+	return (*l - *r) == 0;
+}
+
 #ifdef _DEBUG
 
 inline void DebugLog(const char * format, ...)

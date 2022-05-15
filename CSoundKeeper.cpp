@@ -100,40 +100,54 @@ HRESULT STDMETHODCALLTYPE CSoundKeeper::QueryInterface(REFIID riid, VOID **ppvIn
 
 // Callback methods for device-event notifications.
 
-HRESULT STDMETHODCALLTYPE CSoundKeeper::OnDefaultDeviceChanged(EDataFlow flow, ERole role, LPCWSTR pwstrDeviceId)
+HRESULT STDMETHODCALLTYPE CSoundKeeper::OnDefaultDeviceChanged(EDataFlow flow, ERole role, LPCWSTR device_id)
 {
-	if (m_cfg_device_type == KeepDeviceType::Primary) { FireRestart(); }
+	DebugLog("Device '%S' is default for flow %d and role %d.", device_id ? device_id : L"", flow, role);
+	if (m_cfg_device_type == KeepDeviceType::Primary && flow == eRender && role == eConsole)
+	{
+		this->FireRestart();
+	}
 	return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE CSoundKeeper::OnDeviceAdded(LPCWSTR pwstrDeviceId)
+HRESULT STDMETHODCALLTYPE CSoundKeeper::OnDeviceAdded(LPCWSTR device_id)
 {
-	DebugLog("Device '%S' was added.", pwstrDeviceId);
-	FireRestart();
+	DebugLog("Device '%S' was added.", device_id);
+	this->FireRestart();
 	return S_OK;
 };
 
-HRESULT STDMETHODCALLTYPE CSoundKeeper::OnDeviceRemoved(LPCWSTR pwstrDeviceId)
+HRESULT STDMETHODCALLTYPE CSoundKeeper::OnDeviceRemoved(LPCWSTR device_id)
 {
-	DebugLog("Device '%S' was removed.", pwstrDeviceId);
-	FireRestart();
+	ScopedLock lock(m_mutex);
+	DebugLog("Device '%S' was removed.", device_id);
+	if (this->FindSession(device_id))
+	{
+		this->FireRestart();
+	}
 	return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE CSoundKeeper::OnDeviceStateChanged(LPCWSTR pwstrDeviceId, DWORD dwNewState)
+HRESULT STDMETHODCALLTYPE CSoundKeeper::OnDeviceStateChanged(LPCWSTR device_id, DWORD new_state)
 {
-	DebugLog("Device '%S' new state: %d.", pwstrDeviceId, dwNewState);
-	FireRestart();
+	ScopedLock lock(m_mutex);
+	DebugLog("Device '%S' new state: %d.", device_id, new_state);
+	if (new_state == DEVICE_STATE_ACTIVE || this->FindSession(device_id))
+	{
+		this->FireRestart();
+	}
 	return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE CSoundKeeper::OnPropertyValueChanged(LPCWSTR pwstrDeviceId, const PROPERTYKEY key)
+HRESULT STDMETHODCALLTYPE CSoundKeeper::OnPropertyValueChanged(LPCWSTR device_id, const PROPERTYKEY key)
 {
 	return S_OK;
 }
 
 HRESULT CSoundKeeper::Start()
 {
+	ScopedLock lock(m_mutex);
+
 	if (m_is_started) return S_OK;
 	HRESULT hr = S_OK;
 	m_is_retry_required = false;
@@ -235,6 +249,8 @@ exit:
 
 bool CSoundKeeper::Retry()
 {
+	ScopedLock lock(m_mutex);
+
 	if (!m_is_retry_required) return true;
 	m_is_retry_required = false;
 
@@ -257,6 +273,8 @@ bool CSoundKeeper::Retry()
 
 HRESULT CSoundKeeper::Stop()
 {
+	ScopedLock lock(m_mutex);
+
 	if (!m_is_started) return S_OK;
 
 	if (m_sessions != nullptr)
@@ -281,6 +299,8 @@ HRESULT CSoundKeeper::Stop()
 
 HRESULT CSoundKeeper::Restart()
 {
+	ScopedLock lock(m_mutex);
+
 	HRESULT hr = S_OK;
 
 	hr = this->Stop();
@@ -298,18 +318,41 @@ HRESULT CSoundKeeper::Restart()
 	return S_OK;
 }
 
+CKeepSession* CSoundKeeper::FindSession(LPCWSTR device_id)
+{
+	ScopedLock lock(m_mutex);
+
+	for (UINT i = 0; i < m_sessions_count; i++)
+	{
+		if (!m_sessions[i]->IsValid())
+		{
+			continue;
+		}
+
+		if (StringEquals(m_sessions[i]->GetDeviceId(), device_id))
+		{
+			return m_sessions[i];
+		}
+	}
+
+	return nullptr;
+}
+
 void CSoundKeeper::FireRetry()
 {
+	DebugLog("Fire Retry!");
 	m_do_retry = true;
 }
 
 void CSoundKeeper::FireRestart()
 {
+	DebugLog("Fire Restart!");
 	m_do_restart = true;
 }
 
 void CSoundKeeper::FireShutdown()
 {
+	DebugLog("Fire Shutdown!");
 	m_do_shutdown = true;
 }
 

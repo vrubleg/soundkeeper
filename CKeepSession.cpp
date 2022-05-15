@@ -39,11 +39,18 @@ CKeepSession::CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint)
 {
 	m_endpoint->AddRef();
 	m_soundkeeper->AddRef();
+
+	if (HRESULT hr = m_endpoint->GetId(&m_device_id); FAILED(hr))
+	{
+		DebugLogError("Unable to get device ID: 0x%08X.", hr);
+		m_curr_mode = RenderingMode::Invalid;
+	}
 }
 
 CKeepSession::~CKeepSession(void)
 {
 	this->Stop();
+	if (m_device_id) { CoTaskMemFree(m_device_id); }
 	SafeRelease(m_endpoint);
 	SafeRelease(m_soundkeeper);
 }
@@ -146,7 +153,9 @@ void CKeepSession::Stop()
 
 DWORD APIENTRY CKeepSession::StartRenderingThread(LPVOID context)
 {
-	DebugLog("Rendering thread started.");
+	CKeepSession* renderer = static_cast<CKeepSession*>(context);
+
+	DebugLog("Rendering thread started. Device ID: '%S'.", renderer->GetDeviceId());
 
 	if (HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE); FAILED(hr))
 	{
@@ -162,27 +171,6 @@ DWORD APIENTRY CKeepSession::StartRenderingThread(LPVOID context)
 	{
 		DebugLogError("Unable to enable MMCSS on rendering thread: 0x%08X.", GetLastError());
 	}
-#endif
-
-	CKeepSession* renderer = static_cast<CKeepSession*>(context);
-
-#ifdef _DEBUG
-
-	LPWSTR devid = nullptr;
-
-	if (HRESULT hr = renderer->m_endpoint->GetId(&devid); SUCCEEDED(hr))
-	{
-		DWORD state = 0;
-		renderer->m_endpoint->GetState(&state);
-		DebugLog("Device: '%S' (state: %d).", devid, state);
-		CoTaskMemFree(devid);
-		devid = nullptr;
-	}
-	else
-	{
-		DebugLogError("Unable to get device ID: 0x%08X.", hr);
-	}
-
 #endif
 
 	DWORD result = renderer->RenderingThread();
@@ -232,7 +220,7 @@ DWORD CKeepSession::RenderingThread()
 		{
 		case RenderingMode::Render:
 
-			DebugLog("Render.");
+			DebugLog("Render. Device State: %d.", this->GetDeviceState());
 			m_curr_mode = this->Rendering();
 			if (g_is_buggy_wasapi && m_curr_mode == RenderingMode::WaitExclusive)
 			{
@@ -309,6 +297,7 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 	//
 	// Get the output format. This may be int16 or int24 depending on the shared mode used.
 	{
+		DebugLog("Getting output format...");
 		IPropertyStore* properties = nullptr;
 		hr = m_endpoint->OpenPropertyStore(STGM_READ, &properties);
 		if (SUCCEEDED(hr))
@@ -321,18 +310,27 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 				auto out_format = reinterpret_cast<WAVEFORMATEX*>(out_format_prop.blob.pBlobData);
 				m_out_sample_type = GetSampleType(out_format);
 			}
+			else
+			{
+				DebugLogWarning("Unable to get output format of the device: 0x%08X.", hr);
+			}
 			PropVariantClear(&out_format_prop);
 			SafeRelease(properties);
+		}
+		else
+		{
+			DebugLogWarning("Unable to get property store of the device: 0x%08X.", hr);
 		}
 	}
 
 	{
 		// Get the mixer format. This is usually float32.
+		DebugLog("Getting mixing format...");
 		WAVEFORMATEX* mix_format = nullptr;
 		hr = m_audio_client->GetMixFormat(&mix_format);
 		if (FAILED(hr))
 		{
-			DebugLogError("Unable to get mix format on audio client: 0x%08X.", hr);
+			DebugLogError("Unable to get mixing format on audio client: 0x%08X.", hr);
 			goto free;
 		}
 
@@ -394,6 +392,8 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 	// Rendering Loop
 	// -------------------------------------------------------------------------
 
+	DebugLog("Starting rendering...");
+
 	// We want to pre-roll one buffer of data into the pipeline. That way the audio engine won't glitch on startup.  
 	hr = this->Render();
 	if (FAILED(hr))
@@ -408,6 +408,8 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 		DebugLogError("Unable to start render client: 0x%08X.", hr);
 		goto free;
 	}
+
+	DebugLog("Rendering loop started.");
 
 	m_play_attempts = 0;
 
@@ -437,6 +439,8 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 	}
 
 stop:
+
+	DebugLog("Stopping rendering...");
 
 	m_audio_client->Stop();
 
@@ -497,7 +501,7 @@ CKeepSession::SampleType CKeepSession::GetSampleType(WAVEFORMATEX* format)
 	}
 	else
 	{
-		DebugLogError("Unrecognized sample format.");
+		DebugLogError("Unrecognized sample format: 0x%04X.", format->wFormatTag);
 	}
 	return result;
 }
