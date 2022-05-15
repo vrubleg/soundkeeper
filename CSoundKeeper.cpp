@@ -340,7 +340,7 @@ CKeepSession* CSoundKeeper::FindSession(LPCWSTR device_id)
 
 	for (UINT i = 0; i < m_sessions_count; i++)
 	{
-		if (!m_sessions[i]->IsValid())
+		if (m_sessions[i] == nullptr || !m_sessions[i]->IsValid())
 		{
 			continue;
 		}
