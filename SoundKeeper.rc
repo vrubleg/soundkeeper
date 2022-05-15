@@ -26,18 +26,18 @@ LANGUAGE LANG_ENGLISH, SUBLANG_NEUTRAL
 // TEXTINCLUDE
 //
 
-1 TEXTINCLUDE
+1 TEXTINCLUDE 
 BEGIN
     "Resources.hpp\0"
 END
 
-2 TEXTINCLUDE
+2 TEXTINCLUDE 
 BEGIN
     "#include ""winres.h""\r\n"
     "\0"
 END
 
-3 TEXTINCLUDE
+3 TEXTINCLUDE 
 BEGIN
     "\r\n"
     "\0"
@@ -52,8 +52,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2021,11,5,0
- PRODUCTVERSION 1,2,1,0
+ FILEVERSION 2022,5,15,0
+ PRODUCTVERSION 1,2,2,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -70,12 +70,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Vegalogic Software"
             VALUE "FileDescription", "Sound Keeper"
-            VALUE "FileVersion", "2021.11.05"
+            VALUE "FileVersion", "2022.05.15"
             VALUE "InternalName", "SoundKeeper"
-            VALUE "LegalCopyright", "(C) 2014-2021 Evgeny Vrublevsky <me@veg.by>"
+            VALUE "LegalCopyright", "(C) 2014-2022 Evgeny Vrublevsky <me@veg.by>"
             VALUE "OriginalFilename", "soundkeeper.exe"
             VALUE "ProductName", "Sound Keeper"
-            VALUE "ProductVersion", "1.2.1"
+            VALUE "ProductVersion", "1.2.2"
         END
     END
     BLOCK "VarFileInfo"
