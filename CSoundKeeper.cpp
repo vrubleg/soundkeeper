@@ -160,9 +160,18 @@ HRESULT CSoundKeeper::Start()
 		hr = m_dev_enumerator->GetDefaultAudioEndpoint(eRender, eConsole, &device);
 		if (FAILED(hr))
 		{
-			DebugLogError("Unable to retrieve default render device: 0x%08X.", hr);
-			goto exit;
+			if (hr == E_NOTFOUND)
+			{
+				DebugLogWarning("No primary device found. Working as a dummy...");
+				goto exit_started;
+			}
+			else
+			{
+				DebugLogError("Unable to retrieve default render device: 0x%08X.", hr);
+				goto exit;
+			}
 		}
+
 		m_sessions_count = 1;
 		m_sessions = new CKeepSession*[m_sessions_count]();
 
@@ -237,7 +246,14 @@ HRESULT CSoundKeeper::Start()
 
 			SafeRelease(device);
 		}
+
+		if (m_sessions_count == 0)
+		{
+			DebugLogWarning("No suitable devices found. Working as a dummy...");
+		}
 	}
+
+exit_started:
 
 	m_is_started = true;
 
