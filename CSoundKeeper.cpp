@@ -405,9 +405,17 @@ HRESULT CSoundKeeper::Main()
 		}
 	}
 
+	HRESULT hr = S_OK;
+
+	if (m_cfg_device_type == KeepDeviceType::None)
+	{
+		DebugLog("Self kill mode is enabled. Exit.");
+		goto exit;
+	}
+
 	// Initialization.
 
-	HRESULT hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&m_dev_enumerator));
+	hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&m_dev_enumerator));
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to instantiate device enumerator: 0x%08X.", hr);

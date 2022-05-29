@@ -15,6 +15,7 @@ void ParseMode(CSoundKeeper* keeper, const char* args)
 
 	if (strstr(buf, "all"))     { keeper->SetDeviceType(KeepDeviceType::All); }
 	if (strstr(buf, "digital")) { keeper->SetDeviceType(KeepDeviceType::Digital); }
+	if (strstr(buf, "kill"))    { keeper->SetDeviceType(KeepDeviceType::None); }
 
 	if (strstr(buf, "zero") || strstr(buf, "null"))
 	{
@@ -114,6 +115,7 @@ __forceinline int Main()
 
 	switch (keeper->GetDeviceType())
 	{
+		case KeepDeviceType::None:      DebugLog("Device Type: None."); break;
 		case KeepDeviceType::Primary:   DebugLog("Device Type: Primary."); break;
 		case KeepDeviceType::All:       DebugLog("Device Type: All."); break;
 		case KeepDeviceType::Analog:    DebugLog("Device Type: Analog."); break;

@@ -57,6 +57,9 @@ powercfg /REQUESTSOVERRIDE DRIVER "High Definition Audio Device (HDAUDIO\FUNC_01
 
 What's new
 
+[2022/XX/XX] v1.X.X:
+- Self kill command is added. Run "soundkeeper kill" to stop running Sound Keeper instance.
+
 [2022/05/15] v1.2.2:
 - Work as a dummy when no suitable devices found.
 - Sound Keeper shoudn't prevent PC from automatic going into sleep mode on Windows 10.
@@ -70,7 +73,7 @@ What's new
 - New "Sine" stream type which can be useful for analog outputs or too smart digital outputs.
 - When a user starts a new Sound Keeper instance, the previous one is stopped automatically.
 - "Fluctuate" stream type considers sample format of the output (16/24/32-bit integer, and 32-bit float).
-- Command line parameters are supported. Example: "SoundKeeper64.exe sine -f 1000 -a 10".
+- Command line parameters are supported. Example: "soundkeeper sine -f 1000 -a 10".
 - The workaround for the Audio Service memory leak is enabled on affected Windows versions only (8, 8.1, and 10).
 
 [2020/07/18] v1.1.0:

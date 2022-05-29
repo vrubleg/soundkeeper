@@ -6,7 +6,7 @@
 class CSoundKeeper;
 #include "CKeepSession.hpp"
 
-enum class KeepDeviceType { Primary, Digital, Analog, All };
+enum class KeepDeviceType { None, Primary, Digital, Analog, All };
 
 class CSoundKeeper : public IMMNotificationClient
 {
