@@ -15,6 +15,7 @@ Supported behavior modes:
 - "Primary" keeps on primary audio output only. Used by default.
 - "All" keeps on all enabled audio outputs.
 - "Digital" keeps on all enabled digital audio outputs (like it was in Sound Keeper v1.0).
+- "Analog" keeps on all enabled analog audio outputs.
 
 Supported stream types:
 - "Zero" plays stream of zeroes (like it was in Sound Keeper v1.0). It may be not enough for some hardware.
@@ -59,6 +60,7 @@ What's new
 
 [2022/XX/XX] v1.X.X:
 - Self kill command is added. Run "soundkeeper kill" to stop running Sound Keeper instance.
+- "Analog" switch was added. It works as the opposite of "Digital".
 
 [2022/05/15] v1.2.2:
 - Work as a dummy when no suitable devices found.

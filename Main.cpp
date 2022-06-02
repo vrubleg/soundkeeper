@@ -14,6 +14,7 @@ void ParseMode(CSoundKeeper* keeper, const char* args)
 	_strlwr(buf);
 
 	if (strstr(buf, "all"))     { keeper->SetDeviceType(KeepDeviceType::All); }
+	if (strstr(buf, "analog"))  { keeper->SetDeviceType(KeepDeviceType::Analog); }
 	if (strstr(buf, "digital")) { keeper->SetDeviceType(KeepDeviceType::Digital); }
 	if (strstr(buf, "kill"))    { keeper->SetDeviceType(KeepDeviceType::None); }
 
