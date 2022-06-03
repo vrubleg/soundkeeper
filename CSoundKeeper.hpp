@@ -49,9 +49,12 @@ protected:
 	KeepDeviceType          m_cfg_device_type = KeepDeviceType::Primary;
 	KeepStreamType          m_cfg_stream_type = KeepStreamType::Zero;
 
-	// Members for the KeepStreamType::Sine.
+	// Configuration fields.
 	double                  m_cfg_frequency = 0.0;
 	double                  m_cfg_amplitude = 0.0;
+	double                  m_cfg_play_seconds = 0.0;
+	double                  m_cfg_wait_seconds = 0.0;
+	double                  m_cfg_fade_seconds = 0.0;
 
 	HRESULT Start();
 	HRESULT Stop();
@@ -63,14 +66,20 @@ public:
 
 	void SetDeviceType(KeepDeviceType device_type) { m_cfg_device_type = device_type; }
 	void SetStreamType(KeepStreamType stream_type) { m_cfg_stream_type = stream_type; }
-	KeepDeviceType GetDeviceType() { return m_cfg_device_type; }
-	KeepStreamType GetStreamType() { return m_cfg_stream_type; }
+	KeepDeviceType GetDeviceType() const { return m_cfg_device_type; }
+	KeepStreamType GetStreamType() const { return m_cfg_stream_type; }
 
-	// Methods for the KeepStreamType::Sine.
+	// Configuration methods.
 	void SetFrequency(double frequency) { m_cfg_frequency = frequency; }
 	void SetAmplitude(double amplitude) { m_cfg_amplitude = amplitude; }
-	double GetFrequency() { return m_cfg_frequency; }
-	double GetAmplitude() { return m_cfg_amplitude; }
+	void SetPeriodicPlaying(double seconds) { m_cfg_play_seconds = seconds; }
+	void SetPeriodicWaiting(double seconds) { m_cfg_wait_seconds = seconds; }
+	void SetFading(double seconds) { m_cfg_fade_seconds = seconds; }
+	double GetFrequency() const { return m_cfg_frequency; }
+	double GetAmplitude() const { return m_cfg_amplitude; }
+	double GetPeriodicPlaying() const { return m_cfg_play_seconds; }
+	double GetPeriodicWaiting() const { return m_cfg_wait_seconds; }
+	double GetFading() const { return m_cfg_fade_seconds; }
 
 	void FireRetry();
 	void FireRestart();

@@ -23,8 +23,9 @@ Supported stream types:
 - "Sine" plays 1Hz sine wave at 1% volume. The frequency and amplitude can be changed. Useful for analog outputs.
 
 Sine stream parameters:
-There are two parameters: F (frequency) and A (amplitude). The value goes right after the parameter character.
+There are a few parameters: F (frequency) and A (amplitude). The value goes right after the parameter character.
 Low frequencies (below 20Hz) and high frequencies (above 20000Hz) with low amplitude (up to 10%) are inaudible.
+It is possible to enable periodic sound. L is length in msec, W is waiting time, T is transition or fading time.
 
 Examples:
 - SoundKeeperZeroAll.exe generates zero amplitude stream on all enabled audio outputs.
@@ -59,6 +60,7 @@ powercfg /REQUESTSOVERRIDE DRIVER "High Definition Audio Device (HDAUDIO\FUNC_01
 What's new
 
 [2022/XX/XX] v1.X.X:
+- Periodic playing of a sine sound with optional fading.
 - Self kill command is added. Run "soundkeeper kill" to stop running Sound Keeper instance.
 - "Analog" switch was added. It works as the opposite of "Digital".
 

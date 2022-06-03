@@ -179,6 +179,9 @@ HRESULT CSoundKeeper::Start()
 		m_sessions[0]->SetStreamType(m_cfg_stream_type);
 		m_sessions[0]->SetFrequency(m_cfg_frequency);
 		m_sessions[0]->SetAmplitude(m_cfg_amplitude);
+		m_sessions[0]->SetPeriodicPlaying(m_cfg_play_seconds);
+		m_sessions[0]->SetPeriodicWaiting(m_cfg_wait_seconds);
+		m_sessions[0]->SetFading(m_cfg_fade_seconds);
 
 		if (!m_sessions[0]->Start())
 		{
@@ -238,6 +241,9 @@ HRESULT CSoundKeeper::Start()
 			m_sessions[i]->SetStreamType(m_cfg_stream_type);
 			m_sessions[i]->SetFrequency(m_cfg_frequency);
 			m_sessions[i]->SetAmplitude(m_cfg_amplitude);
+			m_sessions[i]->SetPeriodicPlaying(m_cfg_play_seconds);
+			m_sessions[i]->SetPeriodicWaiting(m_cfg_wait_seconds);
+			m_sessions[i]->SetFading(m_cfg_fade_seconds);
 
 			if (!m_sessions[i]->Start())
 			{

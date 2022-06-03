@@ -141,8 +141,8 @@ void CKeepSession::Stop()
 		this->DeferNextMode(RenderingMode::Stop);
 		WaitForOne(m_render_thread, INFINITE);
 		CloseHandle(m_render_thread);
-		m_theta = 0;
 		m_render_thread = NULL;
+		this->ResetCurrent();
 		m_interrupt = false;
 	}
 }
@@ -509,11 +509,9 @@ CKeepSession::SampleType CKeepSession::GetSampleType(WAVEFORMATEX* format)
 HRESULT CKeepSession::Render()
 {
 	HRESULT hr = S_OK;
-	BYTE* p_data;
-	UINT32 padding;
-	UINT32 frames_available;
 
 	// We want to find out how much of the buffer *isn't* available (is padding).
+	UINT32 padding;
 	hr = m_audio_client->GetCurrentPadding(&padding);
 	if (FAILED(hr))
 	{
@@ -522,85 +520,155 @@ HRESULT CKeepSession::Render()
 	}
 
 	// Calculate the number of frames available.
-	frames_available = m_buffer_size_in_frames - padding;
+	UINT32 need_frames = m_buffer_size_in_frames - padding;
 	if (m_stream_type == KeepStreamType::Fluctuate)
 	{
-		frames_available &= 0xFFFFFFFC; // Must be a multiple of 4.
+		need_frames &= 0xFFFFFFFC; // Must be a multiple of 4.
 	}
 	// It can happen right after waking PC up after sleeping, so just do nothing.
-	if (frames_available == 0) { return S_OK; }
+	if (need_frames == 0) { return S_OK; }
 
-	hr = m_render_client->GetBuffer(frames_available, &p_data);
+	BYTE* p_data;
+	hr = m_render_client->GetBuffer(need_frames, &p_data);
 	if (FAILED(hr))
 	{
 		DebugLogError("Failed to get buffer: 0x%08X.", hr);
 		return hr;
 	}
 
+	// Generate sound.
+
 	DWORD render_flags = NULL;
 
-	if (m_stream_type == KeepStreamType::Fluctuate && m_mix_sample_type == SampleType::Int16)
+	uint64_t play_frames = static_cast<uint64_t>(m_play_seconds * m_sample_rate);
+	uint64_t wait_frames = static_cast<uint64_t>(m_wait_seconds * m_sample_rate);
+	uint64_t fade_frames = static_cast<uint64_t>(m_fade_seconds * m_sample_rate);
+
+	if (!wait_frames && !fade_frames)
 	{
-		UINT32 n = 0;
-		constexpr static INT16 tbl[] = { -1, 0, 1, 0 };
-		for (size_t i = 0; i < frames_available; i++)
+		play_frames = 0;
+	}
+	else if (!play_frames)
+	{
+		wait_frames = 0;
+	}
+
+	if (play_frames)
+	{
+		fade_frames = std::min(fade_frames, play_frames / 2);
+	}
+
+	uint64_t period_frames = play_frames + wait_frames;
+
+	if (period_frames && play_frames <= m_curr_frame && (m_curr_frame + need_frames) <= period_frames)
+	{
+		// Just silence whole time.
+		render_flags = AUDCLNT_BUFFERFLAGS_SILENT;
+		m_curr_frame = (m_curr_frame + need_frames) % period_frames;
+	}
+	else if (m_stream_type == KeepStreamType::Fluctuate && m_mix_sample_type == SampleType::Int16)
+	{
+		size_t n = 0;
+		constexpr static uint16_t tbl[] = { -1, 0, 1, 0 };
+		for (size_t i = 0; i < need_frames; i++)
 		{
+			uint16_t sample = (period_frames && m_curr_frame >= play_frames) ? 0 : tbl[n];
 			for (size_t j = 0; j < m_channels_count; j++)
 			{
-				*reinterpret_cast<INT16*>(p_data + j * 2) = tbl[n];
+				*reinterpret_cast<uint16_t*>(p_data + j * 2) = sample;
 			}
 			p_data += m_frame_size;
-			n = ++n % 4;
+			n = (n + 1) % 4;
+			if (period_frames) { m_curr_frame = (m_curr_frame + 1) % period_frames; }
 		}
 	}
 	else if (m_stream_type == KeepStreamType::Fluctuate && m_mix_sample_type == SampleType::Float32)
 	{
 		// 0xb8000100 = -3.051851E-5 = -1.0/32767.
 		// 0x38000100 =  3.051851E-5 =  1.0/32767.
-		constexpr static UINT32 tbl16[] = { 0xb8000100, 0, 0x38000100, 0 };
+		constexpr static uint32_t tbl16[] = { 0xb8000100, 0, 0x38000100, 0 };
 		// 0xb4000001 = -1.192093E-7 = -1.0/8388607.
 		// 0x34000001 =  1.192093E-7 =  1.0/8388607.
-		constexpr static UINT32 tbl24[] = { 0xb4000001, 0, 0x34000001, 0 };
+		constexpr static uint32_t tbl24[] = { 0xb4000001, 0, 0x34000001, 0 };
 		// 0xb0000000 = -4.656612E-10 = -1.0/2147483647.
 		// 0x30000000 =  4.656612E-10 =  1.0/2147483647.
-		constexpr static UINT32 tbl32[] = { 0xb0000000, 0, 0x30000000, 0 };
+		constexpr static uint32_t tbl32[] = { 0xb0000000, 0, 0x30000000, 0 };
 
-		UINT32 n = 0;
-		const UINT32* tbl = (m_out_sample_type == SampleType::Int24) ? tbl24
+		size_t n = 0;
+		const uint32_t* tbl = (m_out_sample_type == SampleType::Int24) ? tbl24
 			: (m_out_sample_type == SampleType::Int32 || m_out_sample_type == SampleType::Float32) ? tbl32
 			: tbl16;
 
-		for (size_t i = 0; i < frames_available; i++)
+		for (size_t i = 0; i < need_frames; i++)
 		{
+			uint32_t sample = (period_frames && m_curr_frame >= play_frames) ? 0 : tbl[n];
 			for (size_t j = 0; j < m_channels_count; j++)
 			{
-				*reinterpret_cast<UINT32*>(p_data + j * 4) = tbl[n];
+				*reinterpret_cast<uint32_t*>(p_data + j * 4) = sample;
 			}
 			p_data += m_frame_size;
-			n = ++n % 4;
+			n = (n + 1) % 4;
+			if (period_frames) { m_curr_frame = (m_curr_frame + 1) % period_frames; }
 		}
 	}
-	else if (m_stream_type == KeepStreamType::Sine && m_mix_sample_type == SampleType::Float32 && m_frequency != 0.0 && m_amplitude != 0.0)
+	else if (m_stream_type == KeepStreamType::Sine && m_mix_sample_type == SampleType::Float32 && m_frequency && m_amplitude)
 	{
 		double theta_increment = (m_frequency * (M_PI*2)) / (double)m_sample_rate;
-		for (size_t i = 0; i < frames_available; i++)
+
+		if (!period_frames && m_curr_frame >= fade_frames)
 		{
-			float sample = (float)(sin(m_theta) * m_amplitude);
-			for (size_t j = 0; j < m_channels_count; j++)
+			// Faster version of sine generation without fading and periodicity.
+			for (size_t i = 0; i < need_frames; i++)
 			{
-				*reinterpret_cast<float*>(p_data + j * sizeof(float)) = sample;
+				float sample = (float)(sin(m_curr_theta) * m_amplitude);
+				for (size_t j = 0; j < m_channels_count; j++)
+				{
+					*reinterpret_cast<float*>(p_data + j * sizeof(float)) = sample;
+				}
+
+				p_data += m_frame_size;
+				m_curr_theta += theta_increment;
 			}
-			p_data += m_frame_size;
-			m_theta += theta_increment;
+		}
+		else
+		{
+			// Full version of sine generation with all features.
+			for (size_t i = 0; i < need_frames; i++)
+			{
+				double fade_volume = 0;
+				if (m_curr_frame < fade_frames)
+				{
+					fade_volume = (1.0 / fade_frames) * m_curr_frame;
+				}
+				else if (!play_frames || m_curr_frame < (play_frames - fade_frames))
+				{
+					fade_volume = 1.0;
+				}
+				else if (m_curr_frame < play_frames)
+				{
+					fade_volume = (1.0 / fade_frames) * (play_frames - m_curr_frame);
+				}
+
+				float sample = fade_volume ? (float)(sin(m_curr_theta) * m_amplitude * pow(fade_volume, 2)) : 0.0F;
+				for (size_t j = 0; j < m_channels_count; j++)
+				{
+					*reinterpret_cast<float*>(p_data + j * sizeof(float)) = sample;
+				}
+
+				p_data += m_frame_size;
+				m_curr_theta += theta_increment;
+				m_curr_frame++;
+				if (period_frames) { m_curr_frame %= period_frames; }
+			}
 		}
 	}
 	else
 	{
-		// ZeroMemory(p_data, static_cast<SIZE_T>(m_frame_size) * frames_available);
+		// ZeroMemory(p_data, static_cast<SIZE_T>(m_frame_size) * need_frames);
 		render_flags = AUDCLNT_BUFFERFLAGS_SILENT;
 	}
 
-	hr = m_render_client->ReleaseBuffer(frames_available, render_flags);
+	hr = m_render_client->ReleaseBuffer(need_frames, render_flags);
 	if (FAILED(hr))
 	{
 		DebugLogError("Failed to release buffer: 0x%08X.", hr);

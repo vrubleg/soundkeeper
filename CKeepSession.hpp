@@ -59,12 +59,16 @@ protected:
 	const UINT32            m_buffer_size_in_ms = 1000;
 	UINT32                  m_buffer_size_in_frames = 0;
 
-	// Members for the KeepStreamType::Sine.
+	// Sine generation fields.
 	double                  m_frequency = 0.0;
 	double                  m_amplitude = 0.0;
-	double                  m_theta = 0.0;
+	double                  m_curr_theta = 0.0;
 
-	~CKeepSession(void);
+	// Periodicity fields.
+	double                  m_play_seconds = 0.0;
+	double                  m_wait_seconds = 0.0;
+	double                  m_fade_seconds = 0.0;
+	uint64_t                m_curr_frame = 0;
 
 public:
 
@@ -73,19 +77,88 @@ public:
 	void Stop();
 	bool IsStarted() const { return m_is_started; }
 	bool IsValid() const { return m_curr_mode != RenderingMode::Invalid; };
-	LPCWSTR GetDeviceId() { return m_device_id; }
+	LPCWSTR GetDeviceId() const { return m_device_id; }
 	DWORD GetDeviceState() { DWORD state = 0; m_endpoint->GetState(&state); return state; }
 
-	void SetStreamType(KeepStreamType stream_type) { m_stream_type = stream_type; }
-	KeepStreamType GetStreamType() { return m_stream_type; }
+	void ResetCurrent()
+	{
+		m_curr_frame = 0;
+		m_curr_theta = 0.0;
+	}
 
-	// Methods for the KeepStreamType::Sine.
-	void SetFrequency(double frequency) { m_frequency = frequency; }
-	void SetAmplitude(double amplitude) { m_amplitude = amplitude; }
-	double GetFrequency() { return m_frequency; }
-	double GetAmplitude() { return m_amplitude; }
+	void SetStreamType(KeepStreamType stream_type)
+	{
+		m_stream_type = stream_type;
+		this->ResetCurrent();
+	}
+
+	KeepStreamType GetStreamType() const
+	{
+		return m_stream_type;
+	}
+
+	// Sine generation settings.
+
+	void SetFrequency(double frequency)
+	{
+		m_frequency = frequency > 0 ? frequency : 0;
+		this->ResetCurrent();
+	}
+
+	double GetFrequency() const
+	{
+		return m_frequency;
+	}
+
+	void SetAmplitude(double amplitude)
+	{
+		m_amplitude = amplitude > 0 ? amplitude : 0;
+		this->ResetCurrent();
+	}
+
+	double GetAmplitude() const
+	{
+		return m_amplitude;
+	}
+
+	// Periodicity settings.
+
+	void SetPeriodicPlaying(double seconds)
+	{
+		m_play_seconds = seconds > 0 ? seconds : 0;
+		this->ResetCurrent();
+	}
+
+	double GetPeriodicPlaying() const
+	{
+		return m_play_seconds;
+	}
+
+	void SetPeriodicWaiting(double seconds)
+	{
+		m_wait_seconds = seconds > 0 ? seconds : 0;
+		this->ResetCurrent();
+	}
+
+	double GetPeriodicWaiting() const
+	{
+		return m_wait_seconds;
+	}
+
+	void SetFading(double seconds)
+	{
+		m_fade_seconds = seconds > 0 ? seconds : 0;
+		this->ResetCurrent();
+	}
+
+	double GetFading() const
+	{
+		return m_fade_seconds;
+	}
 
 protected:
+
+	~CKeepSession(void);
 
 	//
 	// Rendering thread.
@@ -96,6 +169,18 @@ protected:
 	RenderingMode Rendering();
 	HRESULT Render();
 	RenderingMode WaitExclusive();
+
+public:
+
+	//
+	// IUnknown
+	//
+
+	HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void **object);
+	ULONG STDMETHODCALLTYPE AddRef();
+	ULONG STDMETHODCALLTYPE Release();
+
+protected:
 
 	//
 	// IAudioSessionEvents.
@@ -108,14 +193,4 @@ protected:
 	STDMETHOD(OnGroupingParamChanged) (LPCGUID /*NewGroupingParam*/, LPCGUID /*EventContext*/) { return S_OK; };
 	STDMETHOD(OnStateChanged) (AudioSessionState NewState);
 	STDMETHOD(OnSessionDisconnected) (AudioSessionDisconnectReason DisconnectReason);
-
-	//
-	// IUnknown
-	//
-
-public:
-
-	HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void **object);
-	ULONG STDMETHODCALLTYPE AddRef();
-	ULONG STDMETHODCALLTYPE Release();
 };

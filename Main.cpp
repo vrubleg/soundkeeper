@@ -27,13 +27,14 @@ void ParseMode(CSoundKeeper* keeper, const char* args)
 		keeper->SetStreamType(KeepStreamType::Sine);
 		keeper->SetFrequency(1.00);
 		keeper->SetAmplitude(0.01);
+		keeper->SetFading(0.1);
 
 		// Parse arguments.
 		p += 4;
 		while (*p)
 		{
 			if (*p == ' ' || *p == '-') { p++; }
-			else if (*p == 'f' || *p == 'a')
+			else if (*p == 'f' || *p == 'a' || *p == 'l' || *p == 'w' || *p == 't')
 			{
 				char type = *p;
 				p++;
@@ -43,9 +44,21 @@ void ParseMode(CSoundKeeper* keeper, const char* args)
 				{
 					keeper->SetFrequency(std::min(value, 96000.0));
 				}
-				else
+				else if (type == 'a')
 				{
 					keeper->SetAmplitude(std::min(value / 100.0, 1.0));
+				}
+				else if (type == 'l')
+				{
+					keeper->SetPeriodicPlaying(value / 1000.0);
+				}
+				else if (type == 'w')
+				{
+					keeper->SetPeriodicWaiting(value / 1000.0);
+				}
+				else if (type == 't')
+				{
+					keeper->SetFading(value / 1000.0);
 				}
 			}
 			else
@@ -128,8 +141,13 @@ __forceinline int Main()
 	{
 		case KeepStreamType::Zero:      DebugLog("Stream Type: Zero."); break;
 		case KeepStreamType::Fluctuate: DebugLog("Stream Type: Fluctuate."); break;
-		case KeepStreamType::Sine:      DebugLog("Stream Type: Sine (Frequency: %.3fHz; Amplitude: %.3f%%).", keeper->GetFrequency(), keeper->GetAmplitude() * 100.0); break;
+		case KeepStreamType::Sine:      DebugLog("Stream Type: Sine (Frequency: %.3fHz; Amplitude: %.3f%%; Fading: %.3fs).", keeper->GetFrequency(), keeper->GetAmplitude() * 100.0, keeper->GetFading()); break;
 		default:                        DebugLogError("Unknown Stream Type."); break;
+	}
+
+	if (keeper->GetPeriodicPlaying() || keeper->GetPeriodicWaiting())
+	{
+		DebugLog("Periodicity: play %.3fs, wait %.3fs.", keeper->GetPeriodicPlaying(), keeper->GetPeriodicWaiting());
 	}
 
 #endif
