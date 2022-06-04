@@ -7,17 +7,16 @@ The program doesn't have GUI. It starts to do its job right after the process is
 To close the program, just mute the Sound Keeper in the Volume Mixer or kill the soundkeeper.exe process.
 To autorun, copy soundkeeper.exe into the startup directory (to open it, press Win+R, enter "shell:startup").
 
-Default behavior can be changed by adding options to the Sound Keeper executable file name.
-Primary audio output is used by default. Add "All" to executable file name to keep on all audio outputs.
-Inaudible stream is used by default. Add "Zero" to executable file name to use stream of digital zeroes.
+Default behavior can be changed by adding settings to the Sound Keeper executable file name or by passing them
+as command line arguments. Setting names are case insensitive.
 
-Supported behavior modes:
+Supported device type settings:
 - "Primary" keeps on primary audio output only. Used by default.
 - "All" keeps on all enabled audio outputs.
 - "Digital" keeps on all enabled digital audio outputs (like it was in Sound Keeper v1.0).
 - "Analog" keeps on all enabled analog audio outputs.
 
-Supported stream types:
+Supported stream type settings:
 - "Zero" plays stream of zeroes (like it was in Sound Keeper v1.0). It may be not enough for some hardware.
 - "Fluctuate" plays inaudible stream with lowest bit flipping from sample to sample. Used by default since v1.1.
 - "Sine" plays 1Hz sine wave at 1% volume. The frequency and amplitude can be changed. Useful for analog outputs.
@@ -25,7 +24,7 @@ Supported stream types:
 
 Sine and noise stream parameters:
 - F is frequency. Default: 1Hz. Applicable for the Sine only.
-- A is amplitude. Default: 1%.
+- A is amplitude. Default: 1%. If you want to use inaudible noise, set it to 0.1%.
 - L is length of sound (in seconds). Default: infinite.
 - W is waiting time between sounds if L is set. Use to enable periodic sound.
 - T is transition or fading time. Default: 0.1 second.
@@ -35,6 +34,7 @@ Examples:
 - SoundKeeperAll.exe generates default inaudible stream on all enabled audio outputs.
 - SoundKeeperSineF10A5.exe generates 10Hz sine wave with 5% amplitude on primary audio output. It is inaudible.
 - SoundKeeperSineF1000A100.exe generates 1000Hz sine wave with 100% amplitude. It is audible! Use it for testing.
+- "SoundKeeper.exe noise -a 0.1" (settings are command line arguments) generates white noise with 0.1% amplitude.
 
 Known issues
 
@@ -81,7 +81,7 @@ What's new
 - New "Sine" stream type which can be useful for analog outputs or too smart digital outputs.
 - When a user starts a new Sound Keeper instance, the previous one is stopped automatically.
 - "Fluctuate" stream type considers sample format of the output (16/24/32-bit integer, and 32-bit float).
-- Command line parameters are supported. Example: "soundkeeper sine -f 1000 -a 10".
+- Command line arguments are supported. Example: "soundkeeper sine -f 1000 -a 10".
 - The workaround for the Audio Service memory leak is enabled on affected Windows versions only (8, 8.1, and 10).
 
 [2020/07/18] v1.1.0:

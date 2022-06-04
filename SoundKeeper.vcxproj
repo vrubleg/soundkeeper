@@ -29,7 +29,6 @@
   <ItemGroup>
     <ClCompile Include="CKeepSession.cpp" />
     <ClCompile Include="CSoundKeeper.cpp" />
-    <ClCompile Include="Main.cpp" />
     <ClCompile Include="RuntimeHacks.cpp" />
   </ItemGroup>
   <ItemGroup>

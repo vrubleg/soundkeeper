@@ -84,5 +84,9 @@ public:
 	void FireRetry();
 	void FireRestart();
 	void FireShutdown();
-	HRESULT Main();
+
+	void ParseStreamArgs(KeepStreamType stream_type, const char* args);
+	void ParseModeString(const char* args);
+	HRESULT Run();
+	static HRESULT Main();
 };

@@ -378,8 +378,147 @@ void CSoundKeeper::FireShutdown()
 	m_do_shutdown = true;
 }
 
-HRESULT CSoundKeeper::Main()
+void CSoundKeeper::ParseStreamArgs(KeepStreamType stream_type, const char* args)
 {
+	this->SetStreamType(stream_type);
+	this->SetFrequency(1.00);
+	this->SetAmplitude(0.01);
+	this->SetFading(0.1);
+
+	char* p = (char*) args;
+	while (*p)
+	{
+		if (*p == ' ' || *p == '-') { p++; }
+		else if (*p == 'f' || *p == 'a' || *p == 'l' || *p == 'w' || *p == 't')
+		{
+			char type = *p;
+			p++;
+			while (*p == ' ' || *p == '=') { p++; }
+			double value = fabs(strtod(p, &p));
+			if (type == 'f')
+			{
+				this->SetFrequency(std::min(value, 96000.0));
+			}
+			else if (type == 'a')
+			{
+				this->SetAmplitude(std::min(value / 100.0, 1.0));
+			}
+			else if (type == 'l')
+			{
+				this->SetPeriodicPlaying(value);
+			}
+			else if (type == 'w')
+			{
+				this->SetPeriodicWaiting(value);
+			}
+			else if (type == 't')
+			{
+				this->SetFading(value);
+			}
+		}
+		else
+		{
+			break;
+		}
+	}
+}
+
+void CSoundKeeper::ParseModeString(const char* args)
+{
+	char buf[MAX_PATH];
+	strcpy_s(buf, args);
+	_strlwr(buf);
+
+	if (strstr(buf, "all"))     { this->SetDeviceType(KeepDeviceType::All); }
+	if (strstr(buf, "analog"))  { this->SetDeviceType(KeepDeviceType::Analog); }
+	if (strstr(buf, "digital")) { this->SetDeviceType(KeepDeviceType::Digital); }
+	if (strstr(buf, "kill"))    { this->SetDeviceType(KeepDeviceType::None); }
+
+	if (strstr(buf, "zero") || strstr(buf, "null"))
+	{
+		this->SetStreamType(KeepStreamType::Zero);
+	}
+	else if (char* p = strstr(buf, "sine"))
+	{
+		this->ParseStreamArgs(KeepStreamType::Sine, p+4);
+	}
+	else if (char* p = strstr(buf, "noise"))
+	{
+		this->ParseStreamArgs(KeepStreamType::WhiteNoise, p+5);
+	}
+}
+
+HRESULT CSoundKeeper::Run()
+{
+	this->SetDeviceType(KeepDeviceType::Primary);
+	this->SetStreamType(KeepStreamType::Fluctuate);
+
+	// Parse file name for defaults.
+	char fn_buffer[MAX_PATH];
+	DWORD fn_size = GetModuleFileNameA(NULL, fn_buffer, MAX_PATH);
+	if (fn_size != 0 && fn_size != MAX_PATH)
+	{
+		char* filename = strrchr(fn_buffer, '\\');
+		if (filename)
+		{
+			filename++;
+			DebugLog("Exe File Name: %s.", filename);
+			this->ParseModeString(filename);
+		}
+	}
+
+	// Parse command line for arguments.
+	if (const char* cmdln = GetCommandLineA())
+	{
+		// Skip program file name.
+		while (*cmdln == ' ') { cmdln++; }
+		if (cmdln[0] == '"')
+		{
+			cmdln++;
+			while (*cmdln != '"' && *cmdln != 0) { cmdln++; }
+			if (*cmdln == '"') { cmdln++; }
+		}
+		else
+		{
+			while (*cmdln != ' ' && *cmdln != 0) { cmdln++; }
+		}
+		while (*cmdln == ' ') { cmdln++; }
+
+		if (*cmdln != 0)
+		{
+			DebugLog("Command Line: %s.", cmdln);
+			this->ParseModeString(cmdln);
+		}
+	}
+
+#ifdef _CONSOLE
+
+	switch (this->GetDeviceType())
+	{
+		case KeepDeviceType::None:      DebugLog("Device Type: None."); break;
+		case KeepDeviceType::Primary:   DebugLog("Device Type: Primary."); break;
+		case KeepDeviceType::All:       DebugLog("Device Type: All."); break;
+		case KeepDeviceType::Analog:    DebugLog("Device Type: Analog."); break;
+		case KeepDeviceType::Digital:   DebugLog("Device Type: Digital."); break;
+		default:                        DebugLogError("Unknown Device Type."); break;
+	}
+
+	switch (this->GetStreamType())
+	{
+		case KeepStreamType::Zero:      DebugLog("Stream Type: Zero."); break;
+		case KeepStreamType::Fluctuate: DebugLog("Stream Type: Fluctuate."); break;
+		case KeepStreamType::Sine:      DebugLog("Stream Type: Sine (Frequency: %.3fHz; Amplitude: %.3f%%; Fading: %.3fs).", this->GetFrequency(), this->GetAmplitude() * 100.0, this->GetFading()); break;
+		case KeepStreamType::WhiteNoise:DebugLog("Stream Type: White Noise (Amplitude: %.3f%%; Fading: %.3fs).", this->GetAmplitude() * 100.0, this->GetFading()); break;
+		default:                        DebugLogError("Unknown Stream Type."); break;
+	}
+
+	if (this->GetPeriodicPlaying() || this->GetPeriodicWaiting())
+	{
+		DebugLog("Periodicity: play %.3fs, wait %.3fs.", this->GetPeriodicPlaying(), this->GetPeriodicWaiting());
+	}
+
+#endif
+
 	// Stop another instance.
 
 	Handle global_stop_event = CreateEventA(NULL, TRUE, FALSE, "SoundKeeperStopEvent");
@@ -518,3 +657,58 @@ exit:
 
 	return hr;
 }
+
+__forceinline HRESULT CSoundKeeper::Main()
+{
+	DebugLog("Main thread started.");
+
+	if (HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE); FAILED(hr))
+	{
+#ifndef _CONSOLE
+		MessageBoxA(0, "Cannot initialize COM.", "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL);
+#else
+		DebugLogError("Cannot initialize COM: 0x%08X.", hr);
+#endif
+		return hr;
+	}
+
+	CSoundKeeper* keeper = new CSoundKeeper();
+	HRESULT hr = keeper->Run();
+	SafeRelease(keeper);
+
+	CoUninitialize();
+
+#ifndef _CONSOLE
+	if (FAILED(hr))
+	{
+		MessageBoxA(0, "Cannot initialize WASAPI.", "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL);
+	}
+#else
+	if (hr == S_OK)
+	{
+		DebugLog("Main thread finished. Exit code: 0.", hr);
+	}
+	else
+	{
+		DebugLog("Main thread finished. Exit code: 0x%08X.", hr);
+	}
+#endif
+
+	return hr;
+}
+
+#ifdef _CONSOLE
+
+int main()
+{
+	return CSoundKeeper::Main();
+}
+
+#else
+
+int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ PWSTR pCmdLine, _In_ int nCmdShow)
+{
+	return CSoundKeeper::Main();
+}
+
+#endif

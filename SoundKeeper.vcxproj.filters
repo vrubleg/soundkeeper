@@ -53,9 +53,6 @@
     <ClCompile Include="CSoundKeeper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="RuntimeHacks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
