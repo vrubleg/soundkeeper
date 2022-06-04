@@ -50,15 +50,15 @@ void ParseMode(CSoundKeeper* keeper, const char* args)
 				}
 				else if (type == 'l')
 				{
-					keeper->SetPeriodicPlaying(value / 1000.0);
+					keeper->SetPeriodicPlaying(value);
 				}
 				else if (type == 'w')
 				{
-					keeper->SetPeriodicWaiting(value / 1000.0);
+					keeper->SetPeriodicWaiting(value);
 				}
 				else if (type == 't')
 				{
-					keeper->SetFading(value / 1000.0);
+					keeper->SetFading(value);
 				}
 			}
 			else
@@ -90,15 +90,15 @@ void ParseMode(CSoundKeeper* keeper, const char* args)
 				}
 				else if (type == 'l')
 				{
-					keeper->SetPeriodicPlaying(value / 1000.0);
+					keeper->SetPeriodicPlaying(value);
 				}
 				else if (type == 'w')
 				{
-					keeper->SetPeriodicWaiting(value / 1000.0);
+					keeper->SetPeriodicWaiting(value);
 				}
 				else if (type == 't')
 				{
-					keeper->SetFading(value / 1000.0);
+					keeper->SetFading(value);
 				}
 			}
 			else
