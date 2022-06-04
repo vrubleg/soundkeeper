@@ -27,7 +27,7 @@ inline bool StringEquals(const wchar_t *l, const wchar_t *r)
 	return (*l - *r) == 0;
 }
 
-#ifdef _DEBUG
+#ifdef _CONSOLE
 
 inline void DebugLog(const char * format, ...)
 {

@@ -75,7 +75,7 @@ __forceinline int Main()
 
 	if (HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE); FAILED(hr))
 	{
-#ifndef _DEBUG
+#ifndef _CONSOLE
 		MessageBoxA(0, "Cannot initialize COM.", "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL);
 #else
 		DebugLogError("Cannot initialize COM: 0x%08X.", hr);
@@ -125,7 +125,7 @@ __forceinline int Main()
 		}
 	}
 
-#ifdef _DEBUG
+#ifdef _CONSOLE
 
 	switch (keeper->GetDeviceType())
 	{
@@ -157,7 +157,7 @@ __forceinline int Main()
 
 	CoUninitialize();
 
-#ifndef _DEBUG
+#ifndef _CONSOLE
 	if (FAILED(hr))
 	{
 		MessageBoxA(0, "Cannot initialize WASAPI.", "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL);
@@ -176,7 +176,7 @@ __forceinline int Main()
 	return hr;
 }
 
-#ifdef _DEBUG
+#ifdef _CONSOLE
 
 int main()
 {

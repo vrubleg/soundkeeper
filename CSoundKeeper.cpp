@@ -29,7 +29,7 @@ LONG GetSecondsToSleeping()
 		return 0;
 	}
 
-#ifdef _DEBUG
+#ifdef _CONSOLE
 
 	static LONG last_result = 0x80000000;
 
