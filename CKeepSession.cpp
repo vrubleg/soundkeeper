@@ -6,7 +6,6 @@
 #ifdef ENABLE_MMCSS
 #include <avrt.h>
 #endif
-#include <random>
 
 extern "C" NTSYSAPI NTSTATUS WINAPI RtlGetVersion(PRTL_OSVERSIONINFOW lpVersionInformation);
 
@@ -622,6 +621,7 @@ HRESULT CKeepSession::Render()
 			for (size_t i = 0; i < need_frames; i++)
 			{
 				float sample = (float)(sin(m_curr_theta) * m_amplitude);
+
 				for (size_t j = 0; j < m_channels_count; j++)
 				{
 					*reinterpret_cast<float*>(p_data + j * sizeof(float)) = sample;
@@ -651,6 +651,7 @@ HRESULT CKeepSession::Render()
 				}
 
 				float sample = fade_volume ? (float)(sin(m_curr_theta) * m_amplitude * pow(fade_volume, 2)) : 0.0F;
+
 				for (size_t j = 0; j < m_channels_count; j++)
 				{
 					*reinterpret_cast<float*>(p_data + j * sizeof(float)) = sample;
@@ -665,15 +666,16 @@ HRESULT CKeepSession::Render()
 	}
 	else if (m_stream_type == KeepStreamType::WhiteNoise && m_mix_sample_type == SampleType::Float32 && m_amplitude)
 	{
-		std::minstd_rand rand_gen_uint32(GetTickCount());
-		std::uniform_real_distribution<double> uniform_dist(0, 1);
+		uint32_t lcg_state = static_cast<uint32_t>(__rdtsc());
 
 		if (!period_frames && m_curr_frame >= fade_frames)
 		{
 			// Faster version of noise generation without fading and periodicity.
 			for (size_t i = 0; i < need_frames; i++)
 			{
-				float sample = (float)(uniform_dist(rand_gen_uint32) * m_amplitude);
+				lcg_state = lcg_state * 48271 % 0x7FFFFFFF; // LCG MINSTD.
+				float sample = (float)((static_cast<double>(lcg_state) / static_cast<double>(0x7FFFFFFFU)) * m_amplitude);
+
 				for (size_t j = 0; j < m_channels_count; j++)
 				{
 					*reinterpret_cast<float*>(p_data + j * sizeof(float)) = sample;
@@ -701,7 +703,9 @@ HRESULT CKeepSession::Render()
 					fade_volume = (1.0 / fade_frames) * (play_frames - m_curr_frame);
 				}
 
-				float sample = fade_volume ? (float)(uniform_dist(rand_gen_uint32) * m_amplitude * pow(fade_volume, 2)) : 0.0F;
+				lcg_state = lcg_state * 48271 % 0x7FFFFFFF; // LCG MINSTD.
+				float sample = fade_volume ? (float)((static_cast<double>(lcg_state) / static_cast<double>(0x7FFFFFFFU)) * m_amplitude * pow(fade_volume, 2)) : 0.0F;
+
 				for (size_t j = 0; j < m_channels_count; j++)
 				{
 					*reinterpret_cast<float*>(p_data + j * sizeof(float)) = sample;
