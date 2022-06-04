@@ -7,6 +7,51 @@
 #include "Common.hpp"
 #include "CSoundKeeper.hpp"
 
+void ParseStreamArgs(CSoundKeeper* keeper, KeepStreamType stream_type, char* args)
+{
+	keeper->SetStreamType(stream_type);
+	keeper->SetFrequency(1.00);
+	keeper->SetAmplitude(0.01);
+	keeper->SetFading(0.1);
+
+	char* p = args;
+	while (*p)
+	{
+		if (*p == ' ' || *p == '-') { p++; }
+		else if (*p == 'f' || *p == 'a' || *p == 'l' || *p == 'w' || *p == 't')
+		{
+			char type = *p;
+			p++;
+			while (*p == ' ' || *p == '=') { p++; }
+			double value = fabs(strtod(p, &p));
+			if (type == 'f')
+			{
+				keeper->SetFrequency(std::min(value, 96000.0));
+			}
+			else if (type == 'a')
+			{
+				keeper->SetAmplitude(std::min(value / 100.0, 1.0));
+			}
+			else if (type == 'l')
+			{
+				keeper->SetPeriodicPlaying(value);
+			}
+			else if (type == 'w')
+			{
+				keeper->SetPeriodicWaiting(value);
+			}
+			else if (type == 't')
+			{
+				keeper->SetFading(value);
+			}
+		}
+		else
+		{
+			break;
+		}
+	}
+}
+
 void ParseMode(CSoundKeeper* keeper, const char* args)
 {
 	char buf[MAX_PATH];
@@ -24,88 +69,11 @@ void ParseMode(CSoundKeeper* keeper, const char* args)
 	}
 	else if (char* p = strstr(buf, "sine"))
 	{
-		keeper->SetStreamType(KeepStreamType::Sine);
-		keeper->SetFrequency(1.00);
-		keeper->SetAmplitude(0.01);
-		keeper->SetFading(0.1);
-
-		// Parse arguments.
-		p += 4;
-		while (*p)
-		{
-			if (*p == ' ' || *p == '-') { p++; }
-			else if (*p == 'f' || *p == 'a' || *p == 'l' || *p == 'w' || *p == 't')
-			{
-				char type = *p;
-				p++;
-				while (*p == ' ' || *p == '=') { p++; }
-				double value = fabs(strtod(p, &p));
-				if (type == 'f')
-				{
-					keeper->SetFrequency(std::min(value, 96000.0));
-				}
-				else if (type == 'a')
-				{
-					keeper->SetAmplitude(std::min(value / 100.0, 1.0));
-				}
-				else if (type == 'l')
-				{
-					keeper->SetPeriodicPlaying(value);
-				}
-				else if (type == 'w')
-				{
-					keeper->SetPeriodicWaiting(value);
-				}
-				else if (type == 't')
-				{
-					keeper->SetFading(value);
-				}
-			}
-			else
-			{
-				break;
-			}
-		}
+		ParseStreamArgs(keeper, KeepStreamType::Sine, p+4);
 	}
 	else if (char* p = strstr(buf, "noise"))
 	{
-		keeper->SetStreamType(KeepStreamType::WhiteNoise);
-		keeper->SetAmplitude(0.01);
-		keeper->SetFading(0.1);
-
-		// Parse arguments.
-		p += 5;
-		while (*p)
-		{
-			if (*p == ' ' || *p == '-') { p++; }
-			else if (*p == 'a' || *p == 'l' || *p == 'w' || *p == 't')
-			{
-				char type = *p;
-				p++;
-				while (*p == ' ' || *p == '=') { p++; }
-				double value = fabs(strtod(p, &p));
-				if (type == 'a')
-				{
-					keeper->SetAmplitude(std::min(value / 100.0, 1.0));
-				}
-				else if (type == 'l')
-				{
-					keeper->SetPeriodicPlaying(value);
-				}
-				else if (type == 'w')
-				{
-					keeper->SetPeriodicWaiting(value);
-				}
-				else if (type == 't')
-				{
-					keeper->SetFading(value);
-				}
-			}
-			else
-			{
-				break;
-			}
-		}
+		ParseStreamArgs(keeper, KeepStreamType::WhiteNoise, p+5);
 	}
 }
 

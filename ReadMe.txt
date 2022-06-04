@@ -24,9 +24,11 @@ Supported stream types:
 - "Noise" plays white noise, with the same parameters as the sine (except frequency).
 
 Sine and noise stream parameters:
-There are a few parameters: F (frequency) and A (amplitude). The value goes right after the parameter character.
-Low frequencies (below 20Hz) and high frequencies (above 20000Hz) with low amplitude (up to 10%) are inaudible.
-To enable periodic signal, set L (length in seconds), W (waiting time), and T (transition or fading time).
+- F is frequency. Default: 1Hz. Applicable for the Sine only.
+- A is amplitude. Default: 1%.
+- L is length of sound (in seconds). Default: infinite.
+- W is waiting time between sounds if L is set. Use to enable periodic sound.
+- T is transition or fading time. Default: 0.1 second.
 
 Examples:
 - SoundKeeperZeroAll.exe generates zero amplitude stream on all enabled audio outputs.
