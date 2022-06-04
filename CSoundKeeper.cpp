@@ -144,6 +144,49 @@ HRESULT STDMETHODCALLTYPE CSoundKeeper::OnPropertyValueChanged(LPCWSTR device_id
 	return S_OK;
 }
 
+uint32_t GetDeviceFormFactor(IMMDevice* device)
+{
+	uint32_t formfactor = -1;
+
+	IPropertyStore* properties = nullptr;
+	HRESULT hr = device->OpenPropertyStore(STGM_READ, &properties);
+	if (FAILED(hr))
+	{
+		DebugLogWarning("Unable to retrieve property store of an audio device: 0x%08X.", hr);
+		return formfactor;
+	}
+
+	PROPVARIANT prop_formfactor;
+	PropVariantInit(&prop_formfactor);
+	hr = properties->GetValue(PKEY_AudioEndpoint_FormFactor, &prop_formfactor);
+	if (SUCCEEDED(hr) && prop_formfactor.vt == VT_UI4)
+	{
+		formfactor = prop_formfactor.uintVal;
+#ifdef _CONSOLE
+		LPWSTR device_id = nullptr;
+		hr = device->GetId(&device_id);
+		if (FAILED(hr))
+		{
+			DebugLogWarning("Unable to get device ID: 0x%08X.", hr);
+		}
+		else
+		{
+			DebugLog("Device ID: '%S'. Form Factor: %d.", device_id, formfactor);
+			CoTaskMemFree(device_id);
+		}
+#endif
+	}
+	else
+	{
+		DebugLogWarning("Unable to retrieve formfactor of an audio device: 0x%08X.", hr);
+	}
+
+	PropVariantClear(&prop_formfactor);
+	SafeRelease(properties);
+
+	return formfactor;
+}
+
 HRESULT CSoundKeeper::Start()
 {
 	ScopedLock lock(m_mutex);
@@ -156,6 +199,8 @@ HRESULT CSoundKeeper::Start()
 
 	if (m_cfg_device_type == KeepDeviceType::Primary)
 	{
+		DebugLog("Getting primary audio device...");
+
 		IMMDevice* device;
 		hr = m_dev_enumerator->GetDefaultAudioEndpoint(eRender, eConsole, &device);
 		if (FAILED(hr))
@@ -170,6 +215,20 @@ HRESULT CSoundKeeper::Start()
 				DebugLogError("Unable to retrieve default render device: 0x%08X.", hr);
 				goto exit;
 			}
+		}
+
+		uint32_t formfactor = GetDeviceFormFactor(device);
+
+		if (formfactor == -1)
+		{
+			SafeRelease(device);
+			goto exit_started;
+		}
+		else if (formfactor == RemoteNetworkDevice)
+		{
+			DebugLog("Ignoring remote desktop audio device.");
+			SafeRelease(device);
+			goto exit_started;
 		}
 
 		m_sessions_count = 1;
@@ -192,6 +251,8 @@ HRESULT CSoundKeeper::Start()
 	}
 	else
 	{
+		DebugLog("Enumerating active audio devices...");
+
 		hr = m_dev_enumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &dev_collection);
 		if (FAILED(hr))
 		{
@@ -215,26 +276,25 @@ HRESULT CSoundKeeper::Start()
 			IMMDevice* device;
 			dev_collection->Item(i, &device);
 
-			if (m_cfg_device_type != KeepDeviceType::All)
-			{
-				IPropertyStore* properties = nullptr;
-				hr = device->OpenPropertyStore(STGM_READ, &properties);
-				if (FAILED(hr))
-				{
-					continue;
-				}
+			uint32_t formfactor = GetDeviceFormFactor(device);
 
-				PROPVARIANT formfactor;
-				PropVariantInit(&formfactor);
-				hr = properties->GetValue(PKEY_AudioEndpoint_FormFactor, &formfactor);
-				SafeRelease(properties);
-				if (FAILED(hr) || formfactor.vt != VT_UI4 || (m_cfg_device_type == KeepDeviceType::Digital) != (formfactor.uintVal == SPDIF || formfactor.uintVal == HDMI))
-				{
-					PropVariantClear(&formfactor);
-					SafeRelease(device);
-					continue;
-				}
-				PropVariantClear(&formfactor);
+			if (formfactor == -1)
+			{
+				SafeRelease(device);
+				continue;
+			}
+			else if (formfactor == RemoteNetworkDevice)
+			{
+				DebugLog("Ignoring remote desktop audio device.");
+				SafeRelease(device);
+				continue;
+			}
+			else if ((m_cfg_device_type == KeepDeviceType::Digital || m_cfg_device_type == KeepDeviceType::Analog)
+				&& (m_cfg_device_type == KeepDeviceType::Digital) != (formfactor == SPDIF || formfactor == HDMI))
+			{
+				DebugLog("Skipping this device because of the Digital / Analog filter.");
+				SafeRelease(device);
+				continue;
 			}
 
 			m_sessions[i] = new CKeepSession(this, device);

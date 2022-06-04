@@ -67,6 +67,7 @@ What's new
 - White noise signal type.
 - Self kill command is added. Run "soundkeeper kill" to stop running Sound Keeper instance.
 - "Analog" switch was added. It works as the opposite of "Digital".
+- Ignores remote desktop audio device.
 
 [2022/05/15] v1.2.2:
 - Work as a dummy when no suitable devices found.
