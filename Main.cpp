@@ -67,6 +67,46 @@ void ParseMode(CSoundKeeper* keeper, const char* args)
 			}
 		}
 	}
+	else if (char* p = strstr(buf, "noise"))
+	{
+		keeper->SetStreamType(KeepStreamType::WhiteNoise);
+		keeper->SetAmplitude(0.01);
+		keeper->SetFading(0.1);
+
+		// Parse arguments.
+		p += 5;
+		while (*p)
+		{
+			if (*p == ' ' || *p == '-') { p++; }
+			else if (*p == 'a' || *p == 'l' || *p == 'w' || *p == 't')
+			{
+				char type = *p;
+				p++;
+				while (*p == ' ' || *p == '=') { p++; }
+				double value = fabs(strtod(p, &p));
+				if (type == 'a')
+				{
+					keeper->SetAmplitude(std::min(value / 100.0, 1.0));
+				}
+				else if (type == 'l')
+				{
+					keeper->SetPeriodicPlaying(value / 1000.0);
+				}
+				else if (type == 'w')
+				{
+					keeper->SetPeriodicWaiting(value / 1000.0);
+				}
+				else if (type == 't')
+				{
+					keeper->SetFading(value / 1000.0);
+				}
+			}
+			else
+			{
+				break;
+			}
+		}
+	}
 }
 
 __forceinline int Main()
@@ -142,6 +182,7 @@ __forceinline int Main()
 		case KeepStreamType::Zero:      DebugLog("Stream Type: Zero."); break;
 		case KeepStreamType::Fluctuate: DebugLog("Stream Type: Fluctuate."); break;
 		case KeepStreamType::Sine:      DebugLog("Stream Type: Sine (Frequency: %.3fHz; Amplitude: %.3f%%; Fading: %.3fs).", keeper->GetFrequency(), keeper->GetAmplitude() * 100.0, keeper->GetFading()); break;
+		case KeepStreamType::WhiteNoise:DebugLog("Stream Type: White Noise (Amplitude: %.3f%%; Fading: %.3fs).", keeper->GetAmplitude() * 100.0, keeper->GetFading()); break;
 		default:                        DebugLogError("Unknown Stream Type."); break;
 	}
 

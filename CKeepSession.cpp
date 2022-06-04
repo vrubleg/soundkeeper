@@ -6,6 +6,7 @@
 #ifdef ENABLE_MMCSS
 #include <avrt.h>
 #endif
+#include <random>
 
 extern "C" NTSYSAPI NTSTATUS WINAPI RtlGetVersion(PRTL_OSVERSIONINFOW lpVersionInformation);
 
@@ -657,6 +658,56 @@ HRESULT CKeepSession::Render()
 
 				p_data += m_frame_size;
 				m_curr_theta += theta_increment;
+				m_curr_frame++;
+				if (period_frames) { m_curr_frame %= period_frames; }
+			}
+		}
+	}
+	else if (m_stream_type == KeepStreamType::WhiteNoise && m_mix_sample_type == SampleType::Float32 && m_amplitude)
+	{
+		std::minstd_rand rand_gen_uint32(GetTickCount());
+		std::uniform_real_distribution<double> uniform_dist(0, 1);
+
+		if (!period_frames && m_curr_frame >= fade_frames)
+		{
+			// Faster version of noise generation without fading and periodicity.
+			for (size_t i = 0; i < need_frames; i++)
+			{
+				float sample = (float)(uniform_dist(rand_gen_uint32) * m_amplitude);
+				for (size_t j = 0; j < m_channels_count; j++)
+				{
+					*reinterpret_cast<float*>(p_data + j * sizeof(float)) = sample;
+				}
+
+				p_data += m_frame_size;
+			}
+		}
+		else
+		{
+			// Full version of sine generation with all features.
+			for (size_t i = 0; i < need_frames; i++)
+			{
+				double fade_volume = 0;
+				if (m_curr_frame < fade_frames)
+				{
+					fade_volume = (1.0 / fade_frames) * m_curr_frame;
+				}
+				else if (!play_frames || m_curr_frame < (play_frames - fade_frames))
+				{
+					fade_volume = 1.0;
+				}
+				else if (m_curr_frame < play_frames)
+				{
+					fade_volume = (1.0 / fade_frames) * (play_frames - m_curr_frame);
+				}
+
+				float sample = fade_volume ? (float)(uniform_dist(rand_gen_uint32) * m_amplitude * pow(fade_volume, 2)) : 0.0F;
+				for (size_t j = 0; j < m_channels_count; j++)
+				{
+					*reinterpret_cast<float*>(p_data + j * sizeof(float)) = sample;
+				}
+
+				p_data += m_frame_size;
 				m_curr_frame++;
 				if (period_frames) { m_curr_frame %= period_frames; }
 			}
