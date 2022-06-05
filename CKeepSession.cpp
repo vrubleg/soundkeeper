@@ -751,9 +751,21 @@ HRESULT CKeepSession::Render()
 				lcg_state = lcg_state * 6364136223846793005ULL + 1; // LCG Musl.
 				double white = (static_cast<double>((lcg_state >> 32) & 0x7FFFFFFF) / static_cast<double>(0x7FFFFFFFU)) * 2.0 - 1.0; // -1..1
 
+#if 0
+
+				// Algorithm from the SoX. Feels like there are too many low frequencies.
 				m_curr_value += white * (1.0 / 16);
 				m_curr_value = fmod(m_curr_value, 4);
 				double norm_value = m_curr_value;
+
+#else
+
+				// Algorithm from the noise.js. Sounds better.
+				m_curr_value += white * 0.02;
+				m_curr_value /= 1.02;
+				double norm_value = m_curr_value * 3.5; // -3.5 .. 3.5
+
+#endif
 
 				// Normalize values out of the -1..1 range using "mirroring".
 				// Example: 0.8, 0.9, 1.0, 0.9, 0.8, ..., -0.8, -0.9, -1.0, -0.9, -0.8, ...
