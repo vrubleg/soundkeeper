@@ -576,13 +576,17 @@ HRESULT CSoundKeeper::Run()
 		case KeepStreamType::Fluctuate: DebugLog("Stream Type: Fluctuate."); break;
 		case KeepStreamType::Sine:      DebugLog("Stream Type: Sine (Frequency: %.3fHz; Amplitude: %.3f%%; Fading: %.3fs).", this->GetFrequency(), this->GetAmplitude() * 100.0, this->GetFading()); break;
 		case KeepStreamType::WhiteNoise:DebugLog("Stream Type: White Noise (Amplitude: %.3f%%; Fading: %.3fs).", this->GetAmplitude() * 100.0, this->GetFading()); break;
-		case KeepStreamType::BrownNoise:DebugLog("Stream Type: Brownian Noise (Amplitude: %.3f%%; Fading: %.3fs).", this->GetAmplitude() * 100.0, this->GetFading()); break;
+		case KeepStreamType::BrownNoise:DebugLog("Stream Type: Brown Noise (Amplitude: %.3f%%; Fading: %.3fs).", this->GetAmplitude() * 100.0, this->GetFading()); break;
 		default:                        DebugLogError("Unknown Stream Type."); break;
 	}
 
 	if (this->GetPeriodicPlaying() || this->GetPeriodicWaiting())
 	{
-		DebugLog("Periodicity: play %.3fs, wait %.3fs.", this->GetPeriodicPlaying(), this->GetPeriodicWaiting());
+		DebugLog("Periodicity: Enabled (Length: %.3fs; Waiting: %.3fs).", this->GetPeriodicPlaying(), this->GetPeriodicWaiting());
+	}
+	else
+	{
+		DebugLog("Periodicity: Disabled.");
 	}
 
 #endif

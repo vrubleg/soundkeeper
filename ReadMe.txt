@@ -13,8 +13,8 @@ as command line arguments. Setting names are case insensitive.
 Supported device type settings:
 - "Primary" keeps on primary audio output only. Used by default.
 - "All" keeps on all enabled audio outputs.
-- "Digital" keeps on all enabled digital audio outputs (like it was in Sound Keeper v1.0).
-- "Analog" keeps on all enabled analog audio outputs.
+- "Digital" keeps on all enabled SPDIF and HDMI audio outputs (like it was in Sound Keeper v1.0).
+- "Analog" keeps on all enabled audio outputs except SPDIF and HDMI.
 
 Supported stream type settings:
 - "Zero" plays stream of zeroes (like it was in Sound Keeper v1.0). It may be not enough for some hardware.

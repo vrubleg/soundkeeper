@@ -652,7 +652,7 @@ HRESULT CKeepSession::Render()
 			if (period_frames) { m_curr_frame %= period_frames; }
 		}
 	}
-	else if (m_stream_type == KeepStreamType::WhiteNoise && m_amplitude)
+	else if ((m_stream_type == KeepStreamType::WhiteNoise || m_stream_type == KeepStreamType::BrownNoise) && m_amplitude)
 	{
 		uint64_t lcg_state = __rdtsc();
 
@@ -690,88 +690,35 @@ HRESULT CKeepSession::Render()
 			if (amplitude)
 			{
 				lcg_state = lcg_state * 6364136223846793005ULL + 1; // LCG Musl.
-				double white = (double((lcg_state >> 32) & 0x7FFFFFFF) / double(0x7FFFFFFFU)) * 2.0 - 1.0; // -1..1
-				sample = float(white * amplitude);
-			}
+				double value = (double((lcg_state >> 32) & 0x7FFFFFFF) / double(0x7FFFFFFFU)) * 2.0 - 1.0; // -1 .. 1
 
-			for (size_t j = 0; j < m_channels_count; j++)
-			{
-				*reinterpret_cast<float*>(p_data + j * sizeof(float)) = sample;
-			}
-
-			p_data += m_frame_size;
-			m_curr_frame++;
-			if (period_frames) { m_curr_frame %= period_frames; }
-		}
-	}
-	else if (m_stream_type == KeepStreamType::BrownNoise && m_amplitude)
-	{
-		uint64_t lcg_state = __rdtsc();
-
-		for (size_t i = 0; i < need_frames; i++)
-		{
-			double amplitude = m_amplitude;
-
-			if (period_frames || m_curr_frame < fade_frames)
-			{
-				if (m_curr_frame < fade_frames)
+				if (m_stream_type == KeepStreamType::BrownNoise)
 				{
-					// Fade in.
-					double fade_volume = (1.0 / fade_frames) * m_curr_frame;
-					amplitude *= pow(fade_volume, 2);
-				}
-				else if (!play_frames || m_curr_frame < (play_frames - fade_frames))
-				{
-					// Max volume.
-				}
-				else if (m_curr_frame < play_frames)
-				{
-					// Fade out.
-					double fade_volume = (1.0 / fade_frames) * (play_frames - m_curr_frame);
-					amplitude *= pow(fade_volume, 2);
-				}
-				else
-				{
-					// Silence.
-					amplitude = 0;
-				}
-			}
-
-			float sample = 0;
-
-			if (amplitude)
-			{
-				lcg_state = lcg_state * 6364136223846793005ULL + 1; // LCG Musl.
-				double white = (double((lcg_state >> 32) & 0x7FFFFFFF) / double(0x7FFFFFFFU)) * 2.0 - 1.0; // -1..1
-
 #if 1
-
-				// Brown Noise from SoX + a leaky integrator that reduces low frequencies.
-				m_curr_value += white * (1.0 / 16);
-				m_curr_value /= 1.02; // The leaky integrator.
-				m_curr_value = fmod(m_curr_value, 4);
-				double norm_value = m_curr_value;
-
+					// Brown Noise from SoX + a leaky integrator that reduces low frequencies.
+					m_curr_value += value * (1.0 / 16);
+					m_curr_value /= 1.02; // The leaky integrator.
+					m_curr_value = fmod(m_curr_value, 4);
+					value = m_curr_value;
 #else
-
-				// Brown Noise from the noise.js.
-				m_curr_value += white * 0.02;
-				m_curr_value /= 1.02;
-				double norm_value = m_curr_value * 3.5; // -3.5 .. 3.5
-
+					// Brown Noise from the noise.js.
+					m_curr_value += value * 0.02;
+					m_curr_value /= 1.02;
+					value = m_curr_value * 3.5; // -3.5 .. 3.5
 #endif
 
-				// Normalize values out of the -1..1 range using "mirroring".
-				// Example: 0.8, 0.9, 1.0, 0.9, 0.8, ..., -0.8, -0.9, -1.0, -0.9, -0.8, ...
-				// Precondition: norm_value must be between -4.0 and 4.0.
-				if (norm_value < -1.0 || 1.0 < norm_value)
-				{
-					double sign = (norm_value < 0.0) ? -1.0 : 1.0;
-					norm_value = fabs(norm_value);
-					norm_value = ((norm_value <= 3.0) ? (2.0 - norm_value) : (norm_value - 4.0)) * sign;
+					// Normalize values out of the -1..1 range using "mirroring".
+					// Example: 0.8, 0.9, 1.0, 0.9, 0.8, ..., -0.8, -0.9, -1.0, -0.9, -0.8, ...
+					// Precondition: value must be between -4.0 and 4.0.
+					if (value < -1.0 || 1.0 < value)
+					{
+						double sign = (value < 0.0) ? -1.0 : 1.0;
+						value = fabs(value);
+						value = ((value <= 3.0) ? (2.0 - value) : (value - 4.0)) * sign;
+					}
 				}
 
-				sample = float(norm_value * amplitude);
+				sample = float(value * amplitude);
 			}
 
 			for (size_t j = 0; j < m_channels_count; j++)
