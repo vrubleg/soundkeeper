@@ -20,7 +20,7 @@ Supported stream type settings:
 - "Zero" plays stream of zeroes (like it was in Sound Keeper v1.0). It may be not enough for some hardware.
 - "Fluctuate" plays inaudible stream with lowest bit flipping from sample to sample. Used by default since v1.1.
 - "Sine" plays 1Hz sine wave at 1% volume. The frequency and amplitude can be changed. Useful for analog outputs.
-- "Noise" plays white noise, with the same parameters as the sine (except frequency).
+- "White" or "Brown" play white or brown noise, with the same parameters as the sine (except frequency).
 
 Sine and noise stream parameters:
 - F is frequency. Default: 1Hz. Applicable for the Sine only.
@@ -34,7 +34,7 @@ Examples:
 - SoundKeeperAll.exe generates default inaudible stream on all enabled audio outputs.
 - SoundKeeperSineF10A5.exe generates 10Hz sine wave with 5% amplitude on primary audio output. It is inaudible.
 - SoundKeeperSineF1000A100.exe generates 1000Hz sine wave with 100% amplitude. It is audible! Use it for testing.
-- "SoundKeeper.exe noise -a 0.1" (settings are command line arguments) generates white noise with 0.1% amplitude.
+- "SoundKeeper.exe brown -a 0.1" (settings are command line arguments) generates brown noise with 0.1% amplitude.
 
 Known issues
 

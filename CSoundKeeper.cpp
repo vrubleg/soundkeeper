@@ -505,9 +505,13 @@ void CSoundKeeper::ParseModeString(const char* args)
 	{
 		this->ParseStreamArgs(KeepStreamType::Sine, p+4);
 	}
-	else if (char* p = strstr(buf, "noise"))
+	else if (char* p = strstr(buf, "white"))
 	{
 		this->ParseStreamArgs(KeepStreamType::WhiteNoise, p+5);
+	}
+	else if (char* p = strstr(buf, "brown"))
+	{
+		this->ParseStreamArgs(KeepStreamType::BrownNoise, p+5);
 	}
 }
 
@@ -572,6 +576,7 @@ HRESULT CSoundKeeper::Run()
 		case KeepStreamType::Fluctuate: DebugLog("Stream Type: Fluctuate."); break;
 		case KeepStreamType::Sine:      DebugLog("Stream Type: Sine (Frequency: %.3fHz; Amplitude: %.3f%%; Fading: %.3fs).", this->GetFrequency(), this->GetAmplitude() * 100.0, this->GetFading()); break;
 		case KeepStreamType::WhiteNoise:DebugLog("Stream Type: White Noise (Amplitude: %.3f%%; Fading: %.3fs).", this->GetAmplitude() * 100.0, this->GetFading()); break;
+		case KeepStreamType::BrownNoise:DebugLog("Stream Type: Brownian Noise (Amplitude: %.3f%%; Fading: %.3fs).", this->GetAmplitude() * 100.0, this->GetFading()); break;
 		default:                        DebugLogError("Unknown Stream Type."); break;
 	}
 

@@ -661,7 +661,7 @@ HRESULT CKeepSession::Render()
 	}
 	else if (m_stream_type == KeepStreamType::WhiteNoise && m_mix_sample_type == SampleType::Float32 && m_amplitude)
 	{
-		uint32_t lcg_state = static_cast<uint32_t>(__rdtsc());
+		uint64_t lcg_state = __rdtsc();
 
 		for (size_t i = 0; i < need_frames; i++)
 		{
@@ -692,9 +692,67 @@ HRESULT CKeepSession::Render()
 				}
 			}
 
-			lcg_state = lcg_state * 48271 % 0x7FFFFFFF; // LCG MINSTD.
-			double random = static_cast<double>(lcg_state) / static_cast<double>(0x7FFFFFFFU); // 0..1
-			float sample = amplitude ? static_cast<float>((random * 2.0 - 1.0) * amplitude) : 0.0F;
+			float sample = 0;
+
+			if (amplitude)
+			{
+				lcg_state = lcg_state * 6364136223846793005ULL + 1; // LCG Musl.
+				double white = (static_cast<double>((lcg_state >> 32) & 0x7FFFFFFF) / static_cast<double>(0x7FFFFFFFU)) * 2.0 - 1.0; // -1..1
+				sample = static_cast<float>(white * amplitude);
+			}
+
+			for (size_t j = 0; j < m_channels_count; j++)
+			{
+				*reinterpret_cast<float*>(p_data + j * sizeof(float)) = sample;
+			}
+
+			p_data += m_frame_size;
+			m_curr_frame++;
+			if (period_frames) { m_curr_frame %= period_frames; }
+		}
+	}
+	else if (m_stream_type == KeepStreamType::BrownNoise && m_mix_sample_type == SampleType::Float32 && m_amplitude)
+	{
+		uint64_t lcg_state = __rdtsc();
+
+		for (size_t i = 0; i < need_frames; i++)
+		{
+			double amplitude = m_amplitude;
+
+			if (period_frames || m_curr_frame < fade_frames)
+			{
+				if (m_curr_frame < fade_frames)
+				{
+					// Fade in.
+					double fade_volume = (1.0 / fade_frames) * m_curr_frame;
+					amplitude *= pow(fade_volume, 2);
+				}
+				else if (!play_frames || m_curr_frame < (play_frames - fade_frames))
+				{
+					// Max volume.
+				}
+				else if (m_curr_frame < play_frames)
+				{
+					// Fade out.
+					double fade_volume = (1.0 / fade_frames) * (play_frames - m_curr_frame);
+					amplitude *= pow(fade_volume, 2);
+				}
+				else
+				{
+					// Silence.
+					amplitude = 0;
+				}
+			}
+
+			float sample = 0;
+
+			if (amplitude)
+			{
+				lcg_state = lcg_state * 6364136223846793005ULL + 1; // LCG Musl.
+				double white = (static_cast<double>((lcg_state >> 32) & 0x7FFFFFFF) / static_cast<double>(0x7FFFFFFFU)) * 2.0 - 1.0; // -1..1
+				m_curr_value = (m_curr_value + (0.02 * white)) / 1.02;
+				sample = static_cast<float>(m_curr_value * 3.5 * amplitude);
+			}
 
 			for (size_t j = 0; j < m_channels_count; j++)
 			{
