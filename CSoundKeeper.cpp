@@ -113,7 +113,10 @@ HRESULT STDMETHODCALLTYPE CSoundKeeper::OnDefaultDeviceChanged(EDataFlow flow, E
 HRESULT STDMETHODCALLTYPE CSoundKeeper::OnDeviceAdded(LPCWSTR device_id)
 {
 	DebugLog("Device '%S' was added.", device_id);
-	this->FireRestart();
+	if (m_cfg_device_type != KeepDeviceType::Primary)
+	{
+		this->FireRestart();
+	}
 	return S_OK;
 };
 
