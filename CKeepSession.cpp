@@ -674,7 +674,8 @@ HRESULT CKeepSession::Render()
 			for (size_t i = 0; i < need_frames; i++)
 			{
 				lcg_state = lcg_state * 48271 % 0x7FFFFFFF; // LCG MINSTD.
-				float sample = (float)((static_cast<double>(lcg_state) / static_cast<double>(0x7FFFFFFFU)) * m_amplitude);
+				double random = static_cast<double>(lcg_state) / static_cast<double>(0x7FFFFFFFU); // 0..1
+				float sample = static_cast<float>((random * 2.0 - 1.0) * m_amplitude);
 
 				for (size_t j = 0; j < m_channels_count; j++)
 				{
@@ -686,7 +687,7 @@ HRESULT CKeepSession::Render()
 		}
 		else
 		{
-			// Full version of sine generation with all features.
+			// Full version of noise generation with all features.
 			for (size_t i = 0; i < need_frames; i++)
 			{
 				double fade_volume = 0;
@@ -704,7 +705,8 @@ HRESULT CKeepSession::Render()
 				}
 
 				lcg_state = lcg_state * 48271 % 0x7FFFFFFF; // LCG MINSTD.
-				float sample = fade_volume ? (float)((static_cast<double>(lcg_state) / static_cast<double>(0x7FFFFFFFU)) * m_amplitude * pow(fade_volume, 2)) : 0.0F;
+				double random = static_cast<double>(lcg_state) / static_cast<double>(0x7FFFFFFFU); // 0..1
+				float sample = fade_volume ? static_cast<float>((random * 2.0 - 1.0) * m_amplitude * pow(fade_volume, 2)) : 0.0F;
 
 				for (size_t j = 0; j < m_channels_count; j++)
 				{
