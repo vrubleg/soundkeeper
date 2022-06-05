@@ -566,24 +566,12 @@ HRESULT CKeepSession::Render()
 		render_flags = AUDCLNT_BUFFERFLAGS_SILENT;
 		m_curr_frame = (m_curr_frame + need_frames) % period_frames;
 	}
-	else if (m_stream_type == KeepStreamType::Fluctuate && m_mix_sample_type == SampleType::Int16)
+	else if (m_mix_sample_type != SampleType::Float32)
 	{
-		size_t n = 0;
-		constexpr static uint16_t tbl[] = { -1, 0, 1, 0 };
-		for (size_t i = 0; i < need_frames; i++)
-		{
-			uint16_t sample = (period_frames && m_curr_frame >= play_frames) ? 0 : tbl[n];
-			for (size_t j = 0; j < m_channels_count; j++)
-			{
-				*reinterpret_cast<uint16_t*>(p_data + j * 2) = sample;
-			}
-			p_data += m_frame_size;
-			n = (n + 1) % 4;
-			m_curr_frame++;
-			if (period_frames) { m_curr_frame %= period_frames; }
-		}
+		// Shouldn't ever happen, it should always be Float32.
+		render_flags = AUDCLNT_BUFFERFLAGS_SILENT;
 	}
-	else if (m_stream_type == KeepStreamType::Fluctuate && m_mix_sample_type == SampleType::Float32)
+	else if (m_stream_type == KeepStreamType::Fluctuate)
 	{
 		// 0xb8000100 = -3.051851E-5 = -1.0/32767.
 		// 0x38000100 =  3.051851E-5 =  1.0/32767.
@@ -613,7 +601,7 @@ HRESULT CKeepSession::Render()
 			if (period_frames) { m_curr_frame %= period_frames; }
 		}
 	}
-	else if (m_stream_type == KeepStreamType::Sine && m_mix_sample_type == SampleType::Float32 && m_frequency && m_amplitude)
+	else if (m_stream_type == KeepStreamType::Sine && m_frequency && m_amplitude)
 	{
 		double theta_increment = (m_frequency * (M_PI*2)) / (double)m_sample_rate;
 
@@ -646,7 +634,13 @@ HRESULT CKeepSession::Render()
 				}
 			}
 
-			float sample = amplitude ? static_cast<float>(sin(m_curr_theta) * amplitude) : 0.0F;
+			float sample = 0;
+
+			if (amplitude)
+			{
+				sample = static_cast<float>(sin(m_curr_theta) * amplitude);
+				m_curr_theta += theta_increment;
+			}
 
 			for (size_t j = 0; j < m_channels_count; j++)
 			{
@@ -654,12 +648,11 @@ HRESULT CKeepSession::Render()
 			}
 
 			p_data += m_frame_size;
-			m_curr_theta += theta_increment;
 			m_curr_frame++;
 			if (period_frames) { m_curr_frame %= period_frames; }
 		}
 	}
-	else if (m_stream_type == KeepStreamType::WhiteNoise && m_mix_sample_type == SampleType::Float32 && m_amplitude)
+	else if (m_stream_type == KeepStreamType::WhiteNoise && m_amplitude)
 	{
 		uint64_t lcg_state = __rdtsc();
 
@@ -711,7 +704,7 @@ HRESULT CKeepSession::Render()
 			if (period_frames) { m_curr_frame %= period_frames; }
 		}
 	}
-	else if (m_stream_type == KeepStreamType::BrownNoise && m_mix_sample_type == SampleType::Float32 && m_amplitude)
+	else if (m_stream_type == KeepStreamType::BrownNoise && m_amplitude)
 	{
 		uint64_t lcg_state = __rdtsc();
 
@@ -753,7 +746,7 @@ HRESULT CKeepSession::Render()
 
 #if 1
 
-				// Algorithm from the SoX + leaky integrator that reduces low frequencies.
+				// Brown Noise from SoX + a leaky integrator that reduces low frequencies.
 				m_curr_value += white * (1.0 / 16);
 				m_curr_value /= 1.02; // The leaky integrator.
 				m_curr_value = fmod(m_curr_value, 4);
@@ -761,7 +754,7 @@ HRESULT CKeepSession::Render()
 
 #else
 
-				// Algorithm from the noise.js.
+				// Brown Noise from the noise.js.
 				m_curr_value += white * 0.02;
 				m_curr_value /= 1.02;
 				double norm_value = m_curr_value * 3.5; // -3.5 .. 3.5
