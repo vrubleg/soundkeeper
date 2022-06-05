@@ -750,8 +750,16 @@ HRESULT CKeepSession::Render()
 			{
 				lcg_state = lcg_state * 6364136223846793005ULL + 1; // LCG Musl.
 				double white = (static_cast<double>((lcg_state >> 32) & 0x7FFFFFFF) / static_cast<double>(0x7FFFFFFFU)) * 2.0 - 1.0; // -1..1
-				m_curr_value = (m_curr_value + (0.02 * white)) / 1.02;
-				sample = static_cast<float>(m_curr_value * 3.5 * amplitude);
+				white *= (1.0 / 16);
+				if (m_curr_value >= 0.0)
+				{
+					m_curr_value = (m_curr_value + white < 1.0) ? (m_curr_value + white) : (m_curr_value - white);
+				}
+				else
+				{
+					m_curr_value = (m_curr_value + white > -1.0) ? (m_curr_value + white) : (m_curr_value - white);
+				}
+				sample = static_cast<float>(m_curr_value * amplitude);
 			}
 
 			for (size_t j = 0; j < m_channels_count; j++)
