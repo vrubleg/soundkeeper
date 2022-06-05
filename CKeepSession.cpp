@@ -638,7 +638,7 @@ HRESULT CKeepSession::Render()
 
 			if (amplitude)
 			{
-				sample = static_cast<float>(sin(m_curr_theta) * amplitude);
+				sample = float(sin(m_curr_theta) * amplitude);
 				m_curr_theta += theta_increment;
 			}
 
@@ -690,8 +690,8 @@ HRESULT CKeepSession::Render()
 			if (amplitude)
 			{
 				lcg_state = lcg_state * 6364136223846793005ULL + 1; // LCG Musl.
-				double white = (static_cast<double>((lcg_state >> 32) & 0x7FFFFFFF) / static_cast<double>(0x7FFFFFFFU)) * 2.0 - 1.0; // -1..1
-				sample = static_cast<float>(white * amplitude);
+				double white = (double((lcg_state >> 32) & 0x7FFFFFFF) / double(0x7FFFFFFFU)) * 2.0 - 1.0; // -1..1
+				sample = float(white * amplitude);
 			}
 
 			for (size_t j = 0; j < m_channels_count; j++)
@@ -742,7 +742,7 @@ HRESULT CKeepSession::Render()
 			if (amplitude)
 			{
 				lcg_state = lcg_state * 6364136223846793005ULL + 1; // LCG Musl.
-				double white = (static_cast<double>((lcg_state >> 32) & 0x7FFFFFFF) / static_cast<double>(0x7FFFFFFFU)) * 2.0 - 1.0; // -1..1
+				double white = (double((lcg_state >> 32) & 0x7FFFFFFF) / double(0x7FFFFFFFU)) * 2.0 - 1.0; // -1..1
 
 #if 1
 
@@ -771,7 +771,7 @@ HRESULT CKeepSession::Render()
 					norm_value = ((norm_value <= 3.0) ? (2.0 - norm_value) : (norm_value - 4.0)) * sign;
 				}
 
-				sample = static_cast<float>(norm_value * amplitude);
+				sample = float(norm_value * amplitude);
 			}
 
 			for (size_t j = 0; j < m_channels_count; j++)

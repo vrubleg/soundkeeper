@@ -64,7 +64,7 @@ What's new
 
 [2022/XX/XX] v1.X.X:
 - Periodic playing of a sine sound with optional fading.
-- White noise signal type.
+- "White" and "Brown" noise signal types.
 - Self kill command is added. Run "soundkeeper kill" to stop running Sound Keeper instance.
 - "Analog" switch was added. It works as the opposite of "Digital".
 - Ignores remote desktop audio device.
