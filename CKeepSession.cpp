@@ -579,7 +579,8 @@ HRESULT CKeepSession::Render()
 			}
 			p_data += m_frame_size;
 			n = (n + 1) % 4;
-			if (period_frames) { m_curr_frame = (m_curr_frame + 1) % period_frames; }
+			m_curr_frame++;
+			if (period_frames) { m_curr_frame %= period_frames; }
 		}
 	}
 	else if (m_stream_type == KeepStreamType::Fluctuate && m_mix_sample_type == SampleType::Float32)
@@ -608,115 +609,101 @@ HRESULT CKeepSession::Render()
 			}
 			p_data += m_frame_size;
 			n = (n + 1) % 4;
-			if (period_frames) { m_curr_frame = (m_curr_frame + 1) % period_frames; }
+			m_curr_frame++;
+			if (period_frames) { m_curr_frame %= period_frames; }
 		}
 	}
 	else if (m_stream_type == KeepStreamType::Sine && m_mix_sample_type == SampleType::Float32 && m_frequency && m_amplitude)
 	{
 		double theta_increment = (m_frequency * (M_PI*2)) / (double)m_sample_rate;
 
-		if (!period_frames && m_curr_frame >= fade_frames)
+		for (size_t i = 0; i < need_frames; i++)
 		{
-			// Faster version of sine generation without fading and periodicity.
-			for (size_t i = 0; i < need_frames; i++)
-			{
-				float sample = (float)(sin(m_curr_theta) * m_amplitude);
+			double amplitude = m_amplitude;
 
-				for (size_t j = 0; j < m_channels_count; j++)
-				{
-					*reinterpret_cast<float*>(p_data + j * sizeof(float)) = sample;
-				}
-
-				p_data += m_frame_size;
-				m_curr_theta += theta_increment;
-			}
-		}
-		else
-		{
-			// Full version of sine generation with all features.
-			for (size_t i = 0; i < need_frames; i++)
+			if (period_frames || m_curr_frame < fade_frames)
 			{
-				double fade_volume = 0;
 				if (m_curr_frame < fade_frames)
 				{
-					fade_volume = (1.0 / fade_frames) * m_curr_frame;
+					// Fade in.
+					double fade_volume = (1.0 / fade_frames) * m_curr_frame;
+					amplitude *= pow(fade_volume, 2);
 				}
 				else if (!play_frames || m_curr_frame < (play_frames - fade_frames))
 				{
-					fade_volume = 1.0;
+					// Max volume.
 				}
 				else if (m_curr_frame < play_frames)
 				{
-					fade_volume = (1.0 / fade_frames) * (play_frames - m_curr_frame);
+					// Fade out.
+					double fade_volume = (1.0 / fade_frames) * (play_frames - m_curr_frame);
+					amplitude *= pow(fade_volume, 2);
 				}
-
-				float sample = fade_volume ? (float)(sin(m_curr_theta) * m_amplitude * pow(fade_volume, 2)) : 0.0F;
-
-				for (size_t j = 0; j < m_channels_count; j++)
+				else
 				{
-					*reinterpret_cast<float*>(p_data + j * sizeof(float)) = sample;
+					// Silence.
+					amplitude = 0;
 				}
-
-				p_data += m_frame_size;
-				m_curr_theta += theta_increment;
-				m_curr_frame++;
-				if (period_frames) { m_curr_frame %= period_frames; }
 			}
+
+			float sample = amplitude ? static_cast<float>(sin(m_curr_theta) * amplitude) : 0.0F;
+
+			for (size_t j = 0; j < m_channels_count; j++)
+			{
+				*reinterpret_cast<float*>(p_data + j * sizeof(float)) = sample;
+			}
+
+			p_data += m_frame_size;
+			m_curr_theta += theta_increment;
+			m_curr_frame++;
+			if (period_frames) { m_curr_frame %= period_frames; }
 		}
 	}
 	else if (m_stream_type == KeepStreamType::WhiteNoise && m_mix_sample_type == SampleType::Float32 && m_amplitude)
 	{
 		uint32_t lcg_state = static_cast<uint32_t>(__rdtsc());
 
-		if (!period_frames && m_curr_frame >= fade_frames)
+		for (size_t i = 0; i < need_frames; i++)
 		{
-			// Faster version of noise generation without fading and periodicity.
-			for (size_t i = 0; i < need_frames; i++)
-			{
-				lcg_state = lcg_state * 48271 % 0x7FFFFFFF; // LCG MINSTD.
-				double random = static_cast<double>(lcg_state) / static_cast<double>(0x7FFFFFFFU); // 0..1
-				float sample = static_cast<float>((random * 2.0 - 1.0) * m_amplitude);
+			double amplitude = m_amplitude;
 
-				for (size_t j = 0; j < m_channels_count; j++)
-				{
-					*reinterpret_cast<float*>(p_data + j * sizeof(float)) = sample;
-				}
-
-				p_data += m_frame_size;
-			}
-		}
-		else
-		{
-			// Full version of noise generation with all features.
-			for (size_t i = 0; i < need_frames; i++)
+			if (period_frames || m_curr_frame < fade_frames)
 			{
-				double fade_volume = 0;
 				if (m_curr_frame < fade_frames)
 				{
-					fade_volume = (1.0 / fade_frames) * m_curr_frame;
+					// Fade in.
+					double fade_volume = (1.0 / fade_frames) * m_curr_frame;
+					amplitude *= pow(fade_volume, 2);
 				}
 				else if (!play_frames || m_curr_frame < (play_frames - fade_frames))
 				{
-					fade_volume = 1.0;
+					// Max volume.
 				}
 				else if (m_curr_frame < play_frames)
 				{
-					fade_volume = (1.0 / fade_frames) * (play_frames - m_curr_frame);
+					// Fade out.
+					double fade_volume = (1.0 / fade_frames) * (play_frames - m_curr_frame);
+					amplitude *= pow(fade_volume, 2);
 				}
-
-				lcg_state = lcg_state * 48271 % 0x7FFFFFFF; // LCG MINSTD.
-				double random = static_cast<double>(lcg_state) / static_cast<double>(0x7FFFFFFFU); // 0..1
-				float sample = fade_volume ? static_cast<float>((random * 2.0 - 1.0) * m_amplitude * pow(fade_volume, 2)) : 0.0F;
-
-				for (size_t j = 0; j < m_channels_count; j++)
+				else
 				{
-					*reinterpret_cast<float*>(p_data + j * sizeof(float)) = sample;
+					// Silence.
+					amplitude = 0;
 				}
-
-				p_data += m_frame_size;
-				m_curr_frame++;
-				if (period_frames) { m_curr_frame %= period_frames; }
 			}
+
+			lcg_state = lcg_state * 48271 % 0x7FFFFFFF; // LCG MINSTD.
+			double random = static_cast<double>(lcg_state) / static_cast<double>(0x7FFFFFFFU); // 0..1
+			float sample = amplitude ? static_cast<float>((random * 2.0 - 1.0) * amplitude) : 0.0F;
+
+			for (size_t j = 0; j < m_channels_count; j++)
+			{
+				*reinterpret_cast<float*>(p_data + j * sizeof(float)) = sample;
+			}
+
+			p_data += m_frame_size;
+			m_curr_frame++;
+			if (period_frames) { m_curr_frame %= period_frames; }
 		}
 	}
 	else
