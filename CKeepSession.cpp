@@ -750,16 +750,22 @@ HRESULT CKeepSession::Render()
 			{
 				lcg_state = lcg_state * 6364136223846793005ULL + 1; // LCG Musl.
 				double white = (static_cast<double>((lcg_state >> 32) & 0x7FFFFFFF) / static_cast<double>(0x7FFFFFFFU)) * 2.0 - 1.0; // -1..1
-				white *= (1.0 / 16);
-				if (m_curr_value >= 0.0)
+
+				m_curr_value += white * (1.0 / 16);
+				m_curr_value = fmod(m_curr_value, 4);
+				double norm_value = m_curr_value;
+
+				// Normalize values out of the -1..1 range using "mirroring".
+				// Example: 0.8, 0.9, 1.0, 0.9, 0.8, ..., -0.8, -0.9, -1.0, -0.9, -0.8, ...
+				// Precondition: norm_value must be between -4.0 and 4.0.
+				if (norm_value < -1.0 || 1.0 < norm_value)
 				{
-					m_curr_value = (m_curr_value + white < 1.0) ? (m_curr_value + white) : (m_curr_value - white);
+					double sign = (norm_value < 0.0) ? -1.0 : 1.0;
+					norm_value = fabs(norm_value);
+					norm_value = ((norm_value <= 3.0) ? (2.0 - norm_value) : (norm_value - 4.0)) * sign;
 				}
-				else
-				{
-					m_curr_value = (m_curr_value + white > -1.0) ? (m_curr_value + white) : (m_curr_value - white);
-				}
-				sample = static_cast<float>(m_curr_value * amplitude);
+
+				sample = static_cast<float>(norm_value * amplitude);
 			}
 
 			for (size_t j = 0; j < m_channels_count; j++)
