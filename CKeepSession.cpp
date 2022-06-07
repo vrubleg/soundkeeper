@@ -335,12 +335,23 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 		}
 
 		m_mix_sample_type = GetSampleType(mix_format);
-		m_frame_size = mix_format->nBlockAlign;
-		m_sample_rate = mix_format->nSamplesPerSec;
 		m_channels_count = mix_format->nChannels;
+		m_frame_size = mix_format->nBlockAlign;
+
+		// Noise generation works best with the 48000Hz sample rate.
+		if (m_stream_type == KeepStreamType::WhiteNoise || m_stream_type == KeepStreamType::BrownNoise)
+		{
+			DebugLog("Using 48000Hz sample rate for noise generation.");
+			mix_format->nSamplesPerSec = 48000;
+			mix_format->nAvgBytesPerSec= mix_format->nSamplesPerSec * mix_format->nBlockAlign;
+		}
+
+		m_sample_rate = mix_format->nSamplesPerSec;
 
 		// Initialize WASAPI in timer driven mode.
-		hr = m_audio_client->Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_NOPERSIST, static_cast<UINT64>(m_buffer_size_in_ms) * 10000, 0, mix_format, NULL);
+		hr = m_audio_client->Initialize(AUDCLNT_SHAREMODE_SHARED,
+			AUDCLNT_STREAMFLAGS_NOPERSIST | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM /*| AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY*/,
+			static_cast<UINT64>(m_buffer_size_in_ms) * 10000, 0, mix_format, NULL);
 		CoTaskMemFree(mix_format);
 	}
 
