@@ -20,7 +20,7 @@ Supported stream type settings:
 - "Zero" plays stream of zeroes (like it was in Sound Keeper v1.0). It may be not enough for some hardware.
 - "Fluctuate" plays inaudible stream with lowest bit flipping from sample to sample. Used by default since v1.1.
 - "Sine" plays 1Hz sine wave at 1% volume. The frequency and amplitude can be changed. Useful for analog outputs.
-- "White" or "Brown" play white or brown noise, with the same parameters as the sine (except frequency).
+- "White", "Brown", or "Pink" play named noise, with the same parameters as the sine (except frequency).
 
 Sine and noise stream parameters:
 - F is frequency. Default: 1Hz. Applicable for the Sine only.
@@ -64,7 +64,7 @@ What's new
 
 [2022/XX/XX] v1.X.X:
 - Periodic playing of a sine sound with optional fading.
-- "White" and "Brown" noise signal types.
+- "White", "Brown", and "Pink" noise signal types.
 - Self kill command is added. Run "soundkeeper kill" to stop running Sound Keeper instance.
 - "Analog" switch was added. It works as the opposite of "Digital".
 - Ignores remote desktop audio device.

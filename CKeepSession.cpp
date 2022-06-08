@@ -339,7 +339,7 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 		m_frame_size = mix_format->nBlockAlign;
 
 		// Noise generation works best with the 48000Hz sample rate.
-		if (m_stream_type == KeepStreamType::WhiteNoise || m_stream_type == KeepStreamType::BrownNoise)
+		if (m_stream_type == KeepStreamType::WhiteNoise || m_stream_type == KeepStreamType::BrownNoise || m_stream_type == KeepStreamType::PinkNoise)
 		{
 			DebugLog("Using 48000Hz sample rate for noise generation.");
 			mix_format->nSamplesPerSec = 48000;
@@ -663,7 +663,7 @@ HRESULT CKeepSession::Render()
 			if (period_frames) { m_curr_frame %= period_frames; }
 		}
 	}
-	else if ((m_stream_type == KeepStreamType::WhiteNoise || m_stream_type == KeepStreamType::BrownNoise) && m_amplitude)
+	else if ((m_stream_type == KeepStreamType::WhiteNoise || m_stream_type == KeepStreamType::BrownNoise || m_stream_type == KeepStreamType::PinkNoise) && m_amplitude)
 	{
 		uint64_t lcg_state = __rdtsc();
 
@@ -720,6 +720,20 @@ HRESULT CKeepSession::Render()
 						value = fabs(value);
 						value = ((value <= 3.0) ? (2.0 - value) : (value - 4.0)) * sign;
 					}
+				}
+				else if (m_stream_type == KeepStreamType::PinkNoise)
+				{
+					// Paul Kellet's method.
+					double white = value;
+					m_curr_state[0] = 0.99886 * m_curr_state[0] + white * 0.0555179;
+					m_curr_state[1] = 0.99332 * m_curr_state[1] + white * 0.0750759;
+					m_curr_state[2] = 0.96900 * m_curr_state[2] + white * 0.1538520;
+					m_curr_state[3] = 0.86650 * m_curr_state[3] + white * 0.3104856;
+					m_curr_state[4] = 0.55000 * m_curr_state[4] + white * 0.5329522;
+					m_curr_state[5] = -0.7616 * m_curr_state[5] - white * 0.0168980;
+					value = m_curr_state[0] + m_curr_state[1] + m_curr_state[2] + m_curr_state[3] + m_curr_state[4] + m_curr_state[5] + m_curr_state[6] + white * 0.5362;
+					value *= 0.11; // (roughly) compensate for gain.
+					m_curr_state[6] = white * 0.115926;
 				}
 
 				sample = float(value * amplitude);

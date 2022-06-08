@@ -6,7 +6,7 @@
 // Enable Multimedia Class Scheduler Service.
 #define ENABLE_MMCSS
 
-enum class KeepStreamType { Zero, Fluctuate, Sine, WhiteNoise, BrownNoise };
+enum class KeepStreamType { Zero, Fluctuate, Sine, WhiteNoise, BrownNoise, PinkNoise };
 
 class CKeepSession;
 #include "CSoundKeeper.hpp"
@@ -59,20 +59,23 @@ protected:
 	const UINT32            m_buffer_size_in_ms = 1000;
 	UINT32                  m_buffer_size_in_frames = 0;
 
-	// Sine generation fields.
+	// Sound generation settings.
 	double                  m_frequency = 0.0;
 	double                  m_amplitude = 0.0;
-	union
-	{
-		double              m_curr_theta = 0.0;
-		double              m_curr_value;
-	};
 
-	// Periodicity fields.
+	// Periodicity settings.
 	double                  m_play_seconds = 0.0;
 	double                  m_wait_seconds = 0.0;
 	double                  m_fade_seconds = 0.0;
+
+	// Current state.
 	uint64_t                m_curr_frame = 0;
+	union
+	{
+		double              m_curr_state[8]{0}; // Pink Noise.
+		double              m_curr_value;       // Brown Noise.
+		double              m_curr_theta;       // Sine.
+	};
 
 public:
 
@@ -86,8 +89,11 @@ public:
 
 	void ResetCurrent()
 	{
-		m_curr_frame = 0;
-		m_curr_theta = 0.0;
+		if (m_curr_frame)
+		{
+			m_curr_frame = 0;
+			memset(m_curr_state, 0, sizeof(m_curr_state));
+		}
 	}
 
 	void SetStreamType(KeepStreamType stream_type)
