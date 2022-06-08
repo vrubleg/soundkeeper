@@ -227,7 +227,7 @@ HRESULT CSoundKeeper::Start()
 			SafeRelease(device);
 			goto exit_started;
 		}
-		else if (formfactor == RemoteNetworkDevice)
+		else if (!m_cfg_allow_remote && formfactor == RemoteNetworkDevice)
 		{
 			DebugLog("Ignoring remote desktop audio device.");
 			SafeRelease(device);
@@ -286,7 +286,7 @@ HRESULT CSoundKeeper::Start()
 				SafeRelease(device);
 				continue;
 			}
-			else if (formfactor == RemoteNetworkDevice)
+			else if (!m_cfg_allow_remote && formfactor == RemoteNetworkDevice)
 			{
 				DebugLog("Ignoring remote desktop audio device.");
 				SafeRelease(device);
@@ -496,6 +496,7 @@ void CSoundKeeper::ParseModeString(const char* args)
 	if (strstr(buf, "analog"))  { this->SetDeviceType(KeepDeviceType::Analog); }
 	if (strstr(buf, "digital")) { this->SetDeviceType(KeepDeviceType::Digital); }
 	if (strstr(buf, "kill"))    { this->SetDeviceType(KeepDeviceType::None); }
+	if (strstr(buf, "remote"))  { this->SetAllowRemote(true); }
 
 	if (strstr(buf, "zero") || strstr(buf, "null"))
 	{

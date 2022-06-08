@@ -46,6 +46,7 @@ protected:
 	AutoResetEvent          m_do_restart = false;
 	AutoResetEvent          m_do_retry = false;
 
+	bool                    m_cfg_allow_remote = false;
 	KeepDeviceType          m_cfg_device_type = KeepDeviceType::Primary;
 	KeepStreamType          m_cfg_stream_type = KeepStreamType::Zero;
 
@@ -66,8 +67,10 @@ public:
 
 	void SetDeviceType(KeepDeviceType device_type) { m_cfg_device_type = device_type; }
 	void SetStreamType(KeepStreamType stream_type) { m_cfg_stream_type = stream_type; }
+	void SetAllowRemote(bool allow) { m_cfg_allow_remote = allow; }
 	KeepDeviceType GetDeviceType() const { return m_cfg_device_type; }
 	KeepStreamType GetStreamType() const { return m_cfg_stream_type; }
+	bool GetAllowRemote() const { return m_cfg_allow_remote; }
 
 	// Configuration methods.
 	void SetFrequency(double frequency) { m_cfg_frequency = frequency; }
