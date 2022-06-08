@@ -614,7 +614,7 @@ HRESULT CKeepSession::Render()
 	}
 	else if (m_stream_type == KeepStreamType::Sine && m_frequency && m_amplitude)
 	{
-		double theta_increment = (m_frequency * (M_PI*2)) / (double)m_sample_rate;
+		double theta_increment = (m_frequency * (M_PI*2)) / double(m_sample_rate);
 
 		for (size_t i = 0; i < need_frames; i++)
 		{
@@ -700,23 +700,16 @@ HRESULT CKeepSession::Render()
 
 			if (amplitude)
 			{
-				lcg_state = lcg_state * 6364136223846793005ULL + 1; // LCG Musl.
+				lcg_state = lcg_state * 6364136223846793005ULL + 1; // LCG from Musl.
 				double value = (double((lcg_state >> 32) & 0x7FFFFFFF) / double(0x7FFFFFFFU)) * 2.0 - 1.0; // -1 .. 1
 
 				if (m_stream_type == KeepStreamType::BrownNoise)
 				{
-#if 1
-					// Brown Noise from SoX + a leaky integrator that reduces low frequencies.
+					// Brown Noise from SoX + a leaky integrator to reduce low frequency humming.
 					m_curr_value += value * (1.0 / 16);
 					m_curr_value /= 1.02; // The leaky integrator.
 					m_curr_value = fmod(m_curr_value, 4);
 					value = m_curr_value;
-#else
-					// Brown Noise from the noise.js.
-					m_curr_value += value * 0.02;
-					m_curr_value /= 1.02;
-					value = m_curr_value * 3.5; // -3.5 .. 3.5
-#endif
 
 					// Normalize values out of the -1..1 range using "mirroring".
 					// Example: 0.8, 0.9, 1.0, 0.9, 0.8, ..., -0.8, -0.9, -1.0, -0.9, -0.8, ...
