@@ -497,6 +497,7 @@ void CSoundKeeper::ParseModeString(const char* args)
 	if (strstr(buf, "digital")) { this->SetDeviceType(KeepDeviceType::Digital); }
 	if (strstr(buf, "kill"))    { this->SetDeviceType(KeepDeviceType::None); }
 	if (strstr(buf, "remote"))  { this->SetAllowRemote(true); }
+	if (strstr(buf, "nosleep"))  { this->SetNoSleep(true); }
 
 	if (strstr(buf, "zero") || strstr(buf, "null"))
 	{
@@ -600,6 +601,11 @@ HRESULT CSoundKeeper::Run()
 		DebugLog("Periodicity: Disabled.");
 	}
 
+	if (m_cfg_no_sleep)
+	{
+		DebugLog("Disabled sleep support.");
+	}
+
 #endif
 
 	// Stop another instance.
@@ -663,7 +669,7 @@ HRESULT CSoundKeeper::Run()
 
 	for (bool working = true; working; )
 	{
-		LONG seconds_to_sleeping = (g_is_buggy_powerinfo ? -1 : GetSecondsToSleeping());
+		LONG seconds_to_sleeping = ((m_cfg_no_sleep || g_is_buggy_powerinfo) ? -1 : GetSecondsToSleeping());
 
 		if (seconds_to_sleeping != -1 && seconds_to_sleeping <= 0)
 		{
@@ -687,7 +693,7 @@ HRESULT CSoundKeeper::Run()
 			}
 		}
 
-		DWORD timeout = (seconds_to_sleeping != -1 && seconds_to_sleeping <= 30 || m_is_retry_required) ? 500 : 5000;
+		DWORD timeout = (seconds_to_sleeping != -1 && seconds_to_sleeping <= 30 || m_is_retry_required) ? 500 : (m_cfg_no_sleep ? INFINITE : 5000);
 
 		switch (WaitForAny({ m_do_retry, m_do_restart, m_do_shutdown, global_stop_event }, timeout))
 		{
