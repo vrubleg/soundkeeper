@@ -405,12 +405,15 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 
 	DebugLog("Starting rendering...");
 
-	// We want to pre-roll one buffer of data into the pipeline. That way the audio engine won't glitch on startup.  
-	hr = this->Render();
-	if (FAILED(hr))
+	if (m_stream_type != KeepStreamType::None)
 	{
-		DebugLogError("Can't render initial buffer: 0x%08X.", hr);
-		goto free;
+		// We want to pre-roll one buffer of data into the pipeline. That way the audio engine won't glitch on startup.  
+		hr = this->Render();
+		if (FAILED(hr))
+		{
+			DebugLogError("Can't render initial buffer: 0x%08X.", hr);
+			goto free;
+		}
 	}
 
 	hr = m_audio_client->Start();
@@ -424,7 +427,7 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 
 	m_play_attempts = 0;
 
-	while (true) switch (WaitForOne(m_interrupt, m_buffer_size_in_ms / 2 + m_buffer_size_in_ms / 4))
+	while (true) switch (WaitForOne(m_interrupt, m_stream_type == KeepStreamType::None ? INFINITE : m_buffer_size_in_ms / 2 + m_buffer_size_in_ms / 4))
 	{
 	case WAIT_TIMEOUT: // Timeout.
 

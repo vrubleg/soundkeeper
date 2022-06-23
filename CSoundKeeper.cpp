@@ -518,6 +518,10 @@ void CSoundKeeper::ParseModeString(const char* args)
 	{
 		this->ParseStreamArgs(KeepStreamType::PinkNoise, p+4);
 	}
+	else if (strstr(buf, "openonly"))
+	{
+		this->SetStreamType(KeepStreamType::None);
+	}
 }
 
 HRESULT CSoundKeeper::Run()
@@ -583,6 +587,7 @@ HRESULT CSoundKeeper::Run()
 		case KeepStreamType::WhiteNoise:DebugLog("Stream Type: White Noise (Amplitude: %.3f%%; Fading: %.3fs).", this->GetAmplitude() * 100.0, this->GetFading()); break;
 		case KeepStreamType::BrownNoise:DebugLog("Stream Type: Brown Noise (Amplitude: %.3f%%; Fading: %.3fs).", this->GetAmplitude() * 100.0, this->GetFading()); break;
 		case KeepStreamType::PinkNoise :DebugLog("Stream Type: Pink Noise (Amplitude: %.3f%%; Fading: %.3fs).", this->GetAmplitude() * 100.0, this->GetFading()); break;
+		case KeepStreamType::None:      DebugLog("Stream Type: None (Open Only)."); break;
 		default:                        DebugLogError("Unknown Stream Type."); break;
 	}
 

@@ -6,7 +6,7 @@
 // Enable Multimedia Class Scheduler Service.
 #define ENABLE_MMCSS
 
-enum class KeepStreamType { Zero, Fluctuate, Sine, WhiteNoise, BrownNoise, PinkNoise };
+enum class KeepStreamType { Zero, Fluctuate, Sine, WhiteNoise, BrownNoise, PinkNoise, None };
 
 class CKeepSession;
 #include "CSoundKeeper.hpp"
