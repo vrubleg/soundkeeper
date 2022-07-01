@@ -405,15 +405,12 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 
 	DebugLog("Starting rendering...");
 
-	if (m_stream_type != KeepStreamType::None)
+	// We need to pre-roll one buffer of data into the pipeline before starting.
+	hr = this->Render();
+	if (FAILED(hr))
 	{
-		// We want to pre-roll one buffer of data into the pipeline. That way the audio engine won't glitch on startup.  
-		hr = this->Render();
-		if (FAILED(hr))
-		{
-			DebugLogError("Can't render initial buffer: 0x%08X.", hr);
-			goto free;
-		}
+		DebugLogError("Can't render initial buffer: 0x%08X.", hr);
+		goto free;
 	}
 
 	hr = m_audio_client->Start();
@@ -427,7 +424,7 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 
 	m_play_attempts = 0;
 
-	while (true) switch (WaitForOne(m_interrupt, m_stream_type == KeepStreamType::None ? INFINITE : m_buffer_size_in_ms / 2 + m_buffer_size_in_ms / 4))
+	while (true) switch (WaitForOne(m_interrupt, m_stream_type == KeepStreamType::None ? INFINITE : (m_buffer_size_in_ms / 2 + m_buffer_size_in_ms / 4)))
 	{
 	case WAIT_TIMEOUT: // Timeout.
 
@@ -523,6 +520,11 @@ CKeepSession::SampleType CKeepSession::GetSampleType(WAVEFORMATEX* format)
 HRESULT CKeepSession::Render()
 {
 	HRESULT hr = S_OK;
+
+	if (m_stream_type == KeepStreamType::None)
+	{
+		return hr;
+	}
 
 	// We want to find out how much of the buffer *isn't* available (is padding).
 	UINT32 padding;

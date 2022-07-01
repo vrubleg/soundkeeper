@@ -50,8 +50,6 @@ protected:
 	bool                    m_cfg_no_sleep = false;
 	KeepDeviceType          m_cfg_device_type = KeepDeviceType::Primary;
 	KeepStreamType          m_cfg_stream_type = KeepStreamType::Zero;
-
-	// Configuration fields.
 	double                  m_cfg_frequency = 0.0;
 	double                  m_cfg_amplitude = 0.0;
 	double                  m_cfg_play_seconds = 0.0;
@@ -69,10 +67,11 @@ public:
 	void SetDeviceType(KeepDeviceType device_type) { m_cfg_device_type = device_type; }
 	void SetStreamType(KeepStreamType stream_type) { m_cfg_stream_type = stream_type; }
 	void SetAllowRemote(bool allow) { m_cfg_allow_remote = allow; }
-	void SetNoSleep(bool allow) { m_cfg_no_sleep = allow; }
+	void SetNoSleep(bool value) { m_cfg_no_sleep = value; }
 	KeepDeviceType GetDeviceType() const { return m_cfg_device_type; }
 	KeepStreamType GetStreamType() const { return m_cfg_stream_type; }
 	bool GetAllowRemote() const { return m_cfg_allow_remote; }
+	bool GetNoSleep() const { return m_cfg_no_sleep; }
 
 	// Configuration methods.
 	void SetFrequency(double frequency) { m_cfg_frequency = frequency; }

@@ -44,16 +44,6 @@ LONG GetSecondsToSleeping()
 	return spi.TimeRemaining;
 }
 
-static bool g_is_buggy_powerinfo = []()
-{
-	bool result = (GetSecondsToSleeping() == 0);
-	if (result)
-	{
-		DebugLogWarning("Buggy power information.");
-	}
-	return result;
-}();
-
 //
 // CSoundKeeper implementation.
 //
@@ -497,9 +487,13 @@ void CSoundKeeper::ParseModeString(const char* args)
 	if (strstr(buf, "digital")) { this->SetDeviceType(KeepDeviceType::Digital); }
 	if (strstr(buf, "kill"))    { this->SetDeviceType(KeepDeviceType::None); }
 	if (strstr(buf, "remote"))  { this->SetAllowRemote(true); }
-	if (strstr(buf, "nosleep"))  { this->SetNoSleep(true); }
+	if (strstr(buf, "nosleep")) { this->SetNoSleep(true); }
 
-	if (strstr(buf, "zero") || strstr(buf, "null"))
+	if (strstr(buf, "openonly"))
+	{
+		this->SetStreamType(KeepStreamType::None);
+	}
+	else if (strstr(buf, "zero") || strstr(buf, "null"))
 	{
 		this->SetStreamType(KeepStreamType::Zero);
 	}
@@ -518,10 +512,6 @@ void CSoundKeeper::ParseModeString(const char* args)
 	else if (char* p = strstr(buf, "pink"))
 	{
 		this->ParseStreamArgs(KeepStreamType::PinkNoise, p+4);
-	}
-	else if (strstr(buf, "openonly"))
-	{
-		this->SetStreamType(KeepStreamType::None);
 	}
 }
 
@@ -568,6 +558,12 @@ HRESULT CSoundKeeper::Run()
 		}
 	}
 
+	if (GetSecondsToSleeping() == 0)
+	{
+		DebugLogWarning("Buggy power information.");
+		m_cfg_no_sleep = true;
+	}
+
 #ifdef _CONSOLE
 
 	switch (this->GetDeviceType())
@@ -582,13 +578,13 @@ HRESULT CSoundKeeper::Run()
 
 	switch (this->GetStreamType())
 	{
+		case KeepStreamType::None:      DebugLog("Stream Type: None (Open Only)."); break;
 		case KeepStreamType::Zero:      DebugLog("Stream Type: Zero."); break;
 		case KeepStreamType::Fluctuate: DebugLog("Stream Type: Fluctuate."); break;
 		case KeepStreamType::Sine:      DebugLog("Stream Type: Sine (Frequency: %.3fHz; Amplitude: %.3f%%; Fading: %.3fs).", this->GetFrequency(), this->GetAmplitude() * 100.0, this->GetFading()); break;
 		case KeepStreamType::WhiteNoise:DebugLog("Stream Type: White Noise (Amplitude: %.3f%%; Fading: %.3fs).", this->GetAmplitude() * 100.0, this->GetFading()); break;
 		case KeepStreamType::BrownNoise:DebugLog("Stream Type: Brown Noise (Amplitude: %.3f%%; Fading: %.3fs).", this->GetAmplitude() * 100.0, this->GetFading()); break;
-		case KeepStreamType::PinkNoise :DebugLog("Stream Type: Pink Noise (Amplitude: %.3f%%; Fading: %.3fs).", this->GetAmplitude() * 100.0, this->GetFading()); break;
-		case KeepStreamType::None:      DebugLog("Stream Type: None (Open Only)."); break;
+		case KeepStreamType::PinkNoise: DebugLog("Stream Type: Pink Noise (Amplitude: %.3f%%; Fading: %.3fs).", this->GetAmplitude() * 100.0, this->GetFading()); break;
 		default:                        DebugLogError("Unknown Stream Type."); break;
 	}
 
@@ -603,7 +599,7 @@ HRESULT CSoundKeeper::Run()
 
 	if (m_cfg_no_sleep)
 	{
-		DebugLog("Disabled sleep support.");
+		DebugLog("Sleep Detection: Disabled.");
 	}
 
 #endif
@@ -669,7 +665,7 @@ HRESULT CSoundKeeper::Run()
 
 	for (bool working = true; working; )
 	{
-		LONG seconds_to_sleeping = ((m_cfg_no_sleep || g_is_buggy_powerinfo) ? -1 : GetSecondsToSleeping());
+		LONG seconds_to_sleeping = (m_cfg_no_sleep ? -1 : GetSecondsToSleeping());
 
 		if (seconds_to_sleeping != -1 && seconds_to_sleeping <= 0)
 		{
@@ -693,7 +689,7 @@ HRESULT CSoundKeeper::Run()
 			}
 		}
 
-		DWORD timeout = (seconds_to_sleeping != -1 && seconds_to_sleeping <= 30 || m_is_retry_required) ? 500 : (m_cfg_no_sleep ? INFINITE : 5000);
+		DWORD timeout = (m_is_retry_required || seconds_to_sleeping != -1 && seconds_to_sleeping <= 30) ? 500 : (m_cfg_no_sleep ? INFINITE : 5000);
 
 		switch (WaitForAny({ m_do_retry, m_do_restart, m_do_shutdown, global_stop_event }, timeout))
 		{
@@ -775,7 +771,7 @@ __forceinline HRESULT CSoundKeeper::Main()
 #else
 	if (hr == S_OK)
 	{
-		DebugLog("Main thread finished. Exit code: 0.", hr);
+		DebugLog("Main thread finished. Exit code: 0.");
 	}
 	else
 	{
