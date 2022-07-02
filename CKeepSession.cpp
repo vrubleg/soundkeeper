@@ -526,7 +526,7 @@ HRESULT CKeepSession::Render()
 		return hr;
 	}
 
-	// We want to find out how much of the buffer *isn't* available (is padding).
+	// Find out how much of the buffer *isn't* available (is padding).
 	UINT32 padding;
 	hr = m_audio_client->GetCurrentPadding(&padding);
 	if (FAILED(hr))
@@ -535,13 +535,8 @@ HRESULT CKeepSession::Render()
 		return hr;
 	}
 
-	// Calculate the number of frames available.
+	// Calculate the number of frames available. It can be 0 right after waking PC up after sleeping.
 	UINT32 need_frames = m_buffer_size_in_frames - padding;
-	if (m_stream_type == KeepStreamType::Fluctuate)
-	{
-		need_frames &= 0xFFFFFFFC; // Must be a multiple of 4.
-	}
-	// It can happen right after waking PC up after sleeping, so just do nothing.
 	if (need_frames == 0) { return S_OK; }
 
 	BYTE* p_data;
@@ -589,30 +584,46 @@ HRESULT CKeepSession::Render()
 	}
 	else if (m_stream_type == KeepStreamType::Fluctuate)
 	{
-		// 0xb8000100 = -3.051851E-5 = -1.0/32767.
-		// 0x38000100 =  3.051851E-5 =  1.0/32767.
-		constexpr static uint32_t tbl16[] = { 0xb8000100, 0, 0x38000100, 0 };
-		// 0xb4000001 = -1.192093E-7 = -1.0/8388607.
-		// 0x34000001 =  1.192093E-7 =  1.0/8388607.
-		constexpr static uint32_t tbl24[] = { 0xb4000001, 0, 0x34000001, 0 };
-		// 0xb0000000 = -4.656612E-10 = -1.0/2147483647.
-		// 0x30000000 =  4.656612E-10 =  1.0/2147483647.
-		constexpr static uint32_t tbl32[] = { 0xb0000000, 0, 0x30000000, 0 };
-
-		size_t n = 0;
-		const uint32_t* tbl = (m_out_sample_type == SampleType::Int24) ? tbl24
-			: (m_out_sample_type == SampleType::Int32 || m_out_sample_type == SampleType::Float32) ? tbl32
-			: tbl16;
+		uint64_t once_in_frames = std::max((m_frequency ? uint64_t(double(m_sample_rate) / m_frequency) : 0ULL), 2ULL);
 
 		for (size_t i = 0; i < need_frames; i++)
 		{
-			uint32_t sample = (period_frames && m_curr_frame >= play_frames) ? 0 : tbl[n];
+			uint32_t sample = 0;
+
+			if ((!period_frames || m_curr_frame < play_frames) && m_curr_frame % once_in_frames == 0)
+			{
+				switch (m_out_sample_type)
+				{
+					case SampleType::Int16:
+					default:
+
+						sample = 0x38000100; // = 3.051851E-5  = 1.0/32767.
+						break;
+
+					case SampleType::Int24:
+
+						sample = 0x34000001; // = 1.192093E-7  = 1.0/8388607.
+						break;
+
+					case SampleType::Int32:
+					case SampleType::Float32:
+
+						sample = 0x30000000; // = 4.656612E-10 = 1.0/2147483647.
+						break;
+				}
+
+				if ((m_curr_frame / once_in_frames) & 1)
+				{
+					sample |= 0x80000000;
+				}
+			}
+
 			for (size_t j = 0; j < m_channels_count; j++)
 			{
-				*reinterpret_cast<uint32_t*>(p_data + j * 4) = sample;
+				*reinterpret_cast<uint32_t*>(p_data + j * sizeof(float)) = sample;
 			}
+
 			p_data += m_frame_size;
-			n = (n + 1) % 4;
 			m_curr_frame++;
 			if (period_frames) { m_curr_frame %= period_frames; }
 		}

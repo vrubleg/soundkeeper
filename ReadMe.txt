@@ -17,17 +17,17 @@ Supported device type settings:
 - "Analog" keeps on all enabled audio outputs except SPDIF and HDMI.
 
 Supported stream type settings:
-- "Zero" plays stream of zeroes (like it was in Sound Keeper v1.0). It may be not enough for some hardware.
-- "Fluctuate" plays inaudible stream with lowest bit flipping from sample to sample. Used by default since v1.1.
+- "Zero" plays stream of zeroes. It may be not enough for some hardware.
+- "Fluctuate" plays stream of zeroes with the smallest non-zero sample once in a second. Used by default.
 - "Sine" plays 1Hz sine wave at 1% volume. The frequency and amplitude can be changed. Useful for analog outputs.
 - "White", "Brown", or "Pink" play named noise, with the same parameters as the sine (except frequency).
 
 Sine and noise stream parameters:
-- F is frequency. Default: 1Hz. Applicable for the Sine only.
-- A is amplitude. Default: 1%. If you want to use inaudible noise, set it to 0.1%.
+- F is frequency. Default: 1Hz. Applicable for: Fluctuate, Sine.
+- A is amplitude. Default: 1%. If you want to use inaudible noise, set it to 0.1%. Applicable for: Sine, Noise.
 - L is length of sound (in seconds). Default: infinite.
 - W is waiting time between sounds if L is set. Use to enable periodic sound.
-- T is transition or fading time. Default: 0.1 second.
+- T is transition or fading time. Default: 0.1 second. Applicable for: Sine, Noise.
 
 Examples:
 - SoundKeeperZeroAll.exe generates zero amplitude stream on all enabled audio outputs.
@@ -63,11 +63,15 @@ powercfg /REQUESTSOVERRIDE DRIVER "High Definition Audio Device (HDAUDIO\FUNC_01
 What's new
 
 [2022/XX/XX] v1.X.X:
+- "Fluctuate" is 1 fluctuation per second by default. Frequency can be changed using the F parameter.
+  Set F=0 to revert to the previous behavior if the new version doesn't work for you.
 - Periodic playing of a sine sound with optional fading.
 - "White", "Brown", and "Pink" noise signal types.
 - Self kill command is added. Run "soundkeeper kill" to stop running Sound Keeper instance.
 - "Analog" switch was added. It works as the opposite of "Digital".
-- Ignores remote desktop audio device.
+- Ignores remote desktop audio device (this feature can be disabled using the "Remote" switch).
+- New "OpenOnly" mode that just opens audio output, but doesn't stream anything.
+- New "NoSleep" switch which disables PC sleep detection (Windows 7-10).
 
 [2022/05/15] v1.2.2:
 - Work as a dummy when no suitable devices found.

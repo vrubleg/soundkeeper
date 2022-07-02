@@ -497,6 +497,10 @@ void CSoundKeeper::ParseModeString(const char* args)
 	{
 		this->SetStreamType(KeepStreamType::Zero);
 	}
+	else if (char* p = strstr(buf, "fluctuate"))
+	{
+		this->ParseStreamArgs(KeepStreamType::Fluctuate, p+9);
+	}
 	else if (char* p = strstr(buf, "sine"))
 	{
 		this->ParseStreamArgs(KeepStreamType::Sine, p+4);
@@ -519,6 +523,7 @@ HRESULT CSoundKeeper::Run()
 {
 	this->SetDeviceType(KeepDeviceType::Primary);
 	this->SetStreamType(KeepStreamType::Fluctuate);
+	this->SetFrequency(1.00);
 
 	// Parse file name for defaults.
 	char fn_buffer[MAX_PATH];
@@ -580,7 +585,7 @@ HRESULT CSoundKeeper::Run()
 	{
 		case KeepStreamType::None:      DebugLog("Stream Type: None (Open Only)."); break;
 		case KeepStreamType::Zero:      DebugLog("Stream Type: Zero."); break;
-		case KeepStreamType::Fluctuate: DebugLog("Stream Type: Fluctuate."); break;
+		case KeepStreamType::Fluctuate: DebugLog("Stream Type: Fluctuate (Frequency: %.3fHz).", this->GetFrequency()); break;
 		case KeepStreamType::Sine:      DebugLog("Stream Type: Sine (Frequency: %.3fHz; Amplitude: %.3f%%; Fading: %.3fs).", this->GetFrequency(), this->GetAmplitude() * 100.0, this->GetFading()); break;
 		case KeepStreamType::WhiteNoise:DebugLog("Stream Type: White Noise (Amplitude: %.3f%%; Fading: %.3fs).", this->GetAmplitude() * 100.0, this->GetFading()); break;
 		case KeepStreamType::BrownNoise:DebugLog("Stream Type: Brown Noise (Amplitude: %.3f%%; Fading: %.3fs).", this->GetAmplitude() * 100.0, this->GetFading()); break;
