@@ -1,4 +1,4 @@
-Sound Keeper v1.2.2 [2022/05/15]
+Sound Keeper v1.X.X [2022/XX/XX]
 https://veg.by/projects/soundkeeper/
 
 Prevents SPDIF/HDMI digital audio playback devices from sleeping. Uses WASAPI, requires Windows 7+.
@@ -17,8 +17,9 @@ Supported device type settings:
 - "Analog" keeps on all enabled audio outputs except SPDIF and HDMI.
 
 Supported stream type settings:
+- "OpenOnly" opens audio output, but doesn't play anything. Sometimes it helps.
 - "Zero" plays stream of zeroes. It may be not enough for some hardware.
-- "Fluctuate" plays stream of zeroes with the smallest non-zero sample once in a second. Used by default.
+- "Fluctuate" plays stream of zeroes with the smallest non-zero samples once in a second. Used by default.
 - "Sine" plays 1Hz sine wave at 1% volume. The frequency and amplitude can be changed. Useful for analog outputs.
 - "White", "Brown", or "Pink" play named noise, with the same parameters as the sine (except frequency).
 
@@ -62,9 +63,8 @@ powercfg /REQUESTSOVERRIDE DRIVER "High Definition Audio Device (HDAUDIO\FUNC_01
 
 What's new
 
-[2022/XX/XX] v1.X.X:
+v1.X.X [2022/XX/XX]:
 - "Fluctuate" is 1 fluctuation per second by default. Frequency can be changed using the F parameter.
-  Set F=0 to revert to the previous behavior if the new version doesn't work for you.
 - Periodic playing of a sine sound with optional fading.
 - "White", "Brown", and "Pink" noise signal types.
 - Self kill command is added. Run "soundkeeper kill" to stop running Sound Keeper instance.
@@ -73,15 +73,15 @@ What's new
 - New "OpenOnly" mode that just opens audio output, but doesn't stream anything.
 - New "NoSleep" switch which disables PC sleep detection (Windows 7-10).
 
-[2022/05/15] v1.2.2:
+v1.2.2 [2022/05/15]:
 - Work as a dummy when no suitable devices found.
 - Sound Keeper shoudn't prevent PC from automatic going into sleep mode on Windows 10.
 
-[2021/11/05] v1.2.1:
+v1.2.1 [2021/11/05]:
 - Sound Keeper works on Windows 11.
 - The workaround that allowed PC to sleep had to be disabled on Windows 11.
 
-[2021/10/30] v1.2.0:
+v1.2.0 [2021/10/30]:
 - Sound Keeper doesn't prevent PC from automatic going into sleep mode on Windows 7.
 - New "Sine" stream type which can be useful for analog outputs or too smart digital outputs.
 - When a user starts a new Sound Keeper instance, the previous one is stopped automatically.
@@ -89,16 +89,16 @@ What's new
 - Command line arguments are supported. Example: "soundkeeper sine -f 1000 -a 10".
 - The workaround for the Audio Service memory leak is enabled on affected Windows versions only (8, 8.1, and 10).
 
-[2020/07/18] v1.1.0:
+v1.1.0 [2020/07/18]:
 - Default behavior can be changed by adding options to the Sound Keeper executable file name.
 - Primary audio output is used by default.
 - Inaudible stream is used by default.
 - Workaround for a Windows 10 bug which causes a memory leak in the Audio Service when audio output is busy.
 
-[2020/03/14] v1.0.4: Fixed a potential memory leak when another program uses audio output in exclusive mode.
-[2019/07/14] v1.0.3: Exclusive mode doesn't prevent Sound Keeper from working.
-[2017/12/23] v1.0.2: 64-bit version is added.
-[2017/12/21] v1.0.1: Waking PC up after sleeping doesn't prevent Sound Keeper from working.
-[2014/12/24] v1.0.0: Initial release.
+v1.0.4 [2020/03/14]: Fixed a potential memory leak when another program uses audio output in exclusive mode.
+v1.0.3 [2019/07/14]: Exclusive mode doesn't prevent Sound Keeper from working.
+v1.0.2 [2017/12/23]: 64-bit version is added.
+v1.0.1 [2017/12/21]: Waking PC up after sleeping doesn't prevent Sound Keeper from working.
+v1.0.0 [2014/12/24]: Initial release.
 
 (C) 2014-2022 Evgeny Vrublevsky <me@veg.by>

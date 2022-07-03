@@ -582,9 +582,9 @@ HRESULT CKeepSession::Render()
 		// Shouldn't ever happen, it should always be Float32.
 		render_flags = AUDCLNT_BUFFERFLAGS_SILENT;
 	}
-	else if (m_stream_type == KeepStreamType::Fluctuate)
+	else if (m_stream_type == KeepStreamType::Fluctuate && m_frequency)
 	{
-		uint64_t once_in_frames = std::max((m_frequency ? uint64_t(double(m_sample_rate) / m_frequency) : 0ULL), 2ULL);
+		uint64_t once_in_frames = std::max(uint64_t(double(m_sample_rate) / m_frequency), 2ULL);
 
 		for (size_t i = 0; i < need_frames; i++)
 		{
