@@ -13,8 +13,9 @@
 
 // On Windows 7-10, it outputs -1 when auto sleep mode is disabled.
 // On Windows 10, it may output negative values (-30, -60, ...) when sleeping was postponed not by user input.
+// On Windows 10, negative values ending with 1 (-31, -61, ...) mean that auto sleep is disabled.
 // On Windows 11, the TimeRemaining field is always 0 for some reason.
-LONG GetSecondsToSleeping()
+uint32_t GetSecondsToSleeping()
 {
 	struct SYSTEM_POWER_INFORMATION {
 		ULONG MaxIdlenessAllowed;
@@ -41,7 +42,12 @@ LONG GetSecondsToSleeping()
 
 #endif
 
-	return spi.TimeRemaining;
+	if (spi.TimeRemaining >= 0)
+	{
+		return spi.TimeRemaining;
+	}
+
+	return (spi.TimeRemaining % 5 == 0 ? 0 : -1);
 }
 
 //
@@ -670,9 +676,9 @@ HRESULT CSoundKeeper::Run()
 
 	for (bool working = true; working; )
 	{
-		LONG seconds_to_sleeping = (m_cfg_no_sleep ? -1 : GetSecondsToSleeping());
+		uint32_t seconds_to_sleeping = (m_cfg_no_sleep ? -1 : GetSecondsToSleeping());
 
-		if (seconds_to_sleeping != -1 && seconds_to_sleeping <= 0)
+		if (seconds_to_sleeping == 0)
 		{
 			if (m_is_started)
 			{
@@ -694,7 +700,7 @@ HRESULT CSoundKeeper::Run()
 			}
 		}
 
-		DWORD timeout = (m_is_retry_required || seconds_to_sleeping != -1 && seconds_to_sleeping <= 30) ? 500 : (m_cfg_no_sleep ? INFINITE : 5000);
+		DWORD timeout = (m_is_retry_required || seconds_to_sleeping <= 30) ? 500 : (m_cfg_no_sleep ? INFINITE : 5000);
 
 		switch (WaitForAny({ m_do_retry, m_do_restart, m_do_shutdown, global_stop_event }, timeout))
 		{
