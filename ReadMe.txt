@@ -1,4 +1,4 @@
-Sound Keeper v1.X.X [2022/XX/XX]
+Sound Keeper v1.3.0 [2022/07/28]
 https://veg.by/projects/soundkeeper/
 
 Prevents SPDIF/HDMI digital audio playback devices from sleeping. Uses WASAPI, requires Windows 7+.
@@ -63,7 +63,7 @@ powercfg /REQUESTSOVERRIDE DRIVER "High Definition Audio Device (HDAUDIO\FUNC_01
 
 What's new
 
-v1.X.X [2022/XX/XX]:
+v1.3.0 [2022/07/28]:
 - "Fluctuate" is 1 fluctuation per second by default. Frequency can be changed using the F parameter.
 - Periodic playing of a sine sound with optional fading.
 - "White", "Brown", and "Pink" noise signal types.
@@ -72,10 +72,11 @@ v1.X.X [2022/XX/XX]:
 - Ignores remote desktop audio device (this feature can be disabled using the "Remote" switch).
 - New "OpenOnly" mode that just opens audio output, but doesn't stream anything.
 - New "NoSleep" switch which disables PC sleep detection (Windows 7-10).
+- The program is not confused anymore when PC auto sleep is disabled on Windows 10.
 
 v1.2.2 [2022/05/15]:
 - Work as a dummy when no suitable devices found.
-- Sound Keeper shoudn't prevent PC from automatic going into sleep mode on Windows 10.
+- Sound Keeper shouldn't prevent PC from automatic going into sleep mode on Windows 10.
 
 v1.2.1 [2021/11/05]:
 - Sound Keeper works on Windows 11.
