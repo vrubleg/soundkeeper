@@ -307,23 +307,6 @@ try
 	Console.WriteLine("There are some changes. Updating build information...");
 
 	var build_info = new DefineEditor(BUILD_INFO_FILE);
-	var build_time = DateTime.Now;
-
-	// Update build date info.
-
-	if (build_info.GetInt("BUILD_YEAR", 0) != build_time.Year
-		|| build_info.GetInt("BUILD_MONTH", 0) != build_time.Month
-		|| build_info.GetInt("BUILD_DAY", 0) != build_time.Day)
-	{
-		build_info.SetInt("BUILD_YEAR",  build_time.Year);
-		build_info.SetInt("BUILD_MONTH", build_time.Month);
-		build_info.SetInt("BUILD_DAY",   build_time.Day);
-		build_info.SetInt("BUILD_COUNT", 1);
-	}
-	else
-	{
-		build_info.SetInt("BUILD_COUNT", build_info.GetInt("BUILD_COUNT", 0) + 1);
-	}
 
 	// Get expected version from Git tags.
 
@@ -372,6 +355,24 @@ try
 		build_info.SetInt("REV_MINOR", rev_minor);
 		build_info.SetInt("REV_PATCH", rev_patch);
 		build_info.SetInt("REV_COUNT", rev_count);
+	}
+
+	// Update build date info.
+
+	var build_time = DateTime.Now;
+
+	if (build_info.GetInt("BUILD_YEAR", 0) != build_time.Year
+		|| build_info.GetInt("BUILD_MONTH", 0) != build_time.Month
+		|| build_info.GetInt("BUILD_DAY", 0) != build_time.Day)
+	{
+		build_info.SetInt("BUILD_YEAR", build_time.Year);
+		build_info.SetInt("BUILD_MONTH", build_time.Month);
+		build_info.SetInt("BUILD_DAY", build_time.Day);
+		build_info.SetInt("BUILD_COUNT", 1);
+	}
+	else
+	{
+		build_info.SetInt("BUILD_COUNT", build_info.GetInt("BUILD_COUNT", 0) + 1);
 	}
 
 	build_info.Save();
