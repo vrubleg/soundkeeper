@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Globalization;
 
 const string BUILD_INFO_FILE = "BuildInfo.hpp";
+const bool   NO_ERRORS = true;
 
 class Error : Exception
 {
@@ -241,32 +242,19 @@ class DefineEditor : List<DefineItem>
 	{
 		var value = (GetRaw(name) ?? "").Trim();
 		if (value == "") { return defval; }
-		return Int32.Parse(value);
-	}
-
-	public void SetInt(string name, int value)
-	{
-		SetRaw(name, value.ToString());
-	}
-
-	public uint GetHex(string name, uint defval)
-	{
-		var value = (GetRaw(name) ?? "").Trim();
-		if (value == "") { return defval; }
 		if (value.StartsWith("0x"))
 		{
-			value = value.Substring(2);
-			return UInt32.Parse(value, NumberStyles.AllowHexSpecifier);
+			return Int32.Parse(value.Substring(2), NumberStyles.AllowHexSpecifier);
 		}
 		else
 		{
-			return UInt32.Parse(value);
+			return Int32.Parse(value);
 		}
 	}
 
-	public void SetHex(string name, uint value)
+	public void SetInt(string name, int value, bool hex = false)
 	{
-		SetRaw(name, "0x"+value.ToString("X8"));
+		SetRaw(name, hex ? ("0x" + value.ToString("X8")) : value.ToString());
 	}
 }
 
@@ -344,10 +332,10 @@ try
 	int rev_patch = 0;
 	int rev_count = 0;
 
-	if (RunCmd("git describe --tags --match \"v[0-9]*.[0-9]*.[0-9]*\" --abbrev=0 HEAD", out output) == 0)
+	if (RunCmd("git describe --tags --match \"v[0-9]*.[0-9]*.[0-9]*\" --abbrev=8 HEAD", out output) == 0)
 	{
 		// Get version from the latest revision tag.
-		var match = Regex.Match(output.Trim(), @"^v([0-9]+)\.([0-9]+)\.([0-9]+)(?:\+([0-9]+))?$");
+		var match = Regex.Match(output.Trim().ToLower(), @"^v([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9]+)-g([a-f0-9]+))?$");
 		if (match.Success)
 		{
 			rev_major = Int32.Parse(match.Groups[1].Value);
@@ -357,7 +345,7 @@ try
 		}
 		else
 		{
-			throw new Error("Cannot parse version tag");
+			throw new Error("Cannot parse Git version tag");
 		}
 	}
 	else
@@ -393,8 +381,29 @@ catch (Success ex)
 	Console.WriteLine(ex.Message + ".");
 	Environment.Exit(0);
 }
+catch (Error ex)
+{
+	if (NO_ERRORS)
+	{
+		Console.WriteLine($"Warning: {ex.Message}.");
+		Environment.Exit(0);
+	}
+	else
+	{
+		Console.WriteLine($"Error: {ex.Message}.");
+		Environment.Exit(1);
+	}
+}
 catch (Exception ex)
 {
-	Console.WriteLine($"{ex.GetType().Name}: {ex.Message}.");
-	Environment.Exit(1);
+	if (NO_ERRORS)
+	{
+		Console.WriteLine($"Warning {ex.GetType().Name}: {ex.Message}.");
+		Environment.Exit(0);
+	}
+	else
+	{
+		Console.WriteLine($"Error {ex.GetType().Name}: {ex.Message}.");
+		Environment.Exit(1);
+	}
 }

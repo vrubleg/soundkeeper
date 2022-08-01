@@ -21,7 +21,7 @@ VS_VERSION_INFO VERSIONINFO
 BEGIN
 	BLOCK "StringFileInfo"
 	BEGIN
-		BLOCK "000904b0"
+		BLOCK "000904b0" // LANG_ENGLISH = 0x0009, CP_UNICODE = 0x04b0 = 1200
 		BEGIN
 			VALUE "CompanyName",        APP_COMPANY
 			VALUE "FileDescription",    APP_NAME
@@ -35,6 +35,6 @@ BEGIN
 	END
 	BLOCK "VarFileInfo"
 	BEGIN
-		VALUE "Translation", 0x9, 1200
+		VALUE "Translation", 0x0009, 1200
 	END
 END

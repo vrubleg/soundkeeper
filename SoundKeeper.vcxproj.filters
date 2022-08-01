@@ -64,11 +64,11 @@
     <CopyFileToFolders Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="BuildInfo.csx">
+    <UpToDateCheckInput Include="BuildInfo.csx">
       <Filter>Resource Files</Filter>
-    </None>
-    <None Include="BuildInfo.rc2">
+    </UpToDateCheckInput>
+    <UpToDateCheckInput Include="BuildInfo.rc2">
       <Filter>Resource Files</Filter>
-    </None>
+    </UpToDateCheckInput>
   </ItemGroup>
 </Project>
