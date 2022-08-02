@@ -219,17 +219,26 @@ class DefineEditor : List<DefineItem>
 		return GetRaw(name) ?? defval;
 	}
 
-	public void SetRaw(string name, string value)
+	public bool UpdRaw(string name, string value)
 	{
 		var item = this.LastOrDefault(item => item.Name == name);
 		if (item == null)
 		{
-			this.Add(new DefineItem(name, value));
+			return false;
 		}
 		else
 		{
 			item.Value = value;
 			item.Deleted = false;
+			return true;
+		}
+	}
+
+	public void SetRaw(string name, string value)
+	{
+		if (!this.UpdRaw(name, value))
+		{
+			this.Add(new DefineItem(name, value));
 		}
 	}
 
@@ -255,6 +264,11 @@ class DefineEditor : List<DefineItem>
 	public void SetInt(string name, int value, bool hex = false)
 	{
 		SetRaw(name, hex ? ("0x" + value.ToString("X8")) : value.ToString());
+	}
+
+	public void UpdInt(string name, int value, bool hex = false)
+	{
+		UpdRaw(name, hex ? ("0x" + value.ToString("X8")) : value.ToString());
 	}
 }
 
@@ -360,20 +374,25 @@ try
 	// Update build date info.
 
 	var build_time = DateTime.Now;
+	var build_count = build_info.GetInt("BUILD_COUNT", 0);
 
 	if (build_info.GetInt("BUILD_YEAR", 0) != build_time.Year
 		|| build_info.GetInt("BUILD_MONTH", 0) != build_time.Month
 		|| build_info.GetInt("BUILD_DAY", 0) != build_time.Day)
 	{
-		build_info.SetInt("BUILD_YEAR", build_time.Year);
-		build_info.SetInt("BUILD_MONTH", build_time.Month);
-		build_info.SetInt("BUILD_DAY", build_time.Day);
-		build_info.SetInt("BUILD_COUNT", 1);
+		build_count = 0;
 	}
-	else
-	{
-		build_info.SetInt("BUILD_COUNT", build_info.GetInt("BUILD_COUNT", 0) + 1);
-	}
+
+	build_count++;
+
+	build_info.SetInt("BUILD_YEAR",      build_time.Year);
+	build_info.SetInt("BUILD_MONTH",     build_time.Month);
+	build_info.SetInt("BUILD_DAY",       build_time.Day);
+	build_info.UpdInt("BUILD_HOUR",      build_time.Hour);
+	build_info.UpdInt("BUILD_MINUTE",    build_time.Minute);
+	build_info.UpdInt("BUILD_SECOND",    build_time.Second);
+	build_info.UpdInt("BUILD_TIMESTAMP", (int) new DateTimeOffset(build_time).ToUnixTimeSeconds());
+	build_info.SetInt("BUILD_COUNT",     build_count);
 
 	build_info.Save();
 }
