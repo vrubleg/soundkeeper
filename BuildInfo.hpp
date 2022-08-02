@@ -6,9 +6,9 @@
 #define REV_MAJOR       1
 #define REV_MINOR       3
 #define REV_PATCH       0
-#define REV_COUNT       3
+#define REV_COUNT       4
 
 #define BUILD_YEAR      2022
 #define BUILD_MONTH     8
-#define BUILD_DAY       1
-#define BUILD_COUNT     31
+#define BUILD_DAY       2
+#define BUILD_COUNT     2
