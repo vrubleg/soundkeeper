@@ -38,6 +38,9 @@
     <ClInclude Include="BuildInfo.hpp">
       <Filter>Resource Files</Filter>
     </ClInclude>
+    <ClInclude Include="Common\NtBase.hpp">
+      <Filter>Source Files\Common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CKeepSession.cpp">

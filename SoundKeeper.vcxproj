@@ -35,6 +35,7 @@
     <ClInclude Include="BuildInfo.hpp" />
     <ClInclude Include="CKeepSession.hpp" />
     <ClInclude Include="Common\CriticalSection.hpp" />
+    <ClInclude Include="Common\NtBase.hpp" />
     <ClInclude Include="Common\NtEvent.hpp" />
     <ClInclude Include="Common\Win32.hpp" />
     <ClInclude Include="CSoundKeeper.hpp" />

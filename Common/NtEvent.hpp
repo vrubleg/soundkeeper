@@ -1,36 +1,10 @@
 #pragma once
 
-#include "Win32.hpp"
+#include "NtBase.hpp"
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef _Success_(return >= 0) LONG NTSTATUS;
-typedef NTSTATUS *PNTSTATUS;
-
-typedef struct _UNICODE_STRING
-{
-	USHORT Length;
-	USHORT MaximumLength;
-	_Field_size_bytes_part_(MaximumLength, Length) PWCH Buffer;
-} UNICODE_STRING, *PUNICODE_STRING;
-
-typedef const UNICODE_STRING *PCUNICODE_STRING;
-
-typedef struct _OBJECT_ATTRIBUTES
-{
-	ULONG Length;
-	HANDLE RootDirectory;
-	PUNICODE_STRING ObjectName;
-	ULONG Attributes;
-	PVOID SecurityDescriptor; // PSECURITY_DESCRIPTOR;
-	PVOID SecurityQualityOfService; // PSECURITY_QUALITY_OF_SERVICE
-} OBJECT_ATTRIBUTES, *POBJECT_ATTRIBUTES;
-
-typedef const OBJECT_ATTRIBUTES *PCOBJECT_ATTRIBUTES;
+EXTERN_C_START
 
 typedef enum _EVENT_TYPE
 {
@@ -99,9 +73,7 @@ NtQueryEvent(
 	_Out_opt_ PULONG ReturnLength
 );
 
-#ifdef __cplusplus
-}
-#endif
+EXTERN_C_END
 
 // ---------------------------------------------------------------------------------------------------------------------
 

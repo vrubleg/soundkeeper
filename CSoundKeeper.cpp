@@ -2,19 +2,20 @@
 #include "CSoundKeeper.hpp"
 
 //
-// Get time to sleeping (in seconds). It is not precise and updated just once in 15 seconds!
+// Get time to sleeping (in seconds). It is not precise and updated just once in 15-30 seconds!
+// On Windows 7-10, it outputs -1 (or values like -16, -31, ...) when auto sleep mode is disabled.
+// On Windows 10, it may output negative values (-30, -60, ...) when sleeping was postponed not by user input.
+// On Windows 11, the TimeRemaining field is always 0, so it doesn't work for some reason.
 //
 
-#include <powrprof.h>
+EXTERN_C NTSYSCALLAPI NTSTATUS NTAPI NtPowerInformation(
+	_In_ POWER_INFORMATION_LEVEL InformationLevel,
+	_In_reads_bytes_opt_(InputBufferLength) PVOID InputBuffer,
+	_In_ ULONG InputBufferLength,
+	_Out_writes_bytes_opt_(OutputBufferLength) PVOID OutputBuffer,
+	_In_ ULONG OutputBufferLength
+);
 
-#ifndef NT_SUCCESS
-#define NT_SUCCESS(Status) ((NTSTATUS)(Status) >= 0)
-#endif
-
-// On Windows 7-10, it outputs -1 when auto sleep mode is disabled.
-// On Windows 10, it may output negative values (-30, -60, ...) when sleeping was postponed not by user input.
-// On Windows 10, negative values ending with 1 (-31, -61, ...) mean that auto sleep is disabled.
-// On Windows 11, the TimeRemaining field is always 0 for some reason.
 uint32_t GetSecondsToSleeping()
 {
 	struct SYSTEM_POWER_INFORMATION {
@@ -24,7 +25,7 @@ uint32_t GetSecondsToSleeping()
 		UCHAR CoolingMode;
 	} spi = {0};
 
-	if (!NT_SUCCESS(CallNtPowerInformation(SystemPowerInformation, NULL, 0, &spi, sizeof(spi))))
+	if (!NT_SUCCESS(NtPowerInformation(SystemPowerInformation, NULL, 0, &spi, sizeof(spi))))
 	{
 		DebugLogError("Cannot get remaining time to sleeping.");
 		return 0;
