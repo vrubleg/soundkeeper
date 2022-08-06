@@ -61,8 +61,8 @@ int RunCmd(string cmd, out string stdout, out string stderr)
 	process.StartInfo.UseShellExecute = false;
 	process.StartInfo.RedirectStandardOutput = true;
 	process.StartInfo.RedirectStandardError = true;
-	process.OutputDataReceived += new DataReceivedEventHandler((sender, e) => { stdout_buffer.Append(e.Data); });
-	process.ErrorDataReceived += new DataReceivedEventHandler((sender, e) => { stderr_buffer.Append(e.Data); });
+	process.OutputDataReceived += new DataReceivedEventHandler((sender, e) => { stdout_buffer.AppendLine(e.Data); });
+	process.ErrorDataReceived += new DataReceivedEventHandler((sender, e) => { stderr_buffer.AppendLine(e.Data); });
 
 	process.Start();
 	process.BeginOutputReadLine();
