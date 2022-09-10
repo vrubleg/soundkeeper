@@ -327,7 +327,7 @@ try
 	int rev_major = 0;
 	int rev_minor = 0;
 	int rev_patch = 0;
-	int rev_count = 0;
+	int rev_extra = 0;
 
 	if (RunCmd("git describe --tags --match \"v[0-9]*.[0-9]*.[0-9]*\" --abbrev=8 HEAD", out output) == 0)
 	{
@@ -338,7 +338,7 @@ try
 			rev_major = Int32.Parse(match.Groups[1].Value);
 			rev_minor = Int32.Parse(match.Groups[2].Value);
 			rev_patch = Int32.Parse(match.Groups[3].Value);
-			rev_count = match.Groups[4].Value != "" ? Int32.Parse(match.Groups[4].Value) : 0;
+			rev_extra = match.Groups[4].Value != "" ? Int32.Parse(match.Groups[4].Value) : 0;
 		}
 		else
 		{
@@ -351,7 +351,7 @@ try
 		if (RunCmd("git rev-list --count HEAD", out output) == 0)
 		{
 			output = output.Trim();
-			rev_count = output != "" ? Int32.Parse(output) : 0;
+			rev_extra = output != "" ? Int32.Parse(output) : 0;
 		}
 		else
 		{
@@ -359,40 +359,54 @@ try
 		}
 	}
 
-	rev_count++;
+	rev_extra++;
 
-	// Update product version.
+	// Update version.
 
-	if (new Version(rev_major, rev_minor, rev_patch, rev_count) > new Version(build_info.GetInt("REV_MAJOR", 0), build_info.GetInt("REV_MINOR", 0), build_info.GetInt("REV_PATCH", 0), build_info.GetInt("REV_COUNT", 0)))
+	var want_rev = new Version(rev_major, rev_minor, rev_patch, rev_extra);
+	var curr_rev = new Version(build_info.GetInt("REV_MAJOR", 0), build_info.GetInt("REV_MINOR", 0), build_info.GetInt("REV_PATCH", 0), build_info.GetInt("REV_EXTRA", 0));
+
+	if (want_rev > curr_rev)
 	{
 		build_info.SetInt("REV_MAJOR", rev_major);
 		build_info.SetInt("REV_MINOR", rev_minor);
 		build_info.SetInt("REV_PATCH", rev_patch);
-		build_info.SetInt("REV_COUNT", rev_count);
+		build_info.SetInt("REV_EXTRA", rev_extra);
+		build_info.UpdInt("REV_BUILD", 0);
 	}
 
-	// Update build date info.
+	// Update version build counter.
 
-	var build_time = DateTime.Now;
-	var build_count = build_info.GetInt("BUILD_COUNT", 0);
+	var rev_build = build_info.GetInt("REV_BUILD", 0);
+	rev_build++;
+	build_info.UpdInt("REV_BUILD", rev_build);
 
-	if (build_info.GetInt("BUILD_YEAR", 0) != build_time.Year
-		|| build_info.GetInt("BUILD_MONTH", 0) != build_time.Month
-		|| build_info.GetInt("BUILD_DAY", 0) != build_time.Day)
+	// Update date.
+
+	var rev_time = DateTime.Now;
+
+	if (build_info.GetInt("REV_YEAR", 0) != rev_time.Year
+		|| build_info.GetInt("REV_MONTH", 0) != rev_time.Month
+		|| build_info.GetInt("REV_DAY", 0) != rev_time.Day)
 	{
-		build_count = 0;
+		build_info.SetInt("REV_YEAR", rev_time.Year);
+		build_info.SetInt("REV_MONTH", rev_time.Month);
+		build_info.SetInt("REV_DAY", rev_time.Day);
+		build_info.UpdInt("REV_DAY_BUILD", 0);
 	}
 
-	build_count++;
+	// Update date build counter.
 
-	build_info.SetInt("BUILD_YEAR",      build_time.Year);
-	build_info.SetInt("BUILD_MONTH",     build_time.Month);
-	build_info.SetInt("BUILD_DAY",       build_time.Day);
-	build_info.UpdInt("BUILD_HOUR",      build_time.Hour);
-	build_info.UpdInt("BUILD_MINUTE",    build_time.Minute);
-	build_info.UpdInt("BUILD_SECOND",    build_time.Second);
-	build_info.UpdInt("BUILD_TIMESTAMP", (int) new DateTimeOffset(build_time).ToUnixTimeSeconds());
-	build_info.SetInt("BUILD_COUNT",     build_count);
+	var rev_day_build = build_info.GetInt("REV_DAY_BUILD", 0);
+	rev_day_build++;
+	build_info.UpdInt("REV_DAY_BUILD", rev_day_build);
+
+	// Update time.
+
+	build_info.UpdInt("REV_HOUR",      rev_time.Hour);
+	build_info.UpdInt("REV_MINUTE",    rev_time.Minute);
+	build_info.UpdInt("REV_SECOND",    rev_time.Second);
+	build_info.UpdInt("REV_TIMESTAMP", (int) new DateTimeOffset(rev_time).ToUnixTimeSeconds());
 
 	build_info.Save();
 }
