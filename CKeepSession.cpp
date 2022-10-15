@@ -630,7 +630,7 @@ HRESULT CKeepSession::Render()
 	}
 	else if (m_stream_type == KeepStreamType::Sine && m_frequency && m_amplitude)
 	{
-		double theta_increment = (m_frequency * (M_PI*2)) / double(m_sample_rate);
+		double theta_increment = (std::min(m_frequency, m_sample_rate / 2.0) * (M_PI*2)) / double(m_sample_rate);
 
 		for (size_t i = 0; i < need_frames; i++)
 		{
