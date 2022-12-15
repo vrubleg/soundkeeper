@@ -512,7 +512,19 @@ CKeepSession::SampleType CKeepSession::GetSampleType(WAVEFORMATEX* format)
 	}
 	else
 	{
-		DebugLogError("Unrecognized sample format: 0x%04X.", format->wFormatTag);
+#ifdef _CONSOLE
+		if (format->wFormatTag != WAVE_FORMAT_EXTENSIBLE)
+		{
+			DebugLogError("Unrecognized sample format: 0x%04hX.", format->wFormatTag);
+		}
+		else
+		{
+			GUID& guid = reinterpret_cast<WAVEFORMATEXTENSIBLE*>(format)->SubFormat;
+			DebugLogError("Unrecognized sample format: {%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx}.",
+				guid.Data1, guid.Data2, guid.Data3, guid.Data4[0], guid.Data4[1],
+				guid.Data4[2], guid.Data4[3], guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
+		}
+#endif
 	}
 	return result;
 }
