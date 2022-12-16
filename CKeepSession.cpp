@@ -308,7 +308,7 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 			if (SUCCEEDED(hr) && out_format_prop.vt == VT_BLOB)
 			{
 				auto out_format = reinterpret_cast<WAVEFORMATEX*>(out_format_prop.blob.pBlobData);
-				m_out_sample_type = GetSampleType(out_format, true);
+				m_out_sample_type = GetSampleType(out_format);
 			}
 			else
 			{
@@ -334,7 +334,7 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 			goto free;
 		}
 
-		m_mix_sample_type = GetSampleType(mix_format, false);
+		m_mix_sample_type = GetSampleType(mix_format);
 		m_channels_count = mix_format->nChannels;
 		m_frame_size = mix_format->nBlockAlign;
 
@@ -473,7 +473,7 @@ free:
 	return exit_mode;
 }
 
-CKeepSession::SampleType CKeepSession::GetSampleType(WAVEFORMATEX* format, bool relaxed)
+CKeepSession::SampleType CKeepSession::GetSampleType(WAVEFORMATEX* format)
 {
 	SampleType result = SampleType::Unknown;
 
@@ -528,22 +528,6 @@ CKeepSession::SampleType CKeepSession::GetSampleType(WAVEFORMATEX* format, bool 
 				format->nChannels, format->nSamplesPerSec, format->wBitsPerSample);
 		}
 #endif
-	}
-
-	if (result == SampleType::Unknown && relaxed)
-	{
-		if (format->wBitsPerSample == 16)
-		{
-			result = SampleType::Int16;
-		}
-		else if (format->wBitsPerSample == 24)
-		{
-			result = SampleType::Int24;
-		}
-		else if (format->wBitsPerSample == 32)
-		{
-			result = SampleType::Int32;
-		}
 	}
 
 	return result;
@@ -627,12 +611,12 @@ HRESULT CKeepSession::Render()
 				switch (m_out_sample_type)
 				{
 					case SampleType::Int16:
-					default:
 
 						sample = 0x38000100; // = 3.051851E-5  = 1.0/32767.
 						break;
 
 					case SampleType::Int24:
+					default: // Treat compressed formats as high resolution.
 
 						sample = 0x34000001; // = 1.192093E-7  = 1.0/8388607.
 						break;
