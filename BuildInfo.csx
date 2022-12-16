@@ -6,8 +6,18 @@ using System.Linq;
 using System.Diagnostics;
 using System.Globalization;
 
-const string BUILD_INFO_FILE = "BuildInfo.hpp";
-const bool   NO_ERRORS = true;
+var args = Environment.GetCommandLineArgs().ToList();
+args = (args.IndexOf("--") > -1) ? args.Skip(args.IndexOf("--") + 1).ToList() : (new List<string>());
+
+if (args.Count == 0 || args[0][0] == '-')
+{
+	Console.WriteLine("Error: Target file name is not specified.");
+	Console.WriteLine("Usage: csi BuildInfo.csx -- <BuildInfo.hpp> [--no-errors]");
+	Environment.Exit(1);
+}
+
+var BUILD_INFO_FILE = args[0];
+var NO_ERRORS = args.IndexOf("--no-errors") != -1;
 
 class Error : Exception
 {
