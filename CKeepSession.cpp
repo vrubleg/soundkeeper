@@ -308,7 +308,7 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 			if (SUCCEEDED(hr) && out_format_prop.vt == VT_BLOB)
 			{
 				auto out_format = reinterpret_cast<WAVEFORMATEX*>(out_format_prop.blob.pBlobData);
-				m_out_sample_type = GetSampleType(out_format);
+				m_out_sample_type = GetSampleType(out_format, true);
 			}
 			else
 			{
@@ -334,7 +334,7 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 			goto free;
 		}
 
-		m_mix_sample_type = GetSampleType(mix_format);
+		m_mix_sample_type = GetSampleType(mix_format, false);
 		m_channels_count = mix_format->nChannels;
 		m_frame_size = mix_format->nBlockAlign;
 
@@ -473,10 +473,24 @@ free:
 	return exit_mode;
 }
 
-CKeepSession::SampleType CKeepSession::GetSampleType(WAVEFORMATEX* format)
+CKeepSession::SampleType CKeepSession::GetSampleType(WAVEFORMATEX* format, bool relaxed)
 {
 	SampleType result = SampleType::Unknown;
-	if (format->wFormatTag == WAVE_FORMAT_PCM
+
+	if (format->wFormatTag == WAVE_FORMAT_IEEE_FLOAT
+		|| (format->wFormatTag == WAVE_FORMAT_EXTENSIBLE && reinterpret_cast<WAVEFORMATEXTENSIBLE*>(format)->SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT))
+	{
+		DebugLog("Format: PCM %dch %dHz %d-bit float.", format->nChannels, format->nSamplesPerSec, format->wBitsPerSample);
+		if (format->wBitsPerSample == 32)
+		{
+			result = SampleType::Float32;
+		}
+		else
+		{
+			DebugLogWarning("Unsupported PCM float sample type.");
+		}
+	}
+	else if (format->wFormatTag == WAVE_FORMAT_PCM
 		|| format->wFormatTag == WAVE_FORMAT_EXTENSIBLE && reinterpret_cast<WAVEFORMATEXTENSIBLE*>(format)->SubFormat == KSDATAFORMAT_SUBTYPE_PCM)
 	{
 		DebugLog("Format: PCM %dch %dHz %d-bit integer.", format->nChannels, format->nSamplesPerSec, format->wBitsPerSample);
@@ -494,20 +508,7 @@ CKeepSession::SampleType CKeepSession::GetSampleType(WAVEFORMATEX* format)
 		}
 		else
 		{
-			DebugLogError("Unsupported PCM integer sample type.");
-		}
-	}
-	else if (format->wFormatTag == WAVE_FORMAT_IEEE_FLOAT
-		|| (format->wFormatTag == WAVE_FORMAT_EXTENSIBLE && reinterpret_cast<WAVEFORMATEXTENSIBLE*>(format)->SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT))
-	{
-		DebugLog("Format: PCM %dch %dHz %d-bit float.", format->nChannels, format->nSamplesPerSec, format->wBitsPerSample);
-		if (format->wBitsPerSample == 32)
-		{
-			result = SampleType::Float32;
-		}
-		else
-		{
-			DebugLogError("Unsupported PCM float sample type.");
+			DebugLogWarning("Unsupported PCM integer sample type.");
 		}
 	}
 	else
@@ -515,17 +516,36 @@ CKeepSession::SampleType CKeepSession::GetSampleType(WAVEFORMATEX* format)
 #ifdef _CONSOLE
 		if (format->wFormatTag != WAVE_FORMAT_EXTENSIBLE)
 		{
-			DebugLogError("Unrecognized sample format: 0x%04hX.", format->wFormatTag);
+			DebugLogWarning("Unrecognized sample format: 0x%04hX %dch %dHz %d-bit.", format->wFormatTag,
+				format->nChannels, format->nSamplesPerSec, format->wBitsPerSample);
 		}
 		else
 		{
 			GUID& guid = reinterpret_cast<WAVEFORMATEXTENSIBLE*>(format)->SubFormat;
-			DebugLogError("Unrecognized sample format: {%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx}.",
+			DebugLogWarning("Unrecognized sample format: {%08lx-%04hx-%04hx-%02hhx%02hhx-%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx} %dch %dHz %d-bit.",
 				guid.Data1, guid.Data2, guid.Data3, guid.Data4[0], guid.Data4[1],
-				guid.Data4[2], guid.Data4[3], guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
+				guid.Data4[2], guid.Data4[3], guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7],
+				format->nChannels, format->nSamplesPerSec, format->wBitsPerSample);
 		}
 #endif
 	}
+
+	if (result == SampleType::Unknown && relaxed)
+	{
+		if (format->wBitsPerSample == 16)
+		{
+			result = SampleType::Int16;
+		}
+		else if (format->wBitsPerSample == 24)
+		{
+			result = SampleType::Int24;
+		}
+		else if (format->wBitsPerSample == 32)
+		{
+			result = SampleType::Int32;
+		}
+	}
+
 	return result;
 }
 
