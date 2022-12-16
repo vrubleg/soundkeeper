@@ -12,12 +12,13 @@ args = (args.IndexOf("--") > -1) ? args.Skip(args.IndexOf("--") + 1).ToList() : 
 if (args.Count == 0 || args[0][0] == '-')
 {
 	Console.WriteLine("Error: Target file name is not specified.");
-	Console.WriteLine("Usage: csi BuildInfo.csx -- <BuildInfo.hpp> [--no-errors]");
+	Console.WriteLine("Usage: csi BuildInfo.csx -- <BuildInfo.hpp> [--no-errors] [--force]");
 	Environment.Exit(1);
 }
 
 var BUILD_INFO_FILE = args[0];
 var NO_ERRORS = args.IndexOf("--no-errors") != -1;
+var FORCE_UPDATE = args.IndexOf("--force") != -1;
 
 class Error : Exception
 {
@@ -284,51 +285,60 @@ class DefineEditor : List<DefineItem>
 
 try
 {
+	string output;
+
 	if (RunCmd("where git") != 0)
 	{
 		throw new Error("Git not found");
 	}
 
-	Console.WriteLine("Checking if there are any changes...");
-
-	// Check if there are any changes in the working tree since last commit.
-
-	int exitcode = RunCmd("git diff HEAD --exit-code --quiet");
-
-	if (exitcode == 0)
+	if (FORCE_UPDATE)
 	{
-		throw new Success("No changes found");
+		Console.WriteLine("Updating build information...");
 	}
-
-	if (exitcode != 1)
+	else
 	{
-		throw new Error("An issue with Git repo");
+		Console.WriteLine("Checking if there are any changes...");
+
+		// Check if there are any changes in the working tree since last commit.
+
+		int exitcode = RunCmd("git diff HEAD --exit-code --quiet");
+
+		if (exitcode == 0)
+		{
+			throw new Success("No changes found");
+		}
+
+		if (exitcode != 1)
+		{
+			throw new Error("An issue with Git repo");
+		}
+
+		// Check if there are any changes since last build info update.
+
+		if (RunCmd("git ls-files -z --cached --modified --other --exclude-standard --deduplicate", out output) != 0)
+		{
+			throw new Error("Can't list files in the repo");
+		}
+
+		var files = output.Split(new char[] {'\0'}, StringSplitOptions.RemoveEmptyEntries);
+		var latest_change = DateTime.MinValue;
+
+		foreach (var file in files)
+		{
+			if (!File.Exists(file)) { continue; }
+			var LastWriteTime = new FileInfo(file).LastWriteTime;
+			if (LastWriteTime > latest_change) { latest_change = LastWriteTime; }
+		}
+
+		var latest_update = File.Exists(BUILD_INFO_FILE) ? new FileInfo(BUILD_INFO_FILE).LastWriteTime : DateTime.MinValue;
+		if (latest_update >= latest_change)
+		{
+			throw new Success("No changes found");
+		}
+
+		Console.WriteLine("There are some changes. Updating build information...");
 	}
-
-	// Check if there are any changes since last build info update.
-
-	if (RunCmd("git ls-files -z --cached --modified --other --exclude-standard --deduplicate", out var output) != 0)
-	{
-		throw new Error("Can't list files in the repo");
-	}
-
-	var files = output.Split(new char[] {'\0'}, StringSplitOptions.RemoveEmptyEntries);
-	var latest_change = DateTime.MinValue;
-
-	foreach (var file in files)
-	{
-		if (!File.Exists(file)) { continue; }
-		var LastWriteTime = new FileInfo(file).LastWriteTime;
-		if (LastWriteTime > latest_change) { latest_change = LastWriteTime; }
-	}
-
-	var latest_update = File.Exists(BUILD_INFO_FILE) ? new FileInfo(BUILD_INFO_FILE).LastWriteTime : DateTime.MinValue;
-	if (latest_update >= latest_change)
-	{
-		throw new Success("No changes found");
-	}
-
-	Console.WriteLine("There are some changes. Updating build information...");
 
 	var build_info = new DefineEditor(BUILD_INFO_FILE);
 
