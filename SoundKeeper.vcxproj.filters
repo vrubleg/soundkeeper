@@ -64,6 +64,9 @@
     </Image>
   </ItemGroup>
   <ItemGroup>
+    <UpToDateCheckInput Include="BuildInfo.cmd">
+      <Filter>Resource Files</Filter>
+    </UpToDateCheckInput>
     <UpToDateCheckInput Include="BuildInfo.csx">
       <Filter>Resource Files</Filter>
     </UpToDateCheckInput>

@@ -49,6 +49,7 @@
     <Image Include="Main.ico" />
   </ItemGroup>
   <ItemGroup>
+    <UpToDateCheckInput Include="BuildInfo.cmd" />
     <UpToDateCheckInput Include="BuildInfo.csx" />
     <UpToDateCheckInput Include="BuildInfo.rc2" />
   </ItemGroup>
