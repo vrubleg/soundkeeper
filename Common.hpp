@@ -44,6 +44,7 @@ inline void DebugLog(const char * format, ...)
 	vprintf(format, argptr);
 
 	printf("\n");
+	fflush(stdout);
 }
 
 #define DebugLogWarning(...) DebugLog("WARNING: " __VA_ARGS__)
