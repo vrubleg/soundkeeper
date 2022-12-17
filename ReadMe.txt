@@ -1,4 +1,4 @@
-Sound Keeper v1.3.0 [2022/07/28]
+Sound Keeper v1.X.X [202X/XX/XX]
 https://veg.by/projects/soundkeeper/
 
 Prevents SPDIF/HDMI digital audio playback devices from sleeping. Uses WASAPI, requires Windows 7+.
@@ -62,6 +62,11 @@ powercfg /REQUESTSOVERRIDE DRIVER "HDAUDIO\FUNC_01&VEN_10EC&..."
 powercfg /REQUESTSOVERRIDE DRIVER "High Definition Audio Device (HDAUDIO\FUNC_01&VEN_10EC&...)"
 
 What's new
+
+v1.X.X [202X/XX/XX]:
+- "Fluctuate" treats non-PCM output formats (like Dolby Atmos) as 24-bit instead of 16-bit.
+- Frequency parameter is limited by half of current sample rate to avoid generation of unexpected noise.
+- More detailed logs in debug builds. Debug output is flushed immediately, so it can be redirected to a file.
 
 v1.3.0 [2022/07/28]:
 - "Fluctuate" is 1 fluctuation per second by default. Frequency can be changed using the F parameter.
