@@ -34,8 +34,17 @@ inline void DebugLog(const char * format, ...)
 	static CriticalSection mutex;
 	ScopedLock lock(mutex);
 
+	static uint64_t prev_date = 0;
 	SYSTEMTIME now = {0};
 	GetSystemTime(&now);
+
+	// Output current date once. First 8 bytes are current date, so we can compare it as a 64-bit integer.
+	if (prev_date != *((uint64_t*)&now))
+	{
+		prev_date = *((uint64_t*)&now);
+		printf("%04d/%02d/%02d\n", now.wYear, now.wMonth, now.wDay);
+	}
+
 	printf("%02d:%02d:%02d.%03d", now.wHour, now.wMinute, now.wSecond, now.wMilliseconds);
 	printf(" [%5d] ", GetThreadId(GetCurrentThread()));
 
