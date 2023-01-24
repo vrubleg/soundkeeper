@@ -673,7 +673,7 @@ HRESULT CSoundKeeper::Run()
 
 	// Working loop.
 
-	DebugLog("Main loop started.");
+	DebugLog("Enter main loop.");
 
 	for (bool working = true; working; )
 	{
@@ -741,6 +741,8 @@ HRESULT CSoundKeeper::Run()
 		}
 	}
 
+	DebugLog("Leave main loop.");
+
 	Stop();
 
 exit:
@@ -757,7 +759,7 @@ exit:
 
 __forceinline HRESULT CSoundKeeper::Main()
 {
-	DebugLog("Main thread started.");
+	DebugLog("Enter main thread.");
 
 	if (HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE); FAILED(hr))
 	{
@@ -783,11 +785,11 @@ __forceinline HRESULT CSoundKeeper::Main()
 #else
 	if (hr == S_OK)
 	{
-		DebugLog("Main thread finished. Exit code: 0.");
+		DebugLog("Leave main thread. Exit code: 0.");
 	}
 	else
 	{
-		DebugLog("Main thread finished. Exit code: 0x%08X.", hr);
+		DebugLog("Leave main thread. Exit code: 0x%08X.", hr);
 	}
 #endif
 

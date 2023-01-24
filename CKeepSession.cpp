@@ -155,7 +155,7 @@ DWORD APIENTRY CKeepSession::StartRenderingThread(LPVOID context)
 {
 	CKeepSession* renderer = static_cast<CKeepSession*>(context);
 
-	DebugLog("Rendering thread started. Device ID: '%S'.", renderer->GetDeviceId());
+	DebugLog("Enter rendering thread. Device ID: '%S'.", renderer->GetDeviceId());
 
 	if (HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE); FAILED(hr))
 	{
@@ -181,7 +181,7 @@ DWORD APIENTRY CKeepSession::StartRenderingThread(LPVOID context)
 
 	CoUninitialize();
 
-	DebugLog("Rendering thread finished. Return code: %d.", result);
+	DebugLog("Leave rendering thread. Return code: %d.", result);
 	return result;
 }
 
@@ -197,10 +197,13 @@ DWORD CKeepSession::RenderingThread()
 
 	while (loop)
 	{
+		DebugLog("Rendering thread mode: %d. Delay: %d.", m_curr_mode, delay);
+
 		switch (WaitForOne(m_interrupt, delay))
 		{
 		case WAIT_OBJECT_0:
 
+			DebugLog("Set new rendering thread mode: %d.", m_next_mode);
 			m_curr_mode = m_next_mode;
 			break;
 
@@ -420,7 +423,7 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 		goto free;
 	}
 
-	DebugLog("Rendering loop started.");
+	DebugLog("Enter rendering loop.");
 
 	m_play_attempts = 0;
 
@@ -451,7 +454,7 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 
 stop:
 
-	DebugLog("Stopping rendering...");
+	DebugLog("Leave rendering loop. Stopping audio client...");
 
 	m_audio_client->Stop();
 
@@ -460,6 +463,8 @@ stop:
 	// -------------------------------------------------------------------------
 
 free:
+
+	DebugLog("Rendering cleanup...");
 
 	if (m_audio_session_control)
 	{

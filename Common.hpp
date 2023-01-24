@@ -42,7 +42,7 @@ inline void DebugLog(const char * format, ...)
 	if (prev_date != *((uint64_t*)&now))
 	{
 		prev_date = *((uint64_t*)&now);
-		printf("%04d/%02d/%02d\n", now.wYear, now.wMonth, now.wDay);
+		printf("%04d/%02d/%02d ", now.wYear, now.wMonth, now.wDay);
 	}
 
 	printf("%02d:%02d:%02d.%03d", now.wHour, now.wMinute, now.wSecond, now.wMilliseconds);
