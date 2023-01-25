@@ -798,8 +798,52 @@ __forceinline HRESULT CSoundKeeper::Main()
 
 #ifdef _CONSOLE
 
+struct RsrcSpan
+{
+	const uint8_t* data;
+	size_t size;
+	operator bool() const { return data != nullptr; }
+};
+
+inline RsrcSpan GetResource(HMODULE hModule, LPCTSTR lpName, LPCTSTR lpType)
+{
+	HRSRC hrsrc = FindResource(hModule, lpName, lpType);
+	if (!hrsrc) { return { nullptr, 0 }; }
+	HGLOBAL hglobal = LoadResource(hModule, hrsrc);
+	if (!hglobal) { return { nullptr, 0 }; }
+	return { (uint8_t*) LockResource(hglobal), SizeofResource(hModule, hrsrc) };
+}
+
+void DebugLogVersion()
+{
+	if (auto rsrc_verinfo = GetResource(NULL, MAKEINTRESOURCE(VS_VERSION_INFO), RT_VERSION))
+	{
+		// Parse the resource as the VS_VERSION_INFO pseudo structure to get the VS_FIXEDFILEINFO.
+
+		if (rsrc_verinfo.size < (40 + sizeof(VS_FIXEDFILEINFO))) { return; }
+		if (*(uint16_t*)(rsrc_verinfo.data + 0) < (40 + sizeof(VS_FIXEDFILEINFO))) { return; } // VS_VERSIONINFO::wLength
+		if (*(uint16_t*)(rsrc_verinfo.data + 2) != sizeof(VS_FIXEDFILEINFO)) { return; }       // VS_VERSIONINFO::wValueLength
+		if (*(uint16_t*)(rsrc_verinfo.data + 4) != 0) { return; }                              // VS_VERSIONINFO::wType (0 is binary, 1 is text)
+		if (!StringEquals((wchar_t*)(rsrc_verinfo.data + 6), L"VS_VERSION_INFO")) { return; }  // VS_VERSIONINFO::szKey
+		const VS_FIXEDFILEINFO* ffi = (const VS_FIXEDFILEINFO*)(rsrc_verinfo.data + 40);       // VS_VERSIONINFO::Value
+		if (ffi->dwSignature != VS_FFI_SIGNATURE || ffi->dwStrucVersion != VS_FFI_STRUCVERSION) { return; }
+
+		DebugLog("Sound Keeper v%hu.%hu.%hu.%hu [%04hu/%02hu/%02hu]",
+			HIWORD(ffi->dwProductVersionMS),
+			LOWORD(ffi->dwProductVersionMS),
+			HIWORD(ffi->dwProductVersionLS),
+			LOWORD(ffi->dwProductVersionLS),
+			HIWORD(ffi->dwFileVersionMS),
+			LOWORD(ffi->dwFileVersionMS),
+			HIWORD(ffi->dwFileVersionLS),
+			LOWORD(ffi->dwFileVersionLS)
+		);
+	}
+}
+
 int main()
 {
+	DebugLogVersion();
 	return CSoundKeeper::Main();
 }
 
