@@ -805,24 +805,22 @@ __forceinline HRESULT CSoundKeeper::Main()
 
 #ifdef _CONSOLE
 
-void DebugLogVersion()
-{
-	const VS_FIXEDFILEINFO* ffi = GetFixedVersion();
-	DebugLog("Sound Keeper v%hu.%hu.%hu.%hu [%04hu/%02hu/%02hu]",
-		HIWORD(ffi->dwProductVersionMS),
-		LOWORD(ffi->dwProductVersionMS),
-		HIWORD(ffi->dwProductVersionLS),
-		LOWORD(ffi->dwProductVersionLS),
-		HIWORD(ffi->dwFileVersionMS),
-		LOWORD(ffi->dwFileVersionMS),
-		HIWORD(ffi->dwFileVersionLS),
-		LOWORD(ffi->dwFileVersionLS)
-	);
-}
-
 int main()
 {
-	DebugLogVersion();
+	if (const VS_FIXEDFILEINFO* ffi = GetFixedVersion())
+	{
+		DebugLog("Sound Keeper v%hu.%hu.%hu.%hu [%04hu/%02hu/%02hu]",
+			HIWORD(ffi->dwProductVersionMS),
+			LOWORD(ffi->dwProductVersionMS),
+			HIWORD(ffi->dwProductVersionLS),
+			LOWORD(ffi->dwProductVersionLS),
+			HIWORD(ffi->dwFileVersionMS),
+			LOWORD(ffi->dwFileVersionMS),
+			HIWORD(ffi->dwFileVersionLS),
+			LOWORD(ffi->dwFileVersionLS)
+		);
+	}
+
 	return CSoundKeeper::Main();
 }
 
