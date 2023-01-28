@@ -119,23 +119,23 @@ HRESULT STDMETHODCALLTYPE CSoundKeeper::OnDeviceAdded(LPCWSTR device_id)
 
 HRESULT STDMETHODCALLTYPE CSoundKeeper::OnDeviceRemoved(LPCWSTR device_id)
 {
-	ScopedLock lock(m_mutex);
+	// ScopedLock lock(m_mutex);
 	DebugLog("Device '%S' was removed.", device_id);
-	if (this->FindSession(device_id))
-	{
+	// if (this->FindSession(device_id))
+	// {
 		this->FireRestart();
-	}
+	// }
 	return S_OK;
 }
 
 HRESULT STDMETHODCALLTYPE CSoundKeeper::OnDeviceStateChanged(LPCWSTR device_id, DWORD new_state)
 {
-	ScopedLock lock(m_mutex);
+	// ScopedLock lock(m_mutex);
 	DebugLog("Device '%S' new state: %d.", device_id, new_state);
-	if (new_state == DEVICE_STATE_ACTIVE || this->FindSession(device_id))
-	{
+	// if (new_state == DEVICE_STATE_ACTIVE || this->FindSession(device_id))
+	// {
 		this->FireRestart();
-	}
+	// }
 	return S_OK;
 }
 
