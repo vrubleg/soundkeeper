@@ -23,9 +23,6 @@
     <ClInclude Include="CKeepSession.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="Common\Win32.hpp">
-      <Filter>Source Files\Common</Filter>
-    </ClInclude>
     <ClInclude Include="Common\NtEvent.hpp">
       <Filter>Source Files\Common</Filter>
     </ClInclude>
