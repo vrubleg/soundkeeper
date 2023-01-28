@@ -19,6 +19,14 @@ class CKeepSession : IAudioSessionEvents
 {
 protected:
 
+	static bool g_is_buggy_wasapi;
+
+public:
+
+	static void EnableWaitExclusiveWorkaround(bool enable) { g_is_buggy_wasapi = enable; }
+
+protected:
+
 	LONG                    m_ref_count = 1;
 	CriticalSection         m_mutex;
 

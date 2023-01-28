@@ -7,14 +7,7 @@
 #include <avrt.h>
 #endif
 
-static bool g_is_buggy_wasapi = []()
-{
-	uint32_t build_number = GetNtBuildNumber();
-	// Windows 7 is not buggy. Windows 8-10 leak handles and shared memory. Windows 11 has this bug fixed.
-	bool is_buggy = 7601 < build_number && build_number < 22000;
-	DebugLog("Windows Build Number: %u%s.", build_number, is_buggy ? " (buggy WASAPI)" : "");
-	return is_buggy;
-}();
+bool CKeepSession::g_is_buggy_wasapi = false;
 
 CKeepSession::CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint)
 	: m_soundkeeper(soundkeeper), m_endpoint(endpoint)

@@ -759,6 +759,12 @@ exit:
 
 __forceinline HRESULT CSoundKeeper::Main()
 {
+	// Windows 8-10 audio service leaks handles and shared memory when exclusive mode is used, enable a workaround.
+	uint32_t nt_build_number = GetNtBuildNumber();
+	bool is_buggy_wasapi = 7601 < nt_build_number && nt_build_number < 22000;
+	DebugLog("Windows Build Number: %u%s.", nt_build_number, is_buggy_wasapi ? " (buggy WASAPI)" : "");
+	CKeepSession::EnableWaitExclusiveWorkaround(is_buggy_wasapi);
+
 	DebugLog("Enter main thread.");
 
 	if (HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE); FAILED(hr))
