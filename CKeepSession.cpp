@@ -7,7 +7,7 @@
 #include <avrt.h>
 #endif
 
-bool CKeepSession::g_is_buggy_wasapi = false;
+bool CKeepSession::g_is_leaky_wasapi = false;
 
 CKeepSession::CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint)
 	: m_soundkeeper(soundkeeper), m_endpoint(endpoint)
@@ -200,7 +200,7 @@ DWORD CKeepSession::RenderingThread()
 
 			DebugLog("Render. Device State: %d.", this->GetDeviceState());
 			m_curr_mode = this->Rendering();
-			if (g_is_buggy_wasapi && m_curr_mode == RenderingMode::WaitExclusive)
+			if (g_is_leaky_wasapi && m_curr_mode == RenderingMode::WaitExclusive)
 			{
 				delay = 30;
 			}
@@ -208,7 +208,7 @@ DWORD CKeepSession::RenderingThread()
 
 		case RenderingMode::WaitExclusive:
 
-			if (g_is_buggy_wasapi)
+			if (g_is_leaky_wasapi)
 			{
 				DebugLog("Wait until exclusive session is finised.");
 				m_curr_mode = this->WaitExclusive();
@@ -222,7 +222,7 @@ DWORD CKeepSession::RenderingThread()
 
 		case RenderingMode::Retry:
 
-			if (g_is_buggy_wasapi && m_play_attempts > 10)
+			if (g_is_leaky_wasapi && m_play_attempts > 10)
 			{
 				DebugLog("Attempts limit. Stop.");
 				m_curr_mode = RenderingMode::Stop;

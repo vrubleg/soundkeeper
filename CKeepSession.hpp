@@ -19,11 +19,11 @@ class CKeepSession : IAudioSessionEvents
 {
 protected:
 
-	static bool g_is_buggy_wasapi;
+	static bool g_is_leaky_wasapi;
 
 public:
 
-	static void EnableWaitExclusiveWorkaround(bool enable) { g_is_buggy_wasapi = enable; }
+	static void EnableWaitExclusiveWorkaround(bool enable) { g_is_leaky_wasapi = enable; }
 
 protected:
 

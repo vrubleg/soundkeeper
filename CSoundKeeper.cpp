@@ -528,6 +528,13 @@ void CSoundKeeper::ParseModeString(const char* args)
 
 HRESULT CSoundKeeper::Run()
 {
+	// Windows 8-10 audio service leaks handles and shared memory when exclusive mode is used, enable a workaround.
+	uint32_t nt_build_number = GetNtBuildNumber();
+	bool is_leaky_wasapi = 7601 < nt_build_number && nt_build_number < 22000;
+	DebugLog("Windows Build Number: %u%s.", nt_build_number, is_leaky_wasapi ? " (leaky WASAPI)" : "");
+	CKeepSession::EnableWaitExclusiveWorkaround(is_leaky_wasapi);
+
+	// Set defaults.
 	this->SetDeviceType(KeepDeviceType::Primary);
 	this->SetStreamType(KeepStreamType::Fluctuate);
 	this->SetFrequency(1.00);
@@ -572,7 +579,7 @@ HRESULT CSoundKeeper::Run()
 
 	if (GetSecondsToSleeping() == 0)
 	{
-		DebugLogWarning("Buggy power information.");
+		DebugLogWarning("Sleep timer informarion is not available. Sleep detection is disabled.");
 		m_cfg_no_sleep = true;
 	}
 
@@ -759,12 +766,6 @@ exit:
 
 __forceinline HRESULT CSoundKeeper::Main()
 {
-	// Windows 8-10 audio service leaks handles and shared memory when exclusive mode is used, enable a workaround.
-	uint32_t nt_build_number = GetNtBuildNumber();
-	bool is_buggy_wasapi = 7601 < nt_build_number && nt_build_number < 22000;
-	DebugLog("Windows Build Number: %u%s.", nt_build_number, is_buggy_wasapi ? " (buggy WASAPI)" : "");
-	CKeepSession::EnableWaitExclusiveWorkaround(is_buggy_wasapi);
-
 	DebugLog("Enter main thread.");
 
 	if (HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE); FAILED(hr))
