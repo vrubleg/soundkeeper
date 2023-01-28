@@ -38,6 +38,7 @@
     <ClInclude Include="Common\NtBase.hpp" />
     <ClInclude Include="Common\NtEvent.hpp" />
     <ClInclude Include="Common\NtHandle.hpp" />
+    <ClInclude Include="Common\NtUtils.hpp" />
     <ClInclude Include="Common\Win32.hpp" />
     <ClInclude Include="CSoundKeeper.hpp" />
     <ClInclude Include="Resources.hpp" />

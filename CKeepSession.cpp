@@ -7,27 +7,9 @@
 #include <avrt.h>
 #endif
 
-extern "C" NTSYSAPI NTSTATUS WINAPI RtlGetVersion(PRTL_OSVERSIONINFOW lpVersionInformation);
-
-ULONG GetWinBuildNumber()
-{
-	static ULONG build_number = 0;
-
-	if (build_number != 0)
-	{
-		return build_number;
-	}
-
-	RTL_OSVERSIONINFOW os_info = {0};
-	os_info.dwOSVersionInfoSize = sizeof(os_info);
-	RtlGetVersion(&os_info);
-	build_number = os_info.dwBuildNumber;
-	return build_number;
-}
-
 static bool g_is_buggy_wasapi = []()
 {
-	ULONG build_number = GetWinBuildNumber();
+	uint32_t build_number = GetNtBuildNumber();
 	// Windows 7 is not buggy. Windows 8-10 leak handles and shared memory. Windows 11 has this bug fixed.
 	bool is_buggy = 7601 < build_number && build_number < 22000;
 	DebugLog("Windows Build Number: %u%s.", build_number, is_buggy ? " (buggy WASAPI)" : "");
