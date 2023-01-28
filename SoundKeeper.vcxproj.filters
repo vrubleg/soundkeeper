@@ -41,6 +41,9 @@
     <ClInclude Include="Common\NtBase.hpp">
       <Filter>Source Files\Common</Filter>
     </ClInclude>
+    <ClInclude Include="Common\NtHandle.hpp">
+      <Filter>Source Files\Common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CKeepSession.cpp">

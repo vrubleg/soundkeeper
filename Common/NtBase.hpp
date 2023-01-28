@@ -1,6 +1,14 @@
 #pragma once
 
-#include "Win32.hpp"
+#define _WIN32_WINNT 0x0601
+#include <sdkddkver.h>
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#define NOCOMM
+#define NOKANJI
+#define NOSOUND
+#include <windows.h>
+#include <objbase.h>
 
 // ---------------------------------------------------------------------------------------------------------------------
 

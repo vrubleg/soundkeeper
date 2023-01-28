@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Win32.hpp"
+#include "NtBase.hpp"
 
 //
 // A simple reentrant lock based on Windows Critical Sections.
