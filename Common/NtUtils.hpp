@@ -16,21 +16,26 @@ template <class T> void SafeRelease(T*& com_obj_ptr)
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-extern "C" NTSYSAPI NTSTATUS WINAPI RtlGetVersion(PRTL_OSVERSIONINFOW lpVersionInformation);
+// Gets NT version and build number. 
+// The upper 4 bits of build number are reserved for the type of the OS build.
+// 0xC for a "checked" (or debug) build, and 0xF for a "free" (or retail) build.
+
+extern "C" NTSYSAPI VOID WINAPI RtlGetNtVersionNumbers(
+	__out_opt DWORD* pNtMajorVersion,
+	__out_opt DWORD* pNtMinorVersion,
+	__out_opt DWORD* pNtBuildNumber
+);
 
 inline uint32_t GetNtBuildNumber()
 {
 	static uint32_t build_number = 0;
 
-	if (build_number != 0)
+	if (build_number == 0)
 	{
-		return build_number;
+		RtlGetNtVersionNumbers(NULL, NULL, (DWORD*)&build_number);
+		build_number &= ~0xF0000000; // Clear type of OS build bits.
 	}
 
-	RTL_OSVERSIONINFOW os_info = { 0 };
-	os_info.dwOSVersionInfoSize = sizeof(os_info);
-	RtlGetVersion(&os_info);
-	build_number = os_info.dwBuildNumber;
 	return build_number;
 }
 
