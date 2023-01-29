@@ -77,20 +77,9 @@ constexpr const char* StringFindPtr(const char* str, const char* sub)
 {
 	while (*str)
 	{
-		const char* curr_str = str;
-		const char* curr_sub = sub;
-
-		while (*curr_str && *curr_sub && TransformChar(*curr_str) == TransformChar(*curr_sub))
-		{
-			curr_str++;
-			curr_sub++;
-		}
-
-		if (!*curr_sub)
-		{
-			return str;
-		}
-
+		const char *l = str; const char *r = sub;
+		while (*l && TransformChar(*l) == TransformChar(*r)) { l++; r++; }
+		if (!*r) { return str; }
 		str++;
 	}
 
@@ -102,20 +91,9 @@ constexpr const wchar_t* StringFindPtr(const wchar_t* str, const wchar_t* sub)
 {
 	while (*str)
 	{
-		const wchar_t* curr_str = str;
-		const wchar_t* curr_sub = sub;
-
-		while (*curr_str && *curr_sub && TransformChar(*curr_str) == TransformChar(*curr_sub))
-		{
-			curr_str++;
-			curr_sub++;
-		}
-
-		if (!*curr_sub)
-		{
-			return str;
-		}
-
+		const wchar_t* l = str; const wchar_t* r = sub;
+		while (*l && TransformChar(*l) == TransformChar(*r)) { l++; r++; }
+		if (!*r) { return str; }
 		str++;
 	}
 
