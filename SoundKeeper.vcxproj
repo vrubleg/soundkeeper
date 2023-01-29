@@ -34,7 +34,7 @@
   <ItemGroup>
     <ClInclude Include="BuildInfo.hpp" />
     <ClInclude Include="CKeepSession.hpp" />
-    <ClInclude Include="Common\CriticalSection.hpp" />
+    <ClInclude Include="Common\NtCriticalSection.hpp" />
     <ClInclude Include="Common\NtBase.hpp" />
     <ClInclude Include="Common\NtEvent.hpp" />
     <ClInclude Include="Common\NtHandle.hpp" />

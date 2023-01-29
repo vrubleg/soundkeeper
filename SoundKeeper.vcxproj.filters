@@ -26,7 +26,7 @@
     <ClInclude Include="Common\NtEvent.hpp">
       <Filter>Source Files\Common</Filter>
     </ClInclude>
-    <ClInclude Include="Common\CriticalSection.hpp">
+    <ClInclude Include="Common\NtCriticalSection.hpp">
       <Filter>Source Files\Common</Filter>
     </ClInclude>
     <ClInclude Include="Common.hpp">

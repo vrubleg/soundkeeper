@@ -5,7 +5,7 @@
 #include "Common/NtBase.hpp"
 #include "Common/NtHandle.hpp"
 #include "Common/NtEvent.hpp"
-#include "Common/CriticalSection.hpp"
+#include "Common/NtCriticalSection.hpp"
 #include "Common/NtUtils.hpp"
 #include "Common/StrUtils.hpp"
 #include <algorithm> // std::min and std::max.
