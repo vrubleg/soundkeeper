@@ -26,11 +26,11 @@ inline void DebugLogImpl(const char * funcname, const char * type, const char * 
 		char buf[MAX_PATH];
 		strcpy_s(buf, GetCommandLineA());
 		_strlwr(buf);
-		if (StringContainsNoCase(buf, "trace")) { show_trace = true; }
+		if (StringContains<AsciiToLower>(buf, "trace")) { show_trace = true; }
 		is_inited = true;
 	}
 
-	if (!show_trace && type && StringEqualsNoCase(type, "TRACE")) { return; }
+	if (!show_trace && type && StringEquals<AsciiToLower>(type, "TRACE")) { return; }
 
 	static uint64_t prev_date = 0;
 	SYSTEMTIME now = {0};
@@ -51,7 +51,7 @@ inline void DebugLogImpl(const char * funcname, const char * type, const char * 
 		printf("[%s] ", funcname);
 	}
 
-	if (type && !StringEqualsNoCase(type, "TRACE") && !StringEqualsNoCase(type, "INFO"))
+	if (type && !StringEquals<AsciiToLower>(type, "TRACE") && !StringEquals<AsciiToLower>(type, "INFO"))
 	{
 		printf("[%s] ", type);
 	}
