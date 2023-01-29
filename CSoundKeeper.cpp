@@ -530,10 +530,6 @@ void CSoundKeeper::ParseModeString(const char* args)
 	{
 		this->ParseStreamArgs(KeepStreamType::PinkNoise, p+4);
 	}
-
-#ifdef _CONSOLE
-	if (strstr(buf, "trace")) { g_trace_log = true; }
-#endif
 }
 
 HRESULT CSoundKeeper::Run()
@@ -807,8 +803,6 @@ __forceinline HRESULT CSoundKeeper::Main()
 }
 
 #ifdef _CONSOLE
-
-bool g_trace_log = false;
 
 int main()
 {
