@@ -426,19 +426,19 @@ CKeepSession* CSoundKeeper::FindSession(LPCWSTR device_id)
 
 void CSoundKeeper::FireRetry()
 {
-	DebugLog("Fire Retry!");
+	TraceLog("Fire Retry!");
 	m_do_retry = true;
 }
 
 void CSoundKeeper::FireRestart()
 {
-	DebugLog("Fire Restart!");
+	TraceLog("Fire Restart!");
 	m_do_restart = true;
 }
 
 void CSoundKeeper::FireShutdown()
 {
-	DebugLog("Fire Shutdown!");
+	TraceLog("Fire Shutdown!");
 	m_do_shutdown = true;
 }
 
@@ -530,6 +530,10 @@ void CSoundKeeper::ParseModeString(const char* args)
 	{
 		this->ParseStreamArgs(KeepStreamType::PinkNoise, p+4);
 	}
+
+#ifdef _CONSOLE
+	if (strstr(buf, "trace")) { g_trace_log = true; }
+#endif
 }
 
 HRESULT CSoundKeeper::Run()
@@ -803,6 +807,8 @@ __forceinline HRESULT CSoundKeeper::Main()
 }
 
 #ifdef _CONSOLE
+
+bool g_trace_log = false;
 
 int main()
 {

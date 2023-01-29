@@ -11,6 +11,8 @@
 
 #ifdef _CONSOLE
 
+extern bool g_trace_log;
+
 inline void DebugLog(const char * format, ...)
 {
 	static CriticalSection mutex;
@@ -40,11 +42,13 @@ inline void DebugLog(const char * format, ...)
 
 #define DebugLogWarning(...) DebugLog("WARNING: " __VA_ARGS__)
 #define DebugLogError(...) DebugLog("ERROR: " __VA_ARGS__)
+#define TraceLog(...) do { if (g_trace_log) DebugLog(__VA_ARGS__); } while(0)
 
 #else
 
 #define DebugLog(...)
 #define DebugLogWarning(...)
 #define DebugLogError(...)
+#define TraceLog(...)
 
 #endif

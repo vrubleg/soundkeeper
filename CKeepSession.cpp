@@ -439,8 +439,6 @@ stop:
 
 free:
 
-	DebugLog("Rendering cleanup...");
-
 	if (m_audio_session_control)
 	{
 		m_audio_session_control->UnregisterAudioSessionNotification(this);
@@ -516,6 +514,8 @@ CKeepSession::SampleType CKeepSession::GetSampleType(WAVEFORMATEX* format)
 HRESULT CKeepSession::Render()
 {
 	HRESULT hr = S_OK;
+
+	TraceLog("Render.");
 
 	if (m_stream_type == KeepStreamType::None)
 	{
