@@ -96,6 +96,7 @@ HRESULT STDMETHODCALLTYPE CSoundKeeper::QueryInterface(REFIID riid, VOID **ppvIn
 }
 
 // Callback methods for device-event notifications.
+// WARNING: Don't use m_mutex, it may cause a deadlock when CSoundKeeper::Restart -> Stop is in progress.
 
 HRESULT STDMETHODCALLTYPE CSoundKeeper::OnDefaultDeviceChanged(EDataFlow flow, ERole role, LPCWSTR device_id)
 {
@@ -119,23 +120,21 @@ HRESULT STDMETHODCALLTYPE CSoundKeeper::OnDeviceAdded(LPCWSTR device_id)
 
 HRESULT STDMETHODCALLTYPE CSoundKeeper::OnDeviceRemoved(LPCWSTR device_id)
 {
-	// ScopedLock lock(m_mutex);
 	DebugLog("Device '%S' was removed.", device_id);
-	// if (this->FindSession(device_id))
-	// {
+	if (m_cfg_device_type != KeepDeviceType::Primary)
+	{
 		this->FireRestart();
-	// }
+	}
 	return S_OK;
 }
 
 HRESULT STDMETHODCALLTYPE CSoundKeeper::OnDeviceStateChanged(LPCWSTR device_id, DWORD new_state)
 {
-	// ScopedLock lock(m_mutex);
 	DebugLog("Device '%S' new state: %d.", device_id, new_state);
-	// if (new_state == DEVICE_STATE_ACTIVE || this->FindSession(device_id))
-	// {
+	if (new_state == DEVICE_STATE_ACTIVE)
+	{
 		this->FireRestart();
-	// }
+	}
 	return S_OK;
 }
 
@@ -143,6 +142,8 @@ HRESULT STDMETHODCALLTYPE CSoundKeeper::OnPropertyValueChanged(LPCWSTR device_id
 {
 	return S_OK;
 }
+
+// Main thread methods.
 
 uint32_t GetDeviceFormFactor(IMMDevice* device)
 {
@@ -406,19 +407,22 @@ CKeepSession* CSoundKeeper::FindSession(LPCWSTR device_id)
 
 	for (UINT i = 0; i < m_sessions_count; i++)
 	{
-		if (m_sessions[i] == nullptr || !m_sessions[i]->IsValid())
+		if (m_sessions[i] == nullptr)
 		{
 			continue;
 		}
 
-		if (StringEquals(m_sessions[i]->GetDeviceId(), device_id))
+		if (auto curr = m_sessions[i]->GetDeviceId(); curr && StringEquals(curr, device_id))
 		{
+			// Call AddRef()? Use ComPtr?
 			return m_sessions[i];
 		}
 	}
 
 	return nullptr;
 }
+
+// Fire main thread control events.
 
 void CSoundKeeper::FireRetry()
 {
@@ -437,6 +441,8 @@ void CSoundKeeper::FireShutdown()
 	DebugLog("Fire Shutdown!");
 	m_do_shutdown = true;
 }
+
+// Entry point methods.
 
 void CSoundKeeper::ParseStreamArgs(KeepStreamType stream_type, const char* args)
 {
@@ -719,21 +725,14 @@ HRESULT CSoundKeeper::Run()
 		case WAIT_OBJECT_0 + 0:
 
 			// Prevent multiple retries.
-			while (WaitForOne(m_do_retry, 500) != WAIT_TIMEOUT)
-			{
-				Sleep(500);
-			}
+			while (WaitForOne(m_do_retry, 500) != WAIT_TIMEOUT);
 			m_is_retry_required = true;
 			break;
 
 		case WAIT_OBJECT_0 + 1:
 
 			// Prevent multiple restarts.
-			while (WaitForOne(m_do_restart, 500) != WAIT_TIMEOUT)
-			{
-				Sleep(500);
-			}
-
+			while (WaitForOne(m_do_restart, 500) != WAIT_TIMEOUT);
 			DebugLog("Restarting...");
 			this->Restart();
 			break;

@@ -1,4 +1,4 @@
-Sound Keeper v1.X.X [202X/XX/XX]
+Sound Keeper v1.3.1 [2023/XX/XX]
 https://veg.by/projects/soundkeeper/
 
 Prevents SPDIF/HDMI digital audio playback devices from sleeping. Uses WASAPI, requires Windows 7+.
@@ -63,7 +63,8 @@ powercfg /REQUESTSOVERRIDE DRIVER "High Definition Audio Device (HDAUDIO\FUNC_01
 
 What's new
 
-v1.X.X [202X/XX/XX]:
+v1.3.1 [2023/XX/XX]:
+- A potential deadlock when audio devices are added or removed has been fixed.
 - "Fluctuate" treats non-PCM output formats (like Dolby Atmos) as 24-bit instead of 16-bit.
 - Frequency parameter is limited by half of current sample rate to avoid generation of unexpected noise.
 - More detailed logs in debug builds. Debug output is flushed immediately, so it can be redirected to a file.
