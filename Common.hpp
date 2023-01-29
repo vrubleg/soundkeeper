@@ -13,7 +13,7 @@
 
 extern bool g_trace_log;
 
-inline void DebugLog(const char * format, ...)
+inline void DebugLogImpl(const char * funcname, const char * format, ...)
 {
 	static CriticalSection mutex;
 	ScopedLock lock(mutex);
@@ -32,6 +32,11 @@ inline void DebugLog(const char * format, ...)
 	printf("%02d:%02d:%02d.%03d", now.wHour, now.wMinute, now.wSecond, now.wMilliseconds);
 	printf(" [%5d] ", GetThreadId(GetCurrentThread()));
 
+	if (g_trace_log && funcname)
+	{
+		printf("[%s] ", funcname);
+	}
+
 	va_list argptr;
 	va_start(argptr, format);
 	vprintf(format, argptr);
@@ -40,9 +45,10 @@ inline void DebugLog(const char * format, ...)
 	fflush(stdout);
 }
 
-#define DebugLogWarning(...) DebugLog("WARNING: " __VA_ARGS__)
-#define DebugLogError(...) DebugLog("ERROR: " __VA_ARGS__)
-#define TraceLog(...) do { if (g_trace_log) DebugLog(__VA_ARGS__); } while(0)
+#define DebugLog(...) DebugLogImpl(__FUNCTION__, __VA_ARGS__)
+#define DebugLogWarning(...) DebugLogImpl(__FUNCTION__, "WARNING: " __VA_ARGS__)
+#define DebugLogError(...) DebugLogImpl(__FUNCTION__, "ERROR: " __VA_ARGS__)
+#define TraceLog(...) do { if (g_trace_log) DebugLogImpl(__FUNCTION__, __VA_ARGS__); } while(0)
 
 #else
 
