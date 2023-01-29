@@ -44,6 +44,9 @@
     <ClInclude Include="Common\NtUtils.hpp">
       <Filter>Source Files\Common</Filter>
     </ClInclude>
+    <ClInclude Include="Common\StrUtils.hpp">
+      <Filter>Source Files\Common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CKeepSession.cpp">

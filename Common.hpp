@@ -7,6 +7,7 @@
 #include "Common/NtEvent.hpp"
 #include "Common/CriticalSection.hpp"
 #include "Common/NtUtils.hpp"
+#include "Common/StrUtils.hpp"
 #include <algorithm> // std::min and std::max.
 
 #ifdef _CONSOLE
@@ -25,11 +26,11 @@ inline void DebugLogImpl(const char * funcname, const char * type, const char * 
 		char buf[MAX_PATH];
 		strcpy_s(buf, GetCommandLineA());
 		_strlwr(buf);
-		if (strstr(buf, "trace")) { show_trace = true; }
+		if (StringContainsNoCase(buf, "trace")) { show_trace = true; }
 		is_inited = true;
 	}
 
-	if (!show_trace && type && StringEquals(type, "TRACE")) { return; }
+	if (!show_trace && type && StringEqualsNoCase(type, "TRACE")) { return; }
 
 	static uint64_t prev_date = 0;
 	SYSTEMTIME now = {0};
@@ -50,7 +51,7 @@ inline void DebugLogImpl(const char * funcname, const char * type, const char * 
 		printf("[%s] ", funcname);
 	}
 
-	if (type && !StringEquals(type, "TRACE") && !StringEquals(type, "INFO"))
+	if (type && !StringEqualsNoCase(type, "TRACE") && !StringEqualsNoCase(type, "INFO"))
 	{
 		printf("[%s] ", type);
 	}

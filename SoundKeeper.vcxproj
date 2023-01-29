@@ -39,6 +39,7 @@
     <ClInclude Include="Common\NtEvent.hpp" />
     <ClInclude Include="Common\NtHandle.hpp" />
     <ClInclude Include="Common\NtUtils.hpp" />
+    <ClInclude Include="Common\StrUtils.hpp" />
     <ClInclude Include="CSoundKeeper.hpp" />
     <ClInclude Include="Resources.hpp" />
     <ClInclude Include="Common.hpp" />
