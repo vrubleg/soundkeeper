@@ -334,7 +334,7 @@ try
 		var latest_update = File.Exists(BUILD_INFO_FILE) ? new FileInfo(BUILD_INFO_FILE).LastWriteTime : DateTime.MinValue;
 		if (latest_update >= latest_change)
 		{
-			throw new Success("No changes found");
+			throw new Success("No new changes found");
 		}
 
 		Console.WriteLine("There are some changes. Updating build information...");
