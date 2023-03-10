@@ -741,8 +741,9 @@ HRESULT CSoundKeeper::Run()
 		case WAIT_OBJECT_0 + 3:
 		default:
 
+			// We're done, exit the loop.
 			DebugLog("Shutdown.");
-			working = false; // We're done, exit the loop
+			working = false;
 			break;
 		}
 	}

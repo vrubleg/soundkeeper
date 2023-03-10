@@ -948,7 +948,7 @@ HRESULT CKeepSession::OnSimpleVolumeChanged(float NewSimpleVolume, BOOL NewMute,
 	if (NewMute)
 	{
 		// Shutdown Sound Keeper when muted.
-		m_soundkeeper->FireShutdown();
+		// m_soundkeeper->FireShutdown();
 	}
 	return S_OK;
 }
