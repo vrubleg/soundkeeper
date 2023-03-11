@@ -87,22 +87,18 @@ bool CKeepSession::Start()
 	if (m_render_thread == NULL)
 	{
 		DebugLogError("Unable to create rendering thread: 0x%08X.", GetLastError());
-		goto error;
+		return false;
 	}
 
 	// Wait until rendering is started.
 	if (WaitForAny({ m_is_started, m_render_thread }, INFINITE) != WAIT_OBJECT_0)
 	{
 		DebugLogError("Unable to start rendering.");
-		goto error;
+		this->Stop();
+		return false;
 	}
 
 	return true;
-
-error:
-
-	this->Stop();
-	return false;
 }
 
 //
@@ -269,8 +265,9 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to activate audio client: 0x%08X.", hr);
-		goto free;
+		return exit_mode;
 	}
+	defer [&] { m_audio_client->Release(); };
 
 	//
 	// Get the output format. This may be int16 or int24 depending on the shared mode used.
@@ -309,7 +306,7 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 		if (FAILED(hr))
 		{
 			DebugLogError("Unable to get mixing format on audio client: 0x%08X.", hr);
-			goto free;
+			return exit_mode;
 		}
 
 		m_mix_sample_type = GetSampleType(mix_format);
@@ -340,7 +337,7 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 			exit_mode = RenderingMode::WaitExclusive;
 		}
 		DebugLogError("Unable to initialize audio client: 0x%08X.", hr);
-		goto free;
+		return exit_mode;
 	}
 
 	// Retry on any errors below.
@@ -352,15 +349,16 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to get audio client buffer: 0x%08X.", hr);
-		goto free;
+		return exit_mode;
 	}
 
 	hr = m_audio_client->GetService(IID_PPV_ARGS(&m_render_client));
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to get new render client: 0x%08X.", hr);
-		goto free;
+		return exit_mode;
 	}
+	defer [&] { m_render_client->Release(); };
 
 	//
 	// Register for session and endpoint change notifications.  
@@ -368,14 +366,16 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to retrieve session control: 0x%08X.", hr);
-		goto free;
+		return exit_mode;
 	}
+	defer [&] { m_audio_session_control->Release(); };
 	hr = m_audio_session_control->RegisterAudioSessionNotification(this);
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to register for stream switch notifications: 0x%08X.", hr);
-		goto free;
+		return exit_mode;
 	}
+	defer [&] { m_audio_session_control->UnregisterAudioSessionNotification(this); };
 
 	// -------------------------------------------------------------------------
 	// Rendering Loop
@@ -388,21 +388,22 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 	if (FAILED(hr))
 	{
 		DebugLogError("Can't render initial buffer: 0x%08X.", hr);
-		goto free;
+		return exit_mode;
 	}
 
 	hr = m_audio_client->Start();
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to start render client: 0x%08X.", hr);
-		goto free;
+		return exit_mode;
 	}
 
 	DebugLog("Enter rendering loop.");
 
 	m_play_attempts = 0;
 
-	while (true) switch (WaitForOne(m_interrupt, m_stream_type == KeepStreamType::None ? INFINITE : (m_buffer_size_in_ms / 2 + m_buffer_size_in_ms / 4)))
+	DWORD timeout = m_stream_type == KeepStreamType::None ? INFINITE : (m_buffer_size_in_ms / 2 + m_buffer_size_in_ms / 4);
+	for (bool working = true; working; ) switch (WaitForOne(m_interrupt, timeout))
 	{
 	case WAIT_TIMEOUT: // Timeout.
 
@@ -410,7 +411,7 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 		hr = this->Render();
 		if (FAILED(hr))
 		{
-			goto stop;
+			working = false;
 		}
 		break;
 
@@ -418,36 +419,20 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 
 		// We're done, exit the loop.
 		exit_mode = m_next_mode;
-		goto stop;
+		working = false;
+		break;
 
 	default:
 
 		// Should never happen.
 		exit_mode = RenderingMode::Invalid;
-		goto stop;
+		working = false;
+		break;
 	}
-
-stop:
 
 	DebugLog("Leave rendering loop. Stopping audio client...");
 
 	m_audio_client->Stop();
-
-	// -------------------------------------------------------------------------
-	// Rendering Cleanup
-	// -------------------------------------------------------------------------
-
-free:
-
-	if (m_audio_session_control)
-	{
-		m_audio_session_control->UnregisterAudioSessionNotification(this);
-		SafeRelease(m_audio_session_control);
-	}
-
-	SafeRelease(m_render_client);
-	SafeRelease(m_audio_client);
-
 	return exit_mode;
 }
 
@@ -786,33 +771,36 @@ CKeepSession::RenderingMode CKeepSession::WaitExclusive()
 	exit_mode = RenderingMode::Invalid;
 
 	IAudioSessionManager2* as_manager = nullptr;
-	IAudioSessionEnumerator* session_list = nullptr;
-	IAudioSessionControl* session_control = nullptr;
-	int session_count = 0;
-
 	hr = m_endpoint->Activate(__uuidof(IAudioSessionManager2), CLSCTX_INPROC_SERVER, NULL, reinterpret_cast<void**>(&as_manager));
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to activate audio session manager: 0x%08X.", hr);
-		goto free;
+		return exit_mode;
 	}
+	defer [&] { as_manager->Release(); };
 
+	IAudioSessionEnumerator* session_list = nullptr;
 	hr = as_manager->GetSessionEnumerator(&session_list);
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to get session enumerator: 0x%08X.", hr);
-		goto free;
+		return exit_mode;
 	}
+	defer [&] { session_list->Release(); };
 
+	int session_count = 0;
 	hr = session_list->GetCount(&session_count);
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to get session count: 0x%08X.", hr);
-		goto free;
+		return exit_mode;
 	}
 
 	// Retry on any errors below.
 	exit_mode = RenderingMode::Retry;
+
+	IAudioSessionControl* session_control = nullptr;
+	defer [&] { SafeRelease(session_control); };
 
 	// Find active session on this device.
 	for (int index = 0 ; index < session_count ; index++)
@@ -821,7 +809,7 @@ CKeepSession::RenderingMode CKeepSession::WaitExclusive()
 		if (FAILED(hr))
 		{
 			DebugLogError("Unable to get session #%d: 0x%08X.", index, hr);
-			goto free;
+			return exit_mode;
 		}
 
 		AudioSessionState state = AudioSessionStateInactive;
@@ -829,7 +817,7 @@ CKeepSession::RenderingMode CKeepSession::WaitExclusive()
 		if (FAILED(hr))
 		{
 			DebugLogError("Unable to get session #%d state: 0x%08X.", index, hr);
-			goto free;
+			return exit_mode;
 		}
 
 		if (state != AudioSessionStateActive)
@@ -863,7 +851,7 @@ CKeepSession::RenderingMode CKeepSession::WaitExclusive()
 		if (FAILED(hr))
 		{
 			DebugLogError("Unable to register for stream switch notifications: 0x%08X.", hr);
-			goto free;
+			return exit_mode;
 		}
 
 		// Wait until we receive a notification that the streem is inactive.
@@ -884,12 +872,6 @@ CKeepSession::RenderingMode CKeepSession::WaitExclusive()
 
 		session_control->UnregisterAudioSessionNotification(this);
 	}
-
-free:
-
-	SafeRelease(session_control);
-	SafeRelease(session_list);
-	SafeRelease(as_manager);
 
 	return exit_mode;
 }

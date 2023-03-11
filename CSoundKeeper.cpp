@@ -192,44 +192,42 @@ HRESULT CSoundKeeper::Start()
 {
 	ScopedLock lock(m_mutex);
 
-	if (m_is_started) return S_OK;
 	HRESULT hr = S_OK;
+	if (m_is_started) { return hr; }
 	m_is_retry_required = false;
-
-	IMMDeviceCollection *dev_collection = NULL;
 
 	if (m_cfg_device_type == KeepDeviceType::Primary)
 	{
 		DebugLog("Getting primary audio device...");
 
-		IMMDevice* device;
+		IMMDevice* device = nullptr;
 		hr = m_dev_enumerator->GetDefaultAudioEndpoint(eRender, eConsole, &device);
 		if (FAILED(hr))
 		{
 			if (hr == E_NOTFOUND)
 			{
 				DebugLogWarning("No primary device found. Working as a dummy...");
-				goto exit_started;
+				m_is_started = true;
+				return hr;
 			}
 			else
 			{
 				DebugLogError("Unable to retrieve default render device: 0x%08X.", hr);
-				goto exit;
+				return hr;
 			}
 		}
+		defer [&] { device->Release(); };
 
-		uint32_t formfactor = GetDeviceFormFactor(device);
+		m_is_started = true;
 
-		if (formfactor == -1)
+		if (uint32_t formfactor = GetDeviceFormFactor(device); formfactor == -1)
 		{
-			SafeRelease(device);
-			goto exit_started;
+			return hr;
 		}
 		else if (!m_cfg_allow_remote && formfactor == RemoteNetworkDevice)
 		{
 			DebugLog("Ignoring remote desktop audio device.");
-			SafeRelease(device);
-			goto exit_started;
+			return hr;
 		}
 
 		m_sessions_count = 1;
@@ -247,26 +245,28 @@ HRESULT CSoundKeeper::Start()
 		{
 			m_is_retry_required = true;
 		}
-
-		SafeRelease(device);
 	}
 	else
 	{
 		DebugLog("Enumerating active audio devices...");
 
+		IMMDeviceCollection* dev_collection = nullptr;
 		hr = m_dev_enumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &dev_collection);
 		if (FAILED(hr))
 		{
 			DebugLogError("Unable to retrieve device collection: 0x%08X.", hr);
-			goto exit;
+			return hr;
 		}
+		defer [&] { dev_collection->Release(); };
 
 		hr = dev_collection->GetCount(&m_sessions_count);
 		if (FAILED(hr))
 		{
 			DebugLogError("Unable to get device collection length: 0x%08X.", hr);
-			goto exit;
+			return hr;
 		}
+
+		m_is_started = true;
 
 		m_sessions = new CKeepSession*[m_sessions_count]();
 
@@ -274,27 +274,23 @@ HRESULT CSoundKeeper::Start()
 		{
 			m_sessions[i] = nullptr;
 
-			IMMDevice* device;
-			dev_collection->Item(i, &device);
+			IMMDevice* device = nullptr;
+			if (dev_collection->Item(i, &device) != S_OK) { continue; }
+			defer [&] { device->Release(); };
 
-			uint32_t formfactor = GetDeviceFormFactor(device);
-
-			if (formfactor == -1)
+			if (uint32_t formfactor = GetDeviceFormFactor(device); formfactor == -1)
 			{
-				SafeRelease(device);
 				continue;
 			}
 			else if (!m_cfg_allow_remote && formfactor == RemoteNetworkDevice)
 			{
 				DebugLog("Ignoring remote desktop audio device.");
-				SafeRelease(device);
 				continue;
 			}
 			else if ((m_cfg_device_type == KeepDeviceType::Digital || m_cfg_device_type == KeepDeviceType::Analog)
 				&& (m_cfg_device_type == KeepDeviceType::Digital) != (formfactor == SPDIF || formfactor == HDMI))
 			{
 				DebugLog("Skipping this device because of the Digital / Analog filter.");
-				SafeRelease(device);
 				continue;
 			}
 
@@ -310,8 +306,6 @@ HRESULT CSoundKeeper::Start()
 			{
 				m_is_retry_required = true;
 			}
-
-			SafeRelease(device);
 		}
 
 		if (m_sessions_count == 0)
@@ -320,13 +314,6 @@ HRESULT CSoundKeeper::Start()
 		}
 	}
 
-exit_started:
-
-	m_is_started = true;
-
-exit:
-
-	SafeRelease(dev_collection);
 	return hr;
 }
 
@@ -646,7 +633,6 @@ HRESULT CSoundKeeper::Run()
 		DebugLogError("Unable to open global mutex. Error code: %d.", le);
 		return HRESULT_FROM_WIN32(le);
 	}
-
 	if (GetLastError() == ERROR_ALREADY_EXISTS)
 	{
 		DebugLog("Stopping another instance...");
@@ -659,13 +645,14 @@ HRESULT CSoundKeeper::Run()
 			return HRESULT_FROM_WIN32(WAIT_TIMEOUT);
 		}
 	}
+	defer [&] { ReleaseMutex(global_mutex); };
 
 	HRESULT hr = S_OK;
 
 	if (m_cfg_device_type == KeepDeviceType::None)
 	{
 		DebugLog("Self kill mode is enabled. Exit.");
-		goto exit;
+		return hr;
 	}
 
 	// Initialization.
@@ -674,15 +661,17 @@ HRESULT CSoundKeeper::Run()
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to instantiate device enumerator: 0x%08X.", hr);
-		goto exit;
+		return hr;
 	}
+	defer [&] { m_dev_enumerator->Release(); };
 
 	hr = m_dev_enumerator->RegisterEndpointNotificationCallback(this);
 	if (FAILED(hr))
 	{
 		DebugLogError("Unable to register for stream switch notifications: 0x%08X.", hr);
-		goto exit;
+		return hr;
 	}
+	defer [&] { m_dev_enumerator->UnregisterEndpointNotificationCallback(this); };
 
 	// Working loop.
 
@@ -749,18 +738,7 @@ HRESULT CSoundKeeper::Run()
 	}
 
 	DebugLog("Leave main loop.");
-
 	Stop();
-
-exit:
-
-	if (m_dev_enumerator)
-	{
-		m_dev_enumerator->UnregisterEndpointNotificationCallback(this);
-	}
-	SafeRelease(m_dev_enumerator);
-	ReleaseMutex(global_mutex);
-
 	return hr;
 }
 

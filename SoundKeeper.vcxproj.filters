@@ -47,6 +47,12 @@
     <ClInclude Include="Common\StrUtils.hpp">
       <Filter>Source Files\Common</Filter>
     </ClInclude>
+    <ClInclude Include="Common\Defer.hpp">
+      <Filter>Source Files\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="Common\BasicMacros.hpp">
+      <Filter>Source Files\Common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CKeepSession.cpp">

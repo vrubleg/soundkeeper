@@ -2,6 +2,8 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 
+#include "Common/BasicMacros.hpp"
+#include "Common/Defer.hpp"
 #include "Common/NtBase.hpp"
 #include "Common/NtHandle.hpp"
 #include "Common/NtEvent.hpp"
