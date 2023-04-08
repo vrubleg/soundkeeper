@@ -517,22 +517,11 @@ HRESULT CKeepSession::Render()
 	}
 
 	// Calculate the number of frames available. It can be 0 right after waking PC up after sleeping.
-	// It is always 0 when a buggy driver fail to notify us that configuration was changed and we need to restart.
 	UINT32 need_frames = m_buffer_size_in_frames - padding;
 	if (need_frames == 0)
 	{
-		m_wasted_renders++;
-		if (m_wasted_renders > 1)
-		{
-			DebugLogWarning("Second wasted render in a row, probably the stream is stuck. Try to restart it...");
-			m_wasted_renders = 0;
-			this->DeferNextMode(RenderingMode::Retry);
-		}
+		DebugLogWarning("None samples were consumed. Was PC sleeping?");
 		return S_OK;
-	}
-	else
-	{
-		m_wasted_renders = 0;
 	}
 
 	BYTE* p_data;

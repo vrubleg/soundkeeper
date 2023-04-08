@@ -42,7 +42,6 @@ protected:
 	RenderingMode           m_curr_mode = RenderingMode::Stop;
 	RenderingMode           m_next_mode = RenderingMode::Stop;
 	AutoResetEvent          m_interrupt = false;
-	DWORD                   m_wasted_renders = 0;
 	DWORD                   m_play_attempts = 0;
 	DWORD                   m_wait_attempts = 0;
 
