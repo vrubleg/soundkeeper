@@ -176,7 +176,8 @@
       <AdditionalDependencies>avrt.lib;ntdll.lib;powrprof.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalOptions>/EMITTOOLVERSIONINFO:NO /NOCOFFGRPINFO /EMITPOGOPHASEINFO /STUB:Stub.bin %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/EMITTOOLVERSIONINFO:NO /NOCOFFGRPINFO /EMITPOGOPHASEINFO /STUB:Stub.bin /MERGE:.pdata=.rdata %(AdditionalOptions)</AdditionalOptions>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -198,7 +199,8 @@
       <AdditionalDependencies>avrt.lib;ntdll.lib;powrprof.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalOptions>/EMITTOOLVERSIONINFO:NO /NOCOFFGRPINFO /EMITPOGOPHASEINFO /STUB:Stub.bin %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/EMITTOOLVERSIONINFO:NO /NOCOFFGRPINFO /EMITPOGOPHASEINFO /STUB:Stub.bin /MERGE:.pdata=.rdata %(AdditionalOptions)</AdditionalOptions>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -231,7 +233,8 @@
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
       <AdditionalDependencies>msvcrt32.lib;avrt.lib;ntdll.lib;powrprof.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalOptions>/EMITTOOLVERSIONINFO:NO /NOCOFFGRPINFO /EMITPOGOPHASEINFO /STUB:Stub.bin %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/EMITTOOLVERSIONINFO:NO /NOCOFFGRPINFO /EMITPOGOPHASEINFO /STUB:Stub.bin /MERGE:.pdata=.rdata %(AdditionalOptions)</AdditionalOptions>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -262,7 +265,8 @@
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
       <AdditionalDependencies>msvcrt64.lib;avrt.lib;ntdll.lib;powrprof.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalOptions>/EMITTOOLVERSIONINFO:NO /NOCOFFGRPINFO /EMITPOGOPHASEINFO /STUB:Stub.bin %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/EMITTOOLVERSIONINFO:NO /NOCOFFGRPINFO /EMITPOGOPHASEINFO /STUB:Stub.bin /MERGE:.pdata=.rdata %(AdditionalOptions)</AdditionalOptions>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
