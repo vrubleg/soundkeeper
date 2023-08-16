@@ -585,12 +585,12 @@ HRESULT CKeepSession::Render()
 						break;
 
 					case SampleType::Int24:
+					case SampleType::Int32: // WASAPI reports 24-bit integer format as 32-bit integer.
 					default: // Treat compressed formats as high resolution.
 
 						sample = 0x34000001; // = 1.192093E-7  = 1.0/8388607.
 						break;
 
-					case SampleType::Int32:
 					case SampleType::Float32:
 
 						sample = 0x30000000; // = 4.656612E-10 = 1.0/2147483647.
