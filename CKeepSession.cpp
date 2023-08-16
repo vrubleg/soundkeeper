@@ -269,9 +269,10 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 	}
 	defer [&] { m_audio_client->Release(); };
 
-	//
-	// Get the output format. This may be int16 or int24 depending on the shared mode used.
+#ifdef _CONSOLE
 	{
+		// Get output format. Don't rely on it since WASAPI reporting is not always accurate:
+		// 24-bit compressed formats are reported as 16-bit; PCM int24 is reported as PCM int32.
 		DebugLog("Getting output format...");
 		IPropertyStore* properties = nullptr;
 		hr = m_endpoint->OpenPropertyStore(STGM_READ, &properties);
@@ -283,7 +284,7 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 			if (SUCCEEDED(hr) && out_format_prop.vt == VT_BLOB)
 			{
 				auto out_format = reinterpret_cast<WAVEFORMATEX*>(out_format_prop.blob.pBlobData);
-				m_out_sample_type = GetSampleType(out_format);
+				GetSampleType(out_format); // Also prints debug info about this format.
 			}
 			else
 			{
@@ -297,9 +298,10 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 			DebugLogWarning("Unable to get property store of the device: 0x%08X.", hr);
 		}
 	}
+#endif
 
 	{
-		// Get the mixer format. This is usually float32.
+		// Get mixer format. This is always float32.
 		DebugLog("Getting mixing format...");
 		WAVEFORMATEX* mix_format = nullptr;
 		hr = m_audio_client->GetMixFormat(&mix_format);
@@ -308,8 +310,14 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 			DebugLogError("Unable to get mixing format on audio client: 0x%08X.", hr);
 			return exit_mode;
 		}
+		defer [&] { CoTaskMemFree(mix_format); };
 
-		m_mix_sample_type = GetSampleType(mix_format);
+		if (GetSampleType(mix_format) != SampleType::Float32)
+		{
+			DebugLogError("Mixing format is not 32-bit float that is not supported.");
+			return exit_mode;
+		}
+
 		m_channels_count = mix_format->nChannels;
 		m_frame_size = mix_format->nBlockAlign;
 
@@ -327,7 +335,6 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 		hr = m_audio_client->Initialize(AUDCLNT_SHAREMODE_SHARED,
 			AUDCLNT_STREAMFLAGS_NOPERSIST | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM /*| AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY*/,
 			static_cast<UINT64>(m_buffer_size_in_ms) * 10000, 0, mix_format, NULL);
-		CoTaskMemFree(mix_format);
 	}
 
 	if (FAILED(hr))
@@ -562,11 +569,6 @@ HRESULT CKeepSession::Render()
 		render_flags = AUDCLNT_BUFFERFLAGS_SILENT;
 		m_curr_frame = (m_curr_frame + need_frames) % period_frames;
 	}
-	else if (m_mix_sample_type != SampleType::Float32)
-	{
-		// Shouldn't ever happen, it should always be Float32.
-		render_flags = AUDCLNT_BUFFERFLAGS_SILENT;
-	}
 	else if (m_stream_type == KeepStreamType::Fluctuate && m_frequency)
 	{
 		uint64_t once_in_frames = std::max(uint64_t(double(m_sample_rate) / m_frequency), 2ULL);
@@ -577,30 +579,9 @@ HRESULT CKeepSession::Render()
 
 			if ((!period_frames || m_curr_frame < play_frames) && m_curr_frame % once_in_frames == 0)
 			{
-				switch (m_out_sample_type)
-				{
-					case SampleType::Int16:
-
-						sample = 0x38000100; // = 3.051851E-5  = 1.0/32767.
-						break;
-
-					case SampleType::Int24:
-					case SampleType::Int32: // WASAPI reports 24-bit integer format as 32-bit integer.
-					default: // Treat compressed formats as high resolution.
-
-						sample = 0x34000001; // = 1.192093E-7  = 1.0/8388607.
-						break;
-
-					case SampleType::Float32:
-
-						sample = 0x30000000; // = 4.656612E-10 = 1.0/2147483647.
-						break;
-				}
-
-				if ((m_curr_frame / once_in_frames) & 1)
-				{
-					sample |= 0x80000000;
-				}
+				// 0x38000100 =  3.051851E-5 =  1.0/32767.
+				// 0xb8000100 = -3.051851E-5 = -1.0/32767.
+				sample = ((m_curr_frame / once_in_frames) & 1) ? 0xb8000100 : 0x38000100;
 			}
 
 			for (size_t j = 0; j < m_channels_count; j++)
