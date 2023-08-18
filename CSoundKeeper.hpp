@@ -85,6 +85,9 @@ public:
 	double GetPeriodicWaiting() const { return m_cfg_wait_seconds; }
 	double GetFading() const { return m_cfg_fade_seconds; }
 
+	// Set stream type and defaults.
+	void SetStreamTypeDefaults(KeepStreamType stream_type);
+
 	void FireRetry();
 	void FireRestart();
 	void FireShutdown();

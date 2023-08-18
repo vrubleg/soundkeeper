@@ -431,12 +431,38 @@ void CSoundKeeper::FireShutdown()
 
 // Entry point methods.
 
+void CSoundKeeper::SetStreamTypeDefaults(KeepStreamType stream_type)
+{
+	m_cfg_stream_type = stream_type;
+
+	m_cfg_frequency = 0.0;
+	m_cfg_amplitude = 0.0;
+	m_cfg_play_seconds = 0.0;
+	m_cfg_wait_seconds = 0.0;
+	m_cfg_fade_seconds = 0.0;
+
+	switch (stream_type)
+	{
+		case KeepStreamType::Fluctuate:
+			m_cfg_frequency = 50.0;
+			break;
+		case KeepStreamType::Sine:
+			m_cfg_frequency = 1.0;
+			[[fallthrough]];
+		case KeepStreamType::WhiteNoise:
+		case KeepStreamType::BrownNoise:
+		case KeepStreamType::PinkNoise:
+			m_cfg_amplitude = 0.01;
+			m_cfg_fade_seconds = 0.1;
+			[[fallthrough]];
+		default:
+			break;
+	}
+}
+
 void CSoundKeeper::ParseStreamArgs(KeepStreamType stream_type, const char* args)
 {
-	this->SetStreamType(stream_type);
-	this->SetFrequency(1.00);
-	this->SetAmplitude(0.01);
-	this->SetFading(0.1);
+	this->SetStreamTypeDefaults(stream_type);
 
 	char* p = (char*) args;
 	while (*p)
@@ -529,8 +555,7 @@ HRESULT CSoundKeeper::Run()
 
 	// Set defaults.
 	this->SetDeviceType(KeepDeviceType::Primary);
-	this->SetStreamType(KeepStreamType::Fluctuate);
-	this->SetFrequency(1.00);
+	this->SetStreamTypeDefaults(KeepStreamType::Fluctuate);
 
 	// Parse file name for defaults.
 	char fn_buffer[MAX_PATH];
