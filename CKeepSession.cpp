@@ -269,9 +269,8 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 	}
 	defer [&] { m_audio_client->Release(); };
 
-#ifdef _CONSOLE
 	{
-		// Get output format. Don't rely on it since WASAPI reporting is not always accurate:
+		// Get output format. Don't rely on it much since WASAPI reporting is not always accurate:
 		// 24-bit compressed formats are reported as 16-bit; PCM int24 is reported as PCM int32.
 		DebugLog("Getting output format...");
 		IPropertyStore* properties = nullptr;
@@ -284,7 +283,7 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 			if (SUCCEEDED(hr) && out_format_prop.vt == VT_BLOB)
 			{
 				auto out_format = reinterpret_cast<WAVEFORMATEX*>(out_format_prop.blob.pBlobData);
-				GetSampleType(out_format); // Also prints debug info about this format.
+				m_out_sample_type = ParseSampleType(out_format);
 			}
 			else
 			{
@@ -298,7 +297,6 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 			DebugLogWarning("Unable to get property store of the device: 0x%08X.", hr);
 		}
 	}
-#endif
 
 	{
 		// Get mixer format. This is always float32.
@@ -312,7 +310,8 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 		}
 		defer [&] { CoTaskMemFree(mix_format); };
 
-		if (GetSampleType(mix_format) != SampleType::Float32)
+		m_mix_sample_type = ParseSampleType(mix_format);
+		if (m_mix_sample_type != SampleType::Float32)
 		{
 			DebugLogError("Mixing format is not 32-bit float that is not supported.");
 			return exit_mode;
@@ -443,7 +442,7 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 	return exit_mode;
 }
 
-CKeepSession::SampleType CKeepSession::GetSampleType(WAVEFORMATEX* format)
+CKeepSession::SampleType CKeepSession::ParseSampleType(WAVEFORMATEX* format)
 {
 	SampleType result = SampleType::Unknown;
 
@@ -579,9 +578,15 @@ HRESULT CKeepSession::Render()
 
 			if ((!period_frames || m_curr_frame < play_frames) && m_curr_frame % once_in_frames == 0)
 			{
-				// 0x38000100 =  3.051851E-5 =  1.0/32767.
-				// 0xb8000100 = -3.051851E-5 = -1.0/32767.
-				sample = ((m_curr_frame / once_in_frames) & 1) ? 0xb8000100 : 0x38000100;
+				// 0x38000100 = 3.051851E-5 = 1.0/32767. Minimal 16-bit deviation from 0.
+				// 0x34000001 = 1.192093E-7 = 1.0/8388607. Minimal 24-bit deviation from 0.
+				sample = (m_out_sample_type == SampleType::Int16) ? 0x38000100 : 0x34000001;
+
+				// Negate each odd time.
+				if ((m_curr_frame / once_in_frames) & 1)
+				{
+					sample |= 0x80000000;
+				}
 			}
 
 			for (size_t j = 0; j < m_channels_count; j++)

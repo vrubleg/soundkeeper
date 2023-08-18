@@ -56,7 +56,9 @@ protected:
 	IAudioSessionControl*   m_audio_session_control = nullptr;
 
 	enum class SampleType { Unknown, Int16, Int24, Int32, Float32 };
-	static SampleType GetSampleType(WAVEFORMATEX* format);
+	static SampleType ParseSampleType(WAVEFORMATEX* format);
+	SampleType              m_mix_sample_type = SampleType::Unknown;
+	SampleType              m_out_sample_type = SampleType::Unknown;
 
 	UINT32                  m_sample_rate = 0;
 	UINT32                  m_channels_count = 0;
