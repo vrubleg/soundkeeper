@@ -1,10 +1,10 @@
-Sound Keeper v1.3.1 [2023/01/30]
+Sound Keeper v1.3.2 [2023/08/18]
 https://veg.by/projects/soundkeeper/
 
 Prevents SPDIF/HDMI digital audio playback devices from sleeping. Uses WASAPI, requires Windows 7+.
 
 The program doesn't have GUI. It starts to do its job right after the process is started.
-To close the program, just mute the Sound Keeper in the Volume Mixer or kill the soundkeeper.exe process.
+To close the program, just kill the soundkeeper.exe process.
 To autorun, copy soundkeeper.exe into the startup directory (to open it, press Win+R, enter "shell:startup").
 
 Default behavior can be changed by adding settings to the Sound Keeper executable file name or by passing them
@@ -24,7 +24,7 @@ Supported stream type settings:
 - "White", "Brown", or "Pink" play named noise, with the same parameters as the sine (except frequency).
 
 Sine and noise stream parameters:
-- F is frequency. Default: 1Hz. Applicable for: Fluctuate, Sine.
+- F is frequency. Default: 1Hz for Sine and 50Hz for Fluctuate. Applicable for: Fluctuate, Sine.
 - A is amplitude. Default: 1%. If you want to use inaudible noise, set it to 0.1%. Applicable for: Sine, Noise.
 - L is length of sound (in seconds). Default: infinite.
 - W is waiting time between sounds if L is set. Use to enable periodic sound.
@@ -62,6 +62,11 @@ powercfg /REQUESTSOVERRIDE DRIVER "HDAUDIO\FUNC_01&VEN_10EC&..."
 powercfg /REQUESTSOVERRIDE DRIVER "High Definition Audio Device (HDAUDIO\FUNC_01&VEN_10EC&...)"
 
 What's new
+
+v1.3.2 [2023/08/18]:
+- "Fluctuate" treats 32-bit output format as 24-bit since WASAPI reports 24-bit as 32-bit for some reason.
+- "Fluctuate" generates 50 fluctuations per second by default. It helps in many more cases.
+- Sound Keeper doesn't exit when it is muted.
 
 v1.3.1 [2023/01/30]:
 - A potential deadlock when audio devices are added or removed has been fixed.
