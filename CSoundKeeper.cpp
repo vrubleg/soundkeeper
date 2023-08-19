@@ -467,13 +467,15 @@ void CSoundKeeper::ParseStreamArgs(KeepStreamType stream_type, const char* args)
 	char* p = (char*) args;
 	while (*p)
 	{
-		if (*p == ' ' || *p == '-') { p++; }
+		if (*p == ' ' || *p == '\t' || *p == '-') { p++; }
 		else if (*p == 'f' || *p == 'a' || *p == 'l' || *p == 'w' || *p == 't')
 		{
 			char type = *p;
 			p++;
-			while (*p == ' ' || *p == '=') { p++; }
-			double value = fabs(strtod(p, &p));
+			while (*p == ' ' || *p == '\t' || *p == '=') { p++; }
+			if (*p < '0' || '9' < *p) { break; }
+
+			double value = strtod(p, &p);
 			if (type == 'f')
 			{
 				this->SetFrequency(std::min(value, 96000.0));
