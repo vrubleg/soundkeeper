@@ -223,6 +223,7 @@
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <EnableEnhancedInstructionSet>NoExtensions</EnableEnhancedInstructionSet>
       <OmitDefaultLibName>true</OmitDefaultLibName>
+      <AdditionalOptions>/Zc:alignedNew- /Zc:sizedDealloc- %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -256,6 +257,7 @@
       <ExceptionHandling>false</ExceptionHandling>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <OmitDefaultLibName>true</OmitDefaultLibName>
+      <AdditionalOptions>/Zc:alignedNew- /Zc:sizedDealloc- %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
