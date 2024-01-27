@@ -769,7 +769,7 @@ HRESULT CSoundKeeper::Run()
 	return hr;
 }
 
-__forceinline HRESULT CSoundKeeper::Main()
+FORCEINLINE HRESULT CSoundKeeper::Main()
 {
 	DebugLog("Enter main thread.");
 

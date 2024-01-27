@@ -210,7 +210,7 @@ DWORD CKeepSession::RenderingThread()
 				m_curr_mode = this->WaitExclusive();
 				if (m_curr_mode == RenderingMode::WaitExclusive)
 				{
-					delay = 100;
+					delay = 500;
 				}
 				break;
 			}
@@ -218,7 +218,7 @@ DWORD CKeepSession::RenderingThread()
 
 		case RenderingMode::Retry:
 
-			if (g_is_leaky_wasapi && m_play_attempts > 10)
+			if (g_is_leaky_wasapi && m_play_attempts > 100)
 			{
 				DebugLog("Attempts limit. Stop.");
 				m_curr_mode = RenderingMode::Stop;
@@ -330,6 +330,10 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 
 		m_sample_rate = mix_format->nSamplesPerSec;
 
+		// Use smaller buffer if leaky WASAPI.
+		// Rendering loop relies on not precise enough system timer so minimum viable buffer is 40ms.
+		m_buffer_size_in_ms = g_is_leaky_wasapi ? 100 : 1000;
+
 		// Initialize WASAPI in timer driven mode.
 		hr = m_audio_client->Initialize(AUDCLNT_SHAREMODE_SHARED,
 			AUDCLNT_STREAMFLAGS_NOPERSIST | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM /*| AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY*/,
@@ -357,6 +361,9 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 		DebugLogError("Unable to get audio client buffer: 0x%08X.", hr);
 		return exit_mode;
 	}
+
+	m_buffer_size_in_ms = (m_buffer_size_in_frames * 1000) / m_sample_rate;
+	DebugLog("Output buffer: %ums (%u frames).", m_buffer_size_in_ms, m_buffer_size_in_frames);
 
 	hr = m_audio_client->GetService(IID_PPV_ARGS(&m_render_client));
 	if (FAILED(hr))
@@ -514,7 +521,7 @@ HRESULT CKeepSession::Render()
 	}
 
 	// Find out how much of the buffer *isn't* available (is padding).
-	UINT32 padding;
+	UINT32 padding = 0;
 	hr = m_audio_client->GetCurrentPadding(&padding);
 	if (FAILED(hr))
 	{

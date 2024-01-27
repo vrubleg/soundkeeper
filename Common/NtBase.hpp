@@ -15,6 +15,13 @@
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+// The best way to get HMODULE of current module, supported since VS2002.
+
+EXTERN_C IMAGE_DOS_HEADER __ImageBase;
+#define THIS_MODULE ((HMODULE)&__ImageBase)
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 EXTERN_C_START
 
 typedef _Success_(return >= 0) LONG NTSTATUS;

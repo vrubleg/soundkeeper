@@ -64,7 +64,7 @@ protected:
 	UINT32                  m_channels_count = 0;
 	UINT32                  m_frame_size = 0;
 
-	const UINT32            m_buffer_size_in_ms = 1000;
+	UINT32                  m_buffer_size_in_ms = 1000;
 	UINT32                  m_buffer_size_in_frames = 0;
 
 	// Sound generation settings.
