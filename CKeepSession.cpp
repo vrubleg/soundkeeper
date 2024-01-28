@@ -159,7 +159,7 @@ DWORD APIENTRY CKeepSession::StartRenderingThread(LPVOID context)
 DWORD CKeepSession::RenderingThread()
 {
 	m_is_started = true;
-	m_curr_mode = RenderingMode::Render;
+	m_curr_mode = RenderingMode::Rendering;
 	m_play_attempts = 0;
 	m_wait_attempts = 0;
 
@@ -192,10 +192,20 @@ DWORD CKeepSession::RenderingThread()
 
 		switch (m_curr_mode)
 		{
-		case RenderingMode::Render:
+		case RenderingMode::Rendering:
 
 			DebugLog("Render. Device State: %d.", this->GetDeviceState());
 			m_curr_mode = this->Rendering();
+			if (g_is_leaky_wasapi && m_curr_mode == RenderingMode::WaitExclusive)
+			{
+				delay = 30;
+			}
+			break;
+
+		case RenderingMode::TryOpenDevice:
+
+			DebugLog("Try to open the device. Device State: %d.", this->GetDeviceState());
+			m_curr_mode = this->TryOpenDevice();
 			if (g_is_leaky_wasapi && m_curr_mode == RenderingMode::WaitExclusive)
 			{
 				delay = 30;
@@ -229,7 +239,7 @@ DWORD CKeepSession::RenderingThread()
 			delay = (m_play_attempts == 0 ? 100UL : 750UL);
 
 			DebugLog("Retry in %dms. Attempt: #%d.", delay, m_play_attempts);
-			m_curr_mode = RenderingMode::Render;
+			m_curr_mode = g_is_leaky_wasapi ? RenderingMode::TryOpenDevice : RenderingMode::Rendering;
 			break;
 
 		// case RenderingMode::Stop:
@@ -243,6 +253,53 @@ DWORD CKeepSession::RenderingThread()
 
 	m_is_started = false;
 	return m_curr_mode == RenderingMode::Invalid;
+}
+
+CKeepSession::RenderingMode CKeepSession::TryOpenDevice()
+{
+	HRESULT hr;
+
+	DebugLog("Testing if the audio output is unused...");
+
+	m_play_attempts++;
+
+	// Now activate an IAudioClient object on our preferred endpoint.
+	hr = m_endpoint->Activate(__uuidof(IAudioClient), CLSCTX_INPROC_SERVER, NULL, reinterpret_cast<void**>(&m_audio_client));
+	if (FAILED(hr))
+	{
+		DebugLogError("Unable to activate audio client: 0x%08X.", hr);
+		return RenderingMode::Invalid;
+	}
+	defer[&]{ SafeRelease(m_audio_client); };
+
+	// Use the smallest possible buffer format for testing.
+	WAVEFORMATEX mix_format = { WAVE_FORMAT_PCM };
+	mix_format.nChannels = 1;
+	mix_format.nSamplesPerSec = 8000;
+	mix_format.wBitsPerSample = 8;
+	mix_format.nBlockAlign = mix_format.nChannels * ((mix_format.wBitsPerSample + 7) / 8);
+	mix_format.nAvgBytesPerSec = mix_format.nSamplesPerSec * mix_format.nBlockAlign;
+
+	// Initialize WASAPI in timer driven mode.
+	hr = m_audio_client->Initialize(AUDCLNT_SHAREMODE_SHARED,
+		AUDCLNT_STREAMFLAGS_NOPERSIST | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM,
+		static_cast<UINT64>(0) * 10000, 0, &mix_format, NULL);
+
+	if (FAILED(hr))
+	{
+		if (hr == AUDCLNT_E_DEVICE_IN_USE)
+		{
+			DebugLogWarning("Unable to initialize audio client: 0x%08X (device is being used in exclusive mode).", hr);
+			return RenderingMode::WaitExclusive;
+		}
+		else
+		{
+			DebugLogError("Unable to initialize audio client: 0x%08X.", hr);
+			return RenderingMode::Invalid;
+		}
+	}
+
+	return RenderingMode::Rendering;
 }
 
 CKeepSession::RenderingMode CKeepSession::Rendering()
@@ -267,7 +324,7 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 		DebugLogError("Unable to activate audio client: 0x%08X.", hr);
 		return exit_mode;
 	}
-	defer [&] { m_audio_client->Release(); };
+	defer [&] { SafeRelease(m_audio_client); };
 
 	{
 		// Get output format. Don't rely on it much since WASAPI reporting is not always accurate:
@@ -344,9 +401,15 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 	{
 		if (hr == AUDCLNT_E_DEVICE_IN_USE)
 		{
+			DebugLogWarning("Unable to initialize audio client: 0x%08X (device is being used in exclusive mode).", hr);
 			exit_mode = RenderingMode::WaitExclusive;
 		}
-		DebugLogError("Unable to initialize audio client: 0x%08X.", hr);
+		else
+		{
+			DebugLogError("Unable to initialize audio client: 0x%08X.", hr);
+			// exit_mode = RenderingMode::Invalid;
+		}
+
 		return exit_mode;
 	}
 
@@ -892,7 +955,7 @@ HRESULT CKeepSession::OnStateChanged(AudioSessionState NewState)
 // Called when an audio session is disconnected.
 HRESULT CKeepSession::OnSessionDisconnected(AudioSessionDisconnectReason DisconnectReason)
 {
-	if (m_curr_mode != RenderingMode::Render)
+	if (m_curr_mode != RenderingMode::Rendering)
 	{
 		return S_OK;
 	}

@@ -38,7 +38,7 @@ protected:
 	HANDLE                  m_render_thread = NULL;
 	ManualResetEvent        m_is_started = false;
 
-	enum class RenderingMode { Stop, Render, Retry, WaitExclusive, Invalid };
+	enum class RenderingMode { Stop, Rendering, Retry, WaitExclusive, TryOpenDevice, Invalid };
 	RenderingMode           m_curr_mode = RenderingMode::Stop;
 	RenderingMode           m_next_mode = RenderingMode::Stop;
 	AutoResetEvent          m_interrupt = false;
@@ -184,6 +184,7 @@ protected:
 
 	static DWORD APIENTRY StartRenderingThread(LPVOID Context);
 	DWORD RenderingThread();
+	RenderingMode TryOpenDevice();
 	RenderingMode Rendering();
 	HRESULT Render();
 	RenderingMode WaitExclusive();
