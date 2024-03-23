@@ -771,6 +771,8 @@ HRESULT CSoundKeeper::Run()
 
 FORCEINLINE HRESULT CSoundKeeper::Main()
 {
+	DebugThreadName("Main");
+
 	DebugLog("Enter main thread.");
 
 	if (HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE); FAILED(hr))

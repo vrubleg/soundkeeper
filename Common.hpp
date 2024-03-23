@@ -70,6 +70,7 @@ inline void DebugLogImpl(const char * funcname, const char * type, const char * 
 #define DebugLogWarning(...) DebugLogImpl(__FUNCTION__, "WARNING", __VA_ARGS__)
 #define DebugLogError(...) DebugLogImpl(__FUNCTION__, "ERROR", __VA_ARGS__)
 #define TraceLog(...) DebugLogImpl(__FUNCTION__, "TRACE", __VA_ARGS__)
+#define DebugThreadName(...) SetCurrentThreadDescriptionW(L ## __VA_ARGS__)
 
 #else
 
@@ -77,5 +78,6 @@ inline void DebugLogImpl(const char * funcname, const char * type, const char * 
 #define DebugLogWarning(...)
 #define DebugLogError(...)
 #define TraceLog(...)
+#define DebugThreadName(...)
 
 #endif

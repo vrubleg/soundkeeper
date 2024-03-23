@@ -124,6 +124,8 @@ void CKeepSession::Stop()
 
 DWORD APIENTRY CKeepSession::StartRenderingThread(LPVOID context)
 {
+	DebugThreadName("Rendering");
+
 	CKeepSession* renderer = static_cast<CKeepSession*>(context);
 
 	DebugLog("Enter rendering thread. Device ID: '%S'.", renderer->GetDeviceId());

@@ -41,6 +41,58 @@ inline uint32_t GetNtBuildNumber()
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+inline HMODULE GetKernelBaseDll()
+{
+	static HMODULE dll = 0;
+	if (!dll) { dll = GetModuleHandleA("kernelbase.dll"); }
+	return dll;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+inline HRESULT WINAPI SetThreadDescriptionW(_In_ HANDLE hThread, _In_ PCWSTR lpThreadDescription)
+{
+	static void* pfn = nullptr;
+
+	if (!pfn)
+	{
+		if (HMODULE dll = GetKernelBaseDll())
+		{
+			pfn = GetProcAddress(dll, "SetThreadDescription");
+		}
+	}
+
+	if (!pfn) { return E_NOTIMPL; }
+
+	return static_cast<decltype(SetThreadDescription)*>(pfn)(hThread, lpThreadDescription);
+}
+
+inline HRESULT SetCurrentThreadDescriptionW(PCWSTR desc)
+{
+	return SetThreadDescriptionW(GetCurrentThread(), desc);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+inline HRESULT WINAPI GetThreadDescriptionW(_In_ HANDLE hThread, _Outptr_result_z_ PWSTR* ppszThreadDescription)
+{
+	static void* pfn = nullptr;
+
+	if (!pfn)
+	{
+		if (HMODULE dll = GetKernelBaseDll())
+		{
+			pfn = GetProcAddress(dll, "GetThreadDescription");
+		}
+	}
+
+	if (!pfn) { return E_NOTIMPL; }
+
+	return static_cast<decltype(GetThreadDescription)*>(pfn)(hThread, ppszThreadDescription);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 struct RsrcSpan
 {
 	const uint8_t* data;
