@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Common.hpp"
+
 #include <mmdeviceapi.h>
 #include <audioclient.h>
 
@@ -174,7 +176,7 @@ protected:
 	// Rendering thread.
 	//
 
-	static DWORD APIENTRY StartRenderingThread(LPVOID Context);
+	static DWORD APIENTRY StartRenderingThread(LPVOID context);
 	DWORD RenderingThread();
 	RenderingMode TryOpenDevice();
 	RenderingMode Rendering();

@@ -1,8 +1,4 @@
-#include "Common.hpp"
-#define INITGUID
 #include "CSoundSession.hpp"
-#define _USE_MATH_DEFINES
-#include <math.h>
 
 // Enable Multimedia Class Scheduler Service.
 #define ENABLE_MMCSS

@@ -1,4 +1,6 @@
-#include "Common.hpp"
+// Tell mmdeviceapi.h to define its GUIDs in this translation unit.
+#define INITGUID
+
 #include "CSoundKeeper.hpp"
 
 //

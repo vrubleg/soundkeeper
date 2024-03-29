@@ -1,6 +1,7 @@
 #pragma once
 
 #define _CRT_SECURE_NO_WARNINGS
+#define _USE_MATH_DEFINES
 
 #include "Common/BasicMacros.hpp"
 #include "Common/Defer.hpp"
@@ -11,6 +12,7 @@
 #include "Common/NtUtils.hpp"
 #include "Common/StrUtils.hpp"
 #include <algorithm> // std::min and std::max.
+#include <math.h>
 
 #ifdef _CONSOLE
 
