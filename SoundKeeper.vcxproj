@@ -27,24 +27,24 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="CSoundSession.cpp" />
     <ClCompile Include="CSoundKeeper.cpp" />
+    <ClCompile Include="CSoundSession.cpp" />
     <ClCompile Include="RuntimeHacks.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BuildInfo.hpp" />
-    <ClInclude Include="CSoundSession.hpp" />
+    <ClInclude Include="Resources.hpp" />
+    <ClInclude Include="Common.hpp" />
     <ClInclude Include="Common\BasicMacros.hpp" />
     <ClInclude Include="Common\Defer.hpp" />
-    <ClInclude Include="Common\NtCriticalSection.hpp" />
     <ClInclude Include="Common\NtBase.hpp" />
+    <ClInclude Include="Common\NtCriticalSection.hpp" />
     <ClInclude Include="Common\NtEvent.hpp" />
     <ClInclude Include="Common\NtHandle.hpp" />
     <ClInclude Include="Common\NtUtils.hpp" />
     <ClInclude Include="Common\StrUtils.hpp" />
     <ClInclude Include="CSoundKeeper.hpp" />
-    <ClInclude Include="Resources.hpp" />
-    <ClInclude Include="Common.hpp" />
+    <ClInclude Include="CSoundSession.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resources.rc" />

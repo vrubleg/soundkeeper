@@ -14,28 +14,28 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BuildInfo.hpp">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
     <ClInclude Include="Resources.hpp">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Common.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="CSoundKeeper.hpp">
-      <Filter>Source Files</Filter>
+    <ClInclude Include="Common\BasicMacros.hpp">
+      <Filter>Source Files\Common</Filter>
     </ClInclude>
-    <ClInclude Include="CSoundSession.hpp">
-      <Filter>Source Files</Filter>
+    <ClInclude Include="Common\Defer.hpp">
+      <Filter>Source Files\Common</Filter>
     </ClInclude>
-    <ClInclude Include="Common\NtEvent.hpp">
+    <ClInclude Include="Common\NtBase.hpp">
       <Filter>Source Files\Common</Filter>
     </ClInclude>
     <ClInclude Include="Common\NtCriticalSection.hpp">
       <Filter>Source Files\Common</Filter>
     </ClInclude>
-    <ClInclude Include="Common.hpp">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="BuildInfo.hpp">
-      <Filter>Resource Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Common\NtBase.hpp">
+    <ClInclude Include="Common\NtEvent.hpp">
       <Filter>Source Files\Common</Filter>
     </ClInclude>
     <ClInclude Include="Common\NtHandle.hpp">
@@ -47,18 +47,18 @@
     <ClInclude Include="Common\StrUtils.hpp">
       <Filter>Source Files\Common</Filter>
     </ClInclude>
-    <ClInclude Include="Common\Defer.hpp">
-      <Filter>Source Files\Common</Filter>
+    <ClInclude Include="CSoundKeeper.hpp">
+      <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="Common\BasicMacros.hpp">
-      <Filter>Source Files\Common</Filter>
+    <ClInclude Include="CSoundSession.hpp">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="CSoundSession.cpp">
+    <ClCompile Include="CSoundKeeper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CSoundKeeper.cpp">
+    <ClCompile Include="CSoundSession.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="RuntimeHacks.cpp">
