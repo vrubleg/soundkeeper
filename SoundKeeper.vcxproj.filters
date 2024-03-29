@@ -20,7 +20,7 @@
     <ClInclude Include="CSoundKeeper.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="CKeepSession.hpp">
+    <ClInclude Include="CSoundSession.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="Common\NtEvent.hpp">
@@ -55,7 +55,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="CKeepSession.cpp">
+    <ClCompile Include="CSoundSession.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CSoundKeeper.cpp">

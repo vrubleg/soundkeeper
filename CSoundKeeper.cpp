@@ -231,9 +231,9 @@ HRESULT CSoundKeeper::Start()
 		}
 
 		m_sessions_count = 1;
-		m_sessions = new CKeepSession*[m_sessions_count]();
+		m_sessions = new CSoundSession*[m_sessions_count]();
 
-		m_sessions[0] = new CKeepSession(this, device);
+		m_sessions[0] = new CSoundSession(this, device);
 		m_sessions[0]->SetStreamType(m_cfg_stream_type);
 		m_sessions[0]->SetFrequency(m_cfg_frequency);
 		m_sessions[0]->SetAmplitude(m_cfg_amplitude);
@@ -268,7 +268,7 @@ HRESULT CSoundKeeper::Start()
 
 		m_is_started = true;
 
-		m_sessions = new CKeepSession*[m_sessions_count]();
+		m_sessions = new CSoundSession*[m_sessions_count]();
 
 		for (UINT i = 0; i < m_sessions_count; i++)
 		{
@@ -294,7 +294,7 @@ HRESULT CSoundKeeper::Start()
 				continue;
 			}
 
-			m_sessions[i] = new CKeepSession(this, device);
+			m_sessions[i] = new CSoundSession(this, device);
 			m_sessions[i]->SetStreamType(m_cfg_stream_type);
 			m_sessions[i]->SetFrequency(m_cfg_frequency);
 			m_sessions[i]->SetAmplitude(m_cfg_amplitude);
@@ -388,7 +388,7 @@ HRESULT CSoundKeeper::Restart()
 	return S_OK;
 }
 
-CKeepSession* CSoundKeeper::FindSession(LPCWSTR device_id)
+CSoundSession* CSoundKeeper::FindSession(LPCWSTR device_id)
 {
 	ScopedLock lock(m_mutex);
 
@@ -553,7 +553,7 @@ HRESULT CSoundKeeper::Run()
 	uint32_t nt_build_number = GetNtBuildNumber();
 	bool is_leaky_wasapi = 7601 < nt_build_number && nt_build_number < 22000;
 	DebugLog("Windows Build Number: %u%s.", nt_build_number, is_leaky_wasapi ? " (leaky WASAPI)" : "");
-	CKeepSession::EnableWaitExclusiveWorkaround(is_leaky_wasapi);
+	CSoundSession::EnableWaitExclusiveWorkaround(is_leaky_wasapi);
 
 	// Set defaults.
 	this->SetDeviceType(KeepDeviceType::Primary);

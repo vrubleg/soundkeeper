@@ -3,19 +3,11 @@
 #include <mmdeviceapi.h>
 #include <audioclient.h>
 
-// Enable Multimedia Class Scheduler Service.
-#define ENABLE_MMCSS
+class CSoundSession;
 
-enum class KeepStreamType { None, Zero, Fluctuate, Sine, WhiteNoise, BrownNoise, PinkNoise };
-
-class CKeepSession;
 #include "CSoundKeeper.hpp"
 
-//
-// Play silence via WASAPI
-//
-
-class CKeepSession : IAudioSessionEvents
+class CSoundSession : IAudioSessionEvents
 {
 protected:
 
@@ -87,7 +79,7 @@ protected:
 
 public:
 
-	CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint);
+	CSoundSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint);
 	bool Start();
 	void Stop();
 	bool IsStarted() const { return m_is_started; }
@@ -176,7 +168,7 @@ public:
 
 protected:
 
-	~CKeepSession(void);
+	~CSoundSession(void);
 
 	//
 	// Rendering thread.

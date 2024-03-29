@@ -1,15 +1,19 @@
 #include "Common.hpp"
 #define INITGUID
-#include "CKeepSession.hpp"
+#include "CSoundSession.hpp"
 #define _USE_MATH_DEFINES
 #include <math.h>
+
+// Enable Multimedia Class Scheduler Service.
+#define ENABLE_MMCSS
+
 #ifdef ENABLE_MMCSS
 #include <avrt.h>
 #endif
 
-bool CKeepSession::g_is_leaky_wasapi = false;
+bool CSoundSession::g_is_leaky_wasapi = false;
 
-CKeepSession::CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint)
+CSoundSession::CSoundSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint)
 	: m_soundkeeper(soundkeeper), m_endpoint(endpoint)
 {
 	m_endpoint->AddRef();
@@ -22,7 +26,7 @@ CKeepSession::CKeepSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint)
 	}
 }
 
-CKeepSession::~CKeepSession(void)
+CSoundSession::~CSoundSession(void)
 {
 	this->Stop();
 	if (m_device_id) { CoTaskMemFree(m_device_id); }
@@ -30,7 +34,7 @@ CKeepSession::~CKeepSession(void)
 	SafeRelease(m_soundkeeper);
 }
 
-HRESULT STDMETHODCALLTYPE CKeepSession::QueryInterface(REFIID iid, void **object)
+HRESULT STDMETHODCALLTYPE CSoundSession::QueryInterface(REFIID iid, void **object)
 {
 	if (object == NULL)
 	{
@@ -55,12 +59,12 @@ HRESULT STDMETHODCALLTYPE CKeepSession::QueryInterface(REFIID iid, void **object
 	return S_OK;
 }
 
-ULONG STDMETHODCALLTYPE CKeepSession::AddRef()
+ULONG STDMETHODCALLTYPE CSoundSession::AddRef()
 {
 	return InterlockedIncrement(&m_ref_count);
 }
 
-ULONG STDMETHODCALLTYPE CKeepSession::Release()
+ULONG STDMETHODCALLTYPE CSoundSession::Release()
 {
 	ULONG result = InterlockedDecrement(&m_ref_count);
 	if (result == 0)
@@ -72,7 +76,7 @@ ULONG STDMETHODCALLTYPE CKeepSession::Release()
 
 //
 // Initialize and start the renderer.
-bool CKeepSession::Start()
+bool CSoundSession::Start()
 {
 	ScopedLock lock(m_mutex);
 
@@ -103,7 +107,7 @@ bool CKeepSession::Start()
 
 //
 // Stop the renderer and free all the resources.
-void CKeepSession::Stop()
+void CSoundSession::Stop()
 {
 	ScopedLock lock(m_mutex);
 
@@ -122,11 +126,11 @@ void CKeepSession::Stop()
 // Rendering thread.
 //
 
-DWORD APIENTRY CKeepSession::StartRenderingThread(LPVOID context)
+DWORD APIENTRY CSoundSession::StartRenderingThread(LPVOID context)
 {
 	DebugThreadName("Rendering");
 
-	CKeepSession* renderer = static_cast<CKeepSession*>(context);
+	CSoundSession* renderer = static_cast<CSoundSession*>(context);
 
 	DebugLog("Enter rendering thread. Device ID: '%S'.", renderer->GetDeviceId());
 
@@ -149,7 +153,7 @@ DWORD APIENTRY CKeepSession::StartRenderingThread(LPVOID context)
 	DWORD result = renderer->RenderingThread();
 
 #ifdef ENABLE_MMCSS
-	if (mmcss_handle != NULL) AvRevertMmThreadCharacteristics(mmcss_handle);
+	if (mmcss_handle != NULL) { AvRevertMmThreadCharacteristics(mmcss_handle); }
 #endif
 
 	CoUninitialize();
@@ -158,7 +162,7 @@ DWORD APIENTRY CKeepSession::StartRenderingThread(LPVOID context)
 	return result;
 }
 
-DWORD CKeepSession::RenderingThread()
+DWORD CSoundSession::RenderingThread()
 {
 	m_is_started = true;
 	m_curr_mode = RenderingMode::Rendering;
@@ -257,7 +261,7 @@ DWORD CKeepSession::RenderingThread()
 	return m_curr_mode == RenderingMode::Invalid;
 }
 
-CKeepSession::RenderingMode CKeepSession::TryOpenDevice()
+CSoundSession::RenderingMode CSoundSession::TryOpenDevice()
 {
 	HRESULT hr;
 
@@ -304,7 +308,7 @@ CKeepSession::RenderingMode CKeepSession::TryOpenDevice()
 	return RenderingMode::Rendering;
 }
 
-CKeepSession::RenderingMode CKeepSession::Rendering()
+CSoundSession::RenderingMode CSoundSession::Rendering()
 {
 	RenderingMode exit_mode;
 	HRESULT hr;
@@ -514,7 +518,7 @@ CKeepSession::RenderingMode CKeepSession::Rendering()
 	return exit_mode;
 }
 
-CKeepSession::SampleType CKeepSession::ParseSampleType(WAVEFORMATEX* format)
+CSoundSession::SampleType CSoundSession::ParseSampleType(WAVEFORMATEX* format)
 {
 	SampleType result = SampleType::Unknown;
 
@@ -574,7 +578,7 @@ CKeepSession::SampleType CKeepSession::ParseSampleType(WAVEFORMATEX* format)
 	return result;
 }
 
-HRESULT CKeepSession::Render()
+HRESULT CSoundSession::Render()
 {
 	HRESULT hr = S_OK;
 
@@ -824,7 +828,7 @@ HRESULT CKeepSession::Render()
 	return S_OK;
 }
 
-CKeepSession::RenderingMode CKeepSession::WaitExclusive()
+CSoundSession::RenderingMode CSoundSession::WaitExclusive()
 {
 	RenderingMode exit_mode;
 	HRESULT hr;
@@ -940,7 +944,7 @@ CKeepSession::RenderingMode CKeepSession::WaitExclusive()
 
 //
 // Called when state of an audio session is changed.
-HRESULT CKeepSession::OnStateChanged(AudioSessionState NewState)
+HRESULT CSoundSession::OnStateChanged(AudioSessionState NewState)
 {
 	if (m_curr_mode != RenderingMode::WaitExclusive)
 	{
@@ -955,7 +959,7 @@ HRESULT CKeepSession::OnStateChanged(AudioSessionState NewState)
 
 //
 // Called when an audio session is disconnected.
-HRESULT CKeepSession::OnSessionDisconnected(AudioSessionDisconnectReason DisconnectReason)
+HRESULT CSoundSession::OnSessionDisconnected(AudioSessionDisconnectReason DisconnectReason)
 {
 	if (m_curr_mode != RenderingMode::Rendering)
 	{
@@ -987,7 +991,7 @@ HRESULT CKeepSession::OnSessionDisconnected(AudioSessionDisconnectReason Disconn
 	return S_OK;
 }
 
-HRESULT CKeepSession::OnSimpleVolumeChanged(float NewSimpleVolume, BOOL NewMute, LPCGUID EventContext)
+HRESULT CSoundSession::OnSimpleVolumeChanged(float NewSimpleVolume, BOOL NewMute, LPCGUID EventContext)
 {
 	if (NewMute)
 	{

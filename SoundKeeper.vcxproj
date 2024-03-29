@@ -27,13 +27,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="CKeepSession.cpp" />
+    <ClCompile Include="CSoundSession.cpp" />
     <ClCompile Include="CSoundKeeper.cpp" />
     <ClCompile Include="RuntimeHacks.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BuildInfo.hpp" />
-    <ClInclude Include="CKeepSession.hpp" />
+    <ClInclude Include="CSoundSession.hpp" />
     <ClInclude Include="Common\BasicMacros.hpp" />
     <ClInclude Include="Common\Defer.hpp" />
     <ClInclude Include="Common\NtCriticalSection.hpp" />

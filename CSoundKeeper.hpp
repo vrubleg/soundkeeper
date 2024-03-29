@@ -3,10 +3,12 @@
 #include <mmdeviceapi.h>
 #include <audiopolicy.h>
 
-class CSoundKeeper;
-#include "CKeepSession.hpp"
-
 enum class KeepDeviceType { None, Primary, Digital, Analog, All };
+enum class KeepStreamType { None, Zero, Fluctuate, Sine, WhiteNoise, BrownNoise, PinkNoise };
+
+class CSoundKeeper;
+
+#include "CSoundSession.hpp"
 
 class CSoundKeeper : public IMMNotificationClient
 {
@@ -40,7 +42,7 @@ protected:
 	IMMDeviceEnumerator*    m_dev_enumerator = nullptr;
 	bool                    m_is_started = false;
 	bool                    m_is_retry_required = false;
-	CKeepSession**          m_sessions = nullptr;
+	CSoundSession**         m_sessions = nullptr;
 	UINT                    m_sessions_count = 0;
 	AutoResetEvent          m_do_shutdown = false;
 	AutoResetEvent          m_do_restart = false;
@@ -60,7 +62,7 @@ protected:
 	HRESULT Stop();
 	HRESULT Restart();
 	bool Retry();
-	CKeepSession* FindSession(LPCWSTR device_id);
+	CSoundSession* FindSession(LPCWSTR device_id);
 
 public:
 
