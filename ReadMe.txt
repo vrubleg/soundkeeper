@@ -37,30 +37,6 @@ Examples:
 - SoundKeeperSineF1000A100.exe generates 1000Hz sine wave with 100% amplitude. It is audible! Use it for testing.
 - "SoundKeeper.exe brown -a 0.1" (settings are command line arguments) generates brown noise with 0.1% amplitude.
 
-Known issues
-
-When a program streams any audio (even silence), the system don't go into sleep mode automatically. Sound Keeper
-uses the NtPowerInformation(SystemPowerInformation, ...) function to retrieve time when system is going to sleep,
-and disables itself right before this time. On Windows 7, it works perfectly. Windows 10 waits for 2 minutes more
-after any sound was streamed, so the PC goes into sleep mode after 2 minutes when Sound Keeper disabled itself.
-For some reason, Windows 11 always reports that the system is going to sleep in 0 seconds. The workaround had to
-be disabled on this OS until a better solution is found.
-
-You can try to use "powercfg /REQUESTSOVERRIDE" to allow Windows go into sleep mode even when audio is streamed.
-Execute "powercfg /REQUESTS" as admin while Sound Keeper is running to get information about your audio driver
-that prevents the PC from sleeping when audio is streamed. Example how it may look like:
-SYSTEM: [DRIVER] High Definition Audio Device (HDAUDIO\FUNC_01&VEN_10EC&...)
-
-Execute such commands as admin to add this device into the ignore list:
-powercfg /REQUESTSOVERRIDE DRIVER "High Definition Audio Device" SYSTEM
-powercfg /REQUESTSOVERRIDE DRIVER "HDAUDIO\FUNC_01&VEN_10EC&..." SYSTEM
-powercfg /REQUESTSOVERRIDE DRIVER "High Definition Audio Device (HDAUDIO\FUNC_01&VEN_10EC&...)" SYSTEM
-
-To verify the ignore list, execute "powercfg /REQUESTSOVERRIDE". To revert your changes, execute:
-powercfg /REQUESTSOVERRIDE DRIVER "High Definition Audio Device"
-powercfg /REQUESTSOVERRIDE DRIVER "HDAUDIO\FUNC_01&VEN_10EC&..."
-powercfg /REQUESTSOVERRIDE DRIVER "High Definition Audio Device (HDAUDIO\FUNC_01&VEN_10EC&...)"
-
 What's new
 
 v1.3.4 [2024/xx/xx]:
@@ -119,4 +95,4 @@ v1.0.2 [2017/12/23]: 64-bit version is added.
 v1.0.1 [2017/12/21]: Waking PC up after sleeping doesn't prevent Sound Keeper from working.
 v1.0.0 [2014/12/24]: Initial release.
 
-(C) 2014-2024 Evgeny Vrublevsky <me@veg.by>
+(c) 2014-2024 Evgeny Vrublevsky <me@veg.by>
