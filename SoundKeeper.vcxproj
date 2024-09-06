@@ -102,6 +102,15 @@
     <IntDir>$(SolutionDir)Build\$(ProjectName)_$(PlatformShortName)_$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)Bin\</OutDir>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Platform)'=='Win32'">
+    <AppArchName>x86-32</AppArchName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Platform)'=='x64'">
+    <AppArchName>x86-64</AppArchName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Platform)'=='ARM64'">
+    <AppArchName>ARM64</AppArchName>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <TargetName>$(ProjectName)32d</TargetName>
@@ -144,7 +153,11 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DisableSpecificWarnings>26812</DisableSpecificWarnings>
+      <PreprocessorDefinitions>APP_ARCH="$(AppArchName)";%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>APP_ARCH=\"$(AppArchName)\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

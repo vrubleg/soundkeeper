@@ -22,7 +22,11 @@ BEGIN
 		BLOCK "000904b0" // LANG_ENGLISH = 0x0009, CP_UNICODE = 0x04b0 = 1200
 		BEGIN
 			VALUE "CompanyName",        APP_COMPANY
-			VALUE "FileDescription",    APP_NAME
+#if defined(_DEBUG)
+			VALUE "FileDescription",    APP_NAME " (Debug " APP_ARCH ")"
+#else
+			VALUE "FileDescription",    APP_NAME " (" APP_ARCH ")"
+#endif
 			VALUE "FileVersion",        STR(REV_YEAR) "." STR(REV_MONTH) "." STR(REV_DAY) "." STR(REV_DAY_BUILD)
 			VALUE "InternalName",       APP_FILE_NAME
 			VALUE "LegalCopyright",     APP_COPYRIGHT

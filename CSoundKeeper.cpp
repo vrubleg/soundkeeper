@@ -818,7 +818,7 @@ int main()
 {
 	if (const VS_FIXEDFILEINFO* ffi = GetFixedVersion())
 	{
-		DebugLog("Sound Keeper v%hu.%hu.%hu.%hu [%04hu/%02hu/%02hu]",
+		DebugLog("Sound Keeper v%hu.%hu.%hu.%hu [%04hu/%02hu/%02hu] (" APP_ARCH ")",
 			HIWORD(ffi->dwProductVersionMS),
 			LOWORD(ffi->dwProductVersionMS),
 			HIWORD(ffi->dwProductVersionLS),
