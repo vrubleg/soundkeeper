@@ -41,6 +41,7 @@ What's new
 
 v1.3.4 [2024/xx/xx]:
 - Tune the WASAPI memory leak workaround to make it working for longer time.
+- Native ARM64 version (with statically linked runtime hence the bigger binary).
 
 v1.3.3 [2023/08/19]:
 - Fixed arguments parsing bug: "All" or "Analog" after specifying stream type led to amplitude set to 0.

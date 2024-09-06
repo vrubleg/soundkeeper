@@ -724,7 +724,7 @@ HRESULT CSoundSession::Render()
 	}
 	else if ((m_stream_type == KeepStreamType::WhiteNoise || m_stream_type == KeepStreamType::BrownNoise || m_stream_type == KeepStreamType::PinkNoise) && m_amplitude)
 	{
-		uint64_t lcg_state = __rdtsc();
+		uint64_t lcg_state = GetTickCount64();
 
 		for (size_t i = 0; i < need_frames; i++)
 		{
