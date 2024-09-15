@@ -1,7 +1,12 @@
-Sound Keeper v1.3.4 [2024/xx/xx]
+Sound Keeper v1.3.4 [2024/09/15]
 https://veg.by/projects/soundkeeper/
 
 Prevents SPDIF/HDMI digital audio playback devices from sleeping. Uses WASAPI, requires Windows 7+.
+
+You need just one exe file (others can be removed):
+- SoundKeeper32.exe is for x86-32 Windows.
+- SoundKeeper64.exe is for x86-64 Windows.
+- SoundKeeperARM64.exe is for ARM64 Windows.
 
 The program doesn't have GUI. It starts to do its job right after the process is started.
 To close the program, just kill the soundkeeper.exe process.
@@ -39,8 +44,8 @@ Examples:
 
 What's new
 
-v1.3.4 [2024/xx/xx]:
-- Tune the WASAPI memory leak workaround to make it working for longer time.
+v1.3.4 [2024/09/15]:
+- Tune the Windows 8-10 WASAPI memory leak workaround to make it working for longer time.
 - Native ARM64 version (with statically linked runtime hence the bigger binary).
 
 v1.3.3 [2023/08/19]:
