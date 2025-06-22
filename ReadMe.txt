@@ -45,7 +45,7 @@ Examples:
 What's new
 
 v1.3.4 [2024/09/15]:
-- Tune the Windows 8-10 WASAPI memory leak workaround to make it working for longer time.
+- Tune the Windows 8-10 WASAPI memory leak workaround to make it work for a longer time.
 - Native ARM64 version (with statically linked runtime hence the bigger binary).
 
 v1.3.3 [2023/08/19]:
