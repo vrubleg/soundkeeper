@@ -230,7 +230,7 @@ DWORD CSoundSession::RenderingThread()
 
 		case RenderingMode::Retry:
 
-			if (g_is_leaky_wasapi && m_play_attempts > 100)
+			if (g_is_leaky_wasapi && m_play_attempts > 1000)
 			{
 				DebugLog("Attempts limit. Stop.");
 				m_curr_mode = RenderingMode::Stop;
@@ -238,7 +238,7 @@ DWORD CSoundSession::RenderingThread()
 			}
 
 			// m_play_attempts is 0 when it was interrupted while playing (when rendering was initialized without errors).
-			delay = (m_play_attempts == 0 ? 100UL : 750UL);
+			delay = (m_play_attempts == 0 ? 100UL : 1000UL);
 
 			DebugLog("Retry in %dms. Attempt: #%d.", delay, m_play_attempts);
 			m_curr_mode = g_is_leaky_wasapi ? RenderingMode::TryOpenDevice : RenderingMode::Rendering;
