@@ -2,7 +2,7 @@
 #define INITGUID
 
 #include "CSoundKeeper.hpp"
-
+#include <powrprof.h>
 //
 // Get time to sleeping (in seconds). It is not precise and updated just once in 15-30 seconds!
 // On Windows 7-10, it outputs -1 (or values like -16, -31, ...) when auto sleep mode is disabled.
@@ -702,6 +702,38 @@ HRESULT CSoundKeeper::Run()
 	}
 	defer [&] { m_dev_enumerator->UnregisterEndpointNotificationCallback(this); };
 
+	DEVICE_NOTIFY_SUBSCRIBE_PARAMETERS power_sub = {};
+	power_sub.Callback = &CSoundKeeper::PowerNotifyCallback;
+	power_sub.Context = this;
+
+	m_suspend_resume_notify =
+		RegisterSuspendResumeNotification(
+			&power_sub,
+			DEVICE_NOTIFY_CALLBACK
+		);
+
+	if (!m_suspend_resume_notify)
+	{
+		DWORD le = GetLastError();
+		DebugLogWarning(
+			"Unable to register suspend/resume notifications. Error code: %u. "
+			"Falling back to timer-based sleep detection only.",
+			le
+		);
+	}
+	else
+	{
+		DebugLog("Suspend/resume notifications registered.");
+	}
+
+	defer[&]
+	{
+		if (m_suspend_resume_notify)
+		{
+			UnregisterSuspendResumeNotification(m_suspend_resume_notify);
+			m_suspend_resume_notify = nullptr;
+		}
+	};
 	// Working loop.
 
 	DebugLog("Enter main loop.");
@@ -710,17 +742,34 @@ HRESULT CSoundKeeper::Run()
 	{
 		uint32_t seconds_to_sleeping = (m_cfg_no_sleep ? -1 : GetSecondsToSleeping());
 
-		if (seconds_to_sleeping == 0)
+		// Strong signal: actual suspend notification from OS.
+		if (m_is_system_suspending.load(std::memory_order_acquire))
+		{
+			DebugLog("Going ...");
+			if (m_is_started)
+			{
+				DebugLog("... to stop on user suspension");
+				this->Stop();
+			}
+		}
+		// Legacy / predictive path: old SoundKeeper timeout logic.
+		else if (seconds_to_sleeping == 0)
 		{
 			if (m_is_started)
 			{
-				DebugLog("Going to sleep...");
+				DebugLog("Going to sleep by timeout prediction...");
 				this->Stop();
 			}
 		}
 		else
 		{
-			if (!m_is_started)
+			if (m_is_resume_pending.load(std::memory_order_acquire))
+			{
+				DebugLog("Resume pending, restarting audio...");
+				m_is_resume_pending.store(false, std::memory_order_release);
+				this->Restart();
+			}
+			else if (!m_is_started)
 			{
 				DebugLog("Starting...");
 				this->Start();
@@ -732,7 +781,7 @@ HRESULT CSoundKeeper::Run()
 			}
 		}
 
-		DWORD timeout = (m_is_retry_required || seconds_to_sleeping <= 30) ? 500 : (m_cfg_no_sleep ? INFINITE : 5000);
+		DWORD timeout = (m_is_retry_required || m_is_system_suspending || m_is_resume_pending || seconds_to_sleeping <= 30) ? 500 : (m_cfg_no_sleep ? INFINITE : 5000);
 
 		switch (WaitForAny({ m_do_retry, m_do_restart, m_do_shutdown, global_stop_event }, timeout))
 		{
@@ -811,7 +860,52 @@ FORCEINLINE HRESULT CSoundKeeper::Main()
 
 	return hr;
 }
+ULONG CALLBACK CSoundKeeper::PowerNotifyCallback(PVOID context, ULONG type, PVOID setting)
+{
+	UNREFERENCED_PARAMETER(setting);
 
+	CSoundKeeper* self = reinterpret_cast<CSoundKeeper*>(context);
+	if (!self)
+	{
+		return ERROR_INVALID_PARAMETER;
+	}
+
+	switch (type)
+	{
+	case PBT_APMSUSPEND:
+	{
+
+
+		self->m_is_system_suspending.store(true, std::memory_order_release);
+		self->m_is_resume_pending.store(false, std::memory_order_release);
+
+		DebugLog("Suspend notification received.");
+		// Wake up the main loop immediately.
+		self->FireRestart();
+		break;
+	}
+
+	case PBT_APMRESUMEAUTOMATIC:
+	case PBT_APMRESUMESUSPEND:
+	{
+		self->m_is_system_suspending.store(false, std::memory_order_release);
+		self->m_is_resume_pending.store(true, std::memory_order_release);
+
+#ifdef _CONSOLE
+		DebugLog("Resume notification received.");
+#endif
+
+		// Wake up the main loop immediately.
+		self->FireRestart();
+		break;
+	}
+
+	default:
+		break;
+	}
+
+	return ERROR_SUCCESS;
+}
 #ifdef _CONSOLE
 
 int main()

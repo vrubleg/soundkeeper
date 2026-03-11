@@ -4,6 +4,7 @@
 
 #include <mmdeviceapi.h>
 #include <audiopolicy.h>
+#include <atomic>
 
 enum class KeepDeviceType { None, Primary, Digital, Analog, All };
 enum class KeepStreamType { None, Zero, Fluctuate, Sine, WhiteNoise, BrownNoise, PinkNoise };
@@ -65,6 +66,18 @@ protected:
 	HRESULT Restart();
 	bool Retry();
 	CSoundSession* FindSession(LPCWSTR device_id);
+
+private:
+	HPOWERNOTIFY m_suspend_resume_notify = nullptr;
+
+	std::atomic<bool> m_is_system_suspending{ false };
+	std::atomic<bool> m_is_resume_pending{ false };
+
+	static ULONG CALLBACK PowerNotifyCallback(
+		PVOID context,
+		ULONG type,
+		PVOID setting
+	);
 
 public:
 
