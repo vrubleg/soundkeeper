@@ -196,7 +196,6 @@ HRESULT CSoundKeeper::Start()
 
 	HRESULT hr = S_OK;
 	if (m_is_started) { return hr; }
-	m_is_retry_required = false;
 
 	if (m_cfg_device_type == KeepDeviceType::Primary)
 	{
@@ -242,11 +241,7 @@ HRESULT CSoundKeeper::Start()
 		m_sessions[0]->SetPeriodicPlaying(m_cfg_play_seconds);
 		m_sessions[0]->SetPeriodicWaiting(m_cfg_wait_seconds);
 		m_sessions[0]->SetFading(m_cfg_fade_seconds);
-
-		if (!m_sessions[0]->Start())
-		{
-			m_is_retry_required = true;
-		}
+		m_sessions[0]->Start();
 	}
 	else
 	{
@@ -303,11 +298,7 @@ HRESULT CSoundKeeper::Start()
 			m_sessions[i]->SetPeriodicPlaying(m_cfg_play_seconds);
 			m_sessions[i]->SetPeriodicWaiting(m_cfg_wait_seconds);
 			m_sessions[i]->SetFading(m_cfg_fade_seconds);
-
-			if (!m_sessions[i]->Start())
-			{
-				m_is_retry_required = true;
-			}
+			m_sessions[i]->Start();
 		}
 
 		if (m_sessions_count == 0)
@@ -317,30 +308,6 @@ HRESULT CSoundKeeper::Start()
 	}
 
 	return hr;
-}
-
-bool CSoundKeeper::Retry()
-{
-	ScopedLock lock(m_mutex);
-
-	if (!m_is_retry_required) return true;
-	m_is_retry_required = false;
-
-	if (m_sessions != nullptr)
-	{
-		for (UINT i = 0; i < m_sessions_count; i++)
-		{
-			if (m_sessions[i] != nullptr)
-			{
-				if (!m_sessions[i]->Start())
-				{
-					m_is_retry_required = true;
-				}
-			}
-		}
-	}
-
-	return !m_is_retry_required;
 }
 
 HRESULT CSoundKeeper::Stop()
@@ -365,7 +332,6 @@ HRESULT CSoundKeeper::Stop()
 	m_sessions = nullptr;
 	m_sessions_count = 0;
 	m_is_started = false;
-	m_is_retry_required = false;
 	return S_OK;
 }
 
@@ -412,12 +378,6 @@ CSoundSession* CSoundKeeper::FindSession(LPCWSTR device_id)
 }
 
 // Fire main thread control events.
-
-void CSoundKeeper::FireRetry()
-{
-	TraceLog("Fire Retry!");
-	m_do_retry = true;
-}
 
 void CSoundKeeper::FireRestart()
 {
@@ -725,16 +685,11 @@ HRESULT CSoundKeeper::Run()
 				DebugLog("Starting...");
 				this->Start();
 			}
-			else if (m_is_retry_required)
-			{
-				DebugLog("Retrying...");
-				this->Retry();
-			}
 		}
 
-		DWORD timeout = (m_is_retry_required || seconds_to_sleeping <= 30) ? 500 : (m_cfg_no_sleep ? INFINITE : 5000);
+		DWORD timeout = (seconds_to_sleeping <= 30) ? 500 : (m_cfg_no_sleep ? INFINITE : 5000);
 
-		switch (WaitForAny({ m_do_retry, m_do_restart, m_do_shutdown, global_stop_event }, timeout))
+		switch (WaitForAny({ m_do_restart, m_do_shutdown, global_stop_event }, timeout))
 		{
 		case WAIT_TIMEOUT:
 
@@ -742,21 +697,14 @@ HRESULT CSoundKeeper::Run()
 
 		case WAIT_OBJECT_0 + 0:
 
-			// Prevent multiple retries.
-			while (WaitForOne(m_do_retry, 500) != WAIT_TIMEOUT);
-			m_is_retry_required = true;
-			break;
-
-		case WAIT_OBJECT_0 + 1:
-
 			// Prevent multiple restarts.
 			while (WaitForOne(m_do_restart, 500) != WAIT_TIMEOUT);
 			DebugLog("Restarting...");
 			this->Restart();
 			break;
 
+		case WAIT_OBJECT_0 + 1:
 		case WAIT_OBJECT_0 + 2:
-		case WAIT_OBJECT_0 + 3:
 		default:
 
 			// We're done, exit the loop.

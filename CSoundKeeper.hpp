@@ -43,12 +43,10 @@ protected:
 
 	IMMDeviceEnumerator*    m_dev_enumerator = nullptr;
 	bool                    m_is_started = false;
-	bool                    m_is_retry_required = false;
 	CSoundSession**         m_sessions = nullptr;
 	UINT                    m_sessions_count = 0;
 	AutoResetEvent          m_do_shutdown = false;
 	AutoResetEvent          m_do_restart = false;
-	AutoResetEvent          m_do_retry = false;
 
 	bool                    m_cfg_allow_remote = false;
 	bool                    m_cfg_no_sleep = false;
@@ -63,7 +61,6 @@ protected:
 	HRESULT Start();
 	HRESULT Stop();
 	HRESULT Restart();
-	bool Retry();
 	CSoundSession* FindSession(LPCWSTR device_id);
 
 public:
@@ -92,7 +89,6 @@ public:
 	// Set stream type and defaults.
 	void SetStreamTypeDefaults(KeepStreamType stream_type);
 
-	void FireRetry();
 	void FireRestart();
 	void FireShutdown();
 
