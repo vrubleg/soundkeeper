@@ -41,7 +41,9 @@
   <ItemGroup>
     <ClCompile Include="CSoundKeeper.cpp" />
     <ClCompile Include="CSoundSession.cpp" />
-    <ClCompile Include="RuntimeHacks.cpp" />
+    <ClCompile Include="RuntimeHacks.cpp">
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BuildInfo.hpp" />
@@ -78,8 +80,7 @@
     <ConfigurationType>Application</ConfigurationType>
     <ProjectName>SoundKeeper</ProjectName>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset Condition="'$(Platform)'!='ARM64'">v142</PlatformToolset>
-    <PlatformToolset Condition="'$(Platform)'=='ARM64'">v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
