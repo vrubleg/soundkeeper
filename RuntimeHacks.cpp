@@ -5,6 +5,23 @@
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+#if 1
+
+// Reuse _ftol2 from msvcrt.dll.
+
+extern "C" void _ftol2();
+
+// Make static analysis think that _ftol2 is defined here.
+
+#if defined(_PREFAST_)
+extern "C" void _ftol2()
+{
+	__assume(0);
+}
+#endif
+
+#else
+
 //
 // MSVC x86 CRT helper for converting a floating-point value (double) to a signed 64-bit integer (int64_t).
 //
@@ -86,6 +103,8 @@ extern "C" void __declspec(naked) _ftol2()
 		ret
 	}
 }
+
+#endif
 
 // ---------------------------------------------------------------------------------------------------------------------
 
