@@ -1,0 +1,13 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Develop" />
+    <BuildType Name="Release" />
+    <Platform Name="ARM64" />
+    <Platform Name="Win32" />
+    <Platform Name="Win64" />
+  </Configurations>
+  <Project Path="SoundKeeper.vcxproj" Id="15df7fd9-cef4-43df-8521-a67e843c6f8f">
+    <Platform Solution="*|Win64" Project="x64" />
+  </Project>
+</Solution>
