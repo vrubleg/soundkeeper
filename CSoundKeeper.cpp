@@ -57,10 +57,6 @@ uint32_t GetSecondsToSleeping()
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-//
-// Suspend/Resume notification callbacks are available since Windows 8.
-//
-
 #include <powrprof.h>
 
 inline HMODULE GetPowrProfDll()
@@ -70,15 +66,31 @@ inline HMODULE GetPowrProfDll()
 	return dll;
 }
 
+inline FARPROC GetPowrProfProcAddress(LPCSTR lpProcName)
+{
+	if (HMODULE dll = GetPowrProfDll())
+	{
+		return GetProcAddress(dll, lpProcName);
+	}
+	else
+	{
+		return NULL;
+	}
+}
+
+//
+// Suspend/Resume notification callbacks are available since Windows 8.
+//
+
 HPOWERNOTIFY RegisterSuspendResumeCallback(PDEVICE_NOTIFY_CALLBACK_ROUTINE Callback, PVOID Context)
 {
-	SetLastError(0);
+	static void* pfn = nullptr;
 
-	HMODULE dll = GetPowrProfDll();
-	if (!dll) { return NULL; }
-
-	void* pfn = GetProcAddress(dll, "PowerRegisterSuspendResumeNotification");
-	if (!pfn) { return NULL; }
+	if (!pfn)
+	{
+		pfn = GetPowrProfProcAddress("PowerRegisterSuspendResumeNotification");
+		if (!pfn) { return NULL; }
+	}
 
 	DEVICE_NOTIFY_SUBSCRIBE_PARAMETERS params = { Callback, Context };
 	HPOWERNOTIFY out_handle = NULL;
@@ -91,17 +103,65 @@ HPOWERNOTIFY RegisterSuspendResumeCallback(PDEVICE_NOTIFY_CALLBACK_ROUTINE Callb
 
 BOOL UnregisterSuspendResumeCallback(HPOWERNOTIFY handle)
 {
-	SetLastError(0);
+	static void* pfn = nullptr;
 
-	if (!handle) { return FALSE; }
+	if (!handle)
+	{
+		SetLastError(0);
+		return FALSE;
+	}
 
-	HMODULE dll = GetPowrProfDll();
-	if (!dll) { return FALSE; }
-
-	void* pfn = GetProcAddress(dll, "PowerUnregisterSuspendResumeNotification");
-	if (!pfn) { return FALSE; }
+	if (!pfn)
+	{
+		pfn = GetPowrProfProcAddress("PowerUnregisterSuspendResumeNotification");
+		if (!pfn) { return FALSE; }
+	}
 
 	DWORD result = static_cast<decltype(PowerUnregisterSuspendResumeNotification)*>(pfn)(handle);
+	SetLastError(result);
+	return result == ERROR_SUCCESS;
+}
+
+//
+// Power setting notification callbacks are available since Windows 7.
+//
+
+HPOWERNOTIFY RegisterPowerSettingCallback(LPCGUID SettingGuid, PDEVICE_NOTIFY_CALLBACK_ROUTINE Callback, PVOID Context)
+{
+	static void* pfn = nullptr;
+
+	if (!pfn)
+	{
+		pfn = GetPowrProfProcAddress("PowerSettingRegisterNotification");
+		if (!pfn) { return NULL; }
+	}
+
+	DEVICE_NOTIFY_SUBSCRIBE_PARAMETERS params = { Callback, Context };
+	HPOWERNOTIFY out_handle = NULL;
+	DWORD result = static_cast<decltype(PowerSettingRegisterNotification)*>(pfn)(SettingGuid, DEVICE_NOTIFY_CALLBACK, &params, &out_handle);
+	SetLastError(result);
+	if (result != ERROR_SUCCESS) { return NULL; }
+
+	return out_handle;
+}
+
+BOOL UnregisterPowerSettingCallback(HPOWERNOTIFY handle)
+{
+	static void* pfn = nullptr;
+
+	if (!handle)
+	{
+		SetLastError(0);
+		return FALSE;
+	}
+
+	if (!pfn)
+	{
+		pfn = GetPowrProfProcAddress("PowerSettingUnregisterNotification");
+		if (!pfn) { return FALSE; }
+	}
+
+	DWORD result = static_cast<decltype(PowerSettingUnregisterNotification)*>(pfn)(handle);
 	SetLastError(result);
 	return result == ERROR_SUCCESS;
 }
@@ -444,7 +504,7 @@ void CSoundKeeper::FireStart()
 {
 	TraceLog("Fire Start!");
 
-	if (!m_is_suspended)
+	if (!m_is_suspended && !m_is_display_off)
 	{
 		m_do_start = true;
 	}
@@ -460,7 +520,7 @@ void CSoundKeeper::FireRestart()
 
 	m_do_stop = true;
 
-	if (!m_is_suspended)
+	if (!m_is_suspended && !m_is_display_off)
 	{
 		m_do_start = true;
 	}
@@ -488,24 +548,95 @@ ULONG CSoundKeeper::SuspendResumeCallback(ULONG Type)
 	switch (Type)
 	{
 		case PBT_APMSUSPEND:
-			DebugLog("Power event: Suspend. Suspend Sound Keeper.");
-			m_is_suspended = true;
-			this->FireStop();
+
+			DebugLog("Power event: Suspend.");
+			if (!m_is_suspended)
+			{
+				m_is_suspended = true;
+				this->FireStop();
+			}
 			break;
+
 		case PBT_APMRESUMEAUTOMATIC:
-			DebugLog("Power event: Resume (unattended). Too early to resume Sound Keeper.");
+
+			DebugLog("Power event: Resume (unattended).");
 			break;
+
 		case PBT_APMRESUMESUSPEND:
-			DebugLog("Power event: Resume (user input). Resume Sound Keeper.");
-			m_is_suspended = false;
-			this->FireStart();
+
+			DebugLog("Power event: Resume (user input).");
+			if (m_is_suspended)
+			{
+				m_is_suspended = false;
+				this->FireStart();
+			}
 			break;
+
 		default:
+
 			DebugLogWarning("Unknown power event type: %u.", Type);
 			break;
 	}
 
-	return 0;
+	return ERROR_SUCCESS;
+}
+
+// Display state notification callback.
+
+ULONG CALLBACK CSoundKeeper::DisplayStateCallbackEntry(PVOID Context, ULONG Type, PVOID Setting)
+{
+	if (Type != PBT_POWERSETTINGCHANGE) { return ERROR_SUCCESS; }
+
+	auto s = static_cast<POWERBROADCAST_SETTING*>(Setting);
+
+	// GUID_MONITOR_POWER_ON - Windows 7 (does not support dim).
+	// GUID_CONSOLE_DISPLAY_STATE - Windows 8+.
+	// MONITOR_DISPLAY_STATE: 0 = off, 1 = on, 2 = dim.
+	if ((s->PowerSetting == GUID_CONSOLE_DISPLAY_STATE || s->PowerSetting == GUID_MONITOR_POWER_ON) && s->DataLength >= sizeof(MONITOR_DISPLAY_STATE))
+	{
+		auto state = *reinterpret_cast<const MONITOR_DISPLAY_STATE*>(s->Data);
+		return static_cast<CSoundKeeper*>(Context)->DisplayStateCallback(state);
+	}
+
+	return ERROR_SUCCESS;
+}
+
+ULONG CSoundKeeper::DisplayStateCallback(MONITOR_DISPLAY_STATE state)
+{
+	switch (state)
+	{
+		case PowerMonitorOff:
+
+			DebugLog("Monitor state: Off.");
+			if (!m_is_display_off)
+			{
+				m_is_display_off = true;
+				this->FireStop();
+			}
+			break;
+
+		case PowerMonitorDim:
+
+			DebugLog("Monitor state: Dim.");
+			break;
+
+		case PowerMonitorOn:
+
+			DebugLog("Monitor state: On.");
+			if (m_is_display_off)
+			{
+				m_is_display_off = false;
+				this->FireStart();
+			}
+			break;
+
+		default:
+
+			DebugLogWarning("Unknown monitor state: %u.", state);
+			break;
+	}
+
+	return ERROR_SUCCESS;
 }
 
 // Entry point methods.
@@ -782,21 +913,21 @@ HRESULT CSoundKeeper::Run()
 	// Register for Suspend/Resume notifications.
 
 	HPOWERNOTIFY suspend_resume_notification = RegisterSuspendResumeCallback(SuspendResumeCallbackEntry, this);
-
-#ifdef _CONSOLE
-
-	// It is expected on Windows 7 so show the warning on Windows 8+.
 	if (!suspend_resume_notification && nt_build_number >= 9200)
 	{
-		DebugLogWarning("Unable to register for power notifications. Error code: %d.", GetLastError());
+		// It is not supported on Windows 7 so show the warning on Windows 8+ only.
+		DebugLogWarning("Unable to register for suspend/resume notifications. Error code: %d.", GetLastError());
 	}
+	defer [&] { UnregisterSuspendResumeCallback(suspend_resume_notification); };
 
-#endif
+	// Register for display state notifications.
 
-	defer[&]
+	HPOWERNOTIFY display_state_notification = RegisterPowerSettingCallback(nt_build_number >= 9200 ? &GUID_CONSOLE_DISPLAY_STATE : &GUID_MONITOR_POWER_ON, DisplayStateCallbackEntry, this);
+	if (!display_state_notification)
 	{
-		UnregisterSuspendResumeCallback(suspend_resume_notification);
-	};
+		DebugLogWarning("Unable to register for display state notifications. Error code: %d.", GetLastError());
+	}
+	defer [&] { UnregisterPowerSettingCallback(display_state_notification); };
 
 	// Working loop.
 
@@ -824,7 +955,7 @@ HRESULT CSoundKeeper::Run()
 			}
 			else
 			{
-				if (!m_is_started && !m_is_suspended && !need_start)
+				if (!m_is_started && !m_is_suspended && !m_is_display_off && !need_start)
 				{
 					DebugLog("Going to start...");
 					need_start = true;

@@ -44,6 +44,7 @@ protected:
 	IMMDeviceEnumerator*    m_dev_enumerator = nullptr;
 	bool                    m_is_started = false;
 	atomic_bool             m_is_suspended = false;
+	atomic_bool             m_is_display_off = false;
 	CSoundSession**         m_sessions = nullptr;
 	UINT                    m_sessions_count = 0;
 	AutoResetEvent          m_do_shutdown = false;
@@ -67,6 +68,8 @@ protected:
 
 	static ULONG CALLBACK SuspendResumeCallbackEntry(PVOID Context, ULONG Type, PVOID Setting);
 	ULONG SuspendResumeCallback(ULONG Type);
+	static ULONG CALLBACK DisplayStateCallbackEntry(PVOID Context, ULONG Type, PVOID Setting);
+	ULONG DisplayStateCallback(MONITOR_DISPLAY_STATE state);
 
 public:
 
