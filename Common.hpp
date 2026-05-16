@@ -13,6 +13,7 @@
 #include "Common/StrUtils.hpp"
 #include <algorithm> // std::min and std::max.
 #include <math.h>
+#include <stdatomic.h>
 
 #ifdef _CONSOLE
 

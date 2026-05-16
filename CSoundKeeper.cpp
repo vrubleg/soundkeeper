@@ -3,6 +3,8 @@
 
 #include "CSoundKeeper.hpp"
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 //
 // Get time to sleeping (in seconds). It is not precise and updated just once in 15-30 seconds!
 // On Windows 7-10, it outputs -1 (or values like -16, -31, ...) when auto sleep mode is disabled.
@@ -52,6 +54,59 @@ uint32_t GetSecondsToSleeping()
 
 	return (spi.TimeRemaining % 5 == 0 ? 0 : -1);
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+//
+// Suspend/Resume notification callbacks are available since Windows 8.
+//
+
+#include <powrprof.h>
+
+inline HMODULE GetPowrProfDll()
+{
+	static HMODULE dll = 0;
+	if (!dll) { dll = LoadLibraryA("powrprof.dll"); }
+	return dll;
+}
+
+HPOWERNOTIFY RegisterSuspendResumeCallback(PDEVICE_NOTIFY_CALLBACK_ROUTINE Callback, PVOID Context)
+{
+	SetLastError(0);
+
+	HMODULE dll = GetPowrProfDll();
+	if (!dll) { return NULL; }
+
+	void* pfn = GetProcAddress(dll, "PowerRegisterSuspendResumeNotification");
+	if (!pfn) { return NULL; }
+
+	DEVICE_NOTIFY_SUBSCRIBE_PARAMETERS params = { Callback, Context };
+	HPOWERNOTIFY out_handle = NULL;
+	DWORD result = static_cast<decltype(PowerRegisterSuspendResumeNotification)*>(pfn)(DEVICE_NOTIFY_CALLBACK, &params, &out_handle);
+	SetLastError(result);
+	if (result != ERROR_SUCCESS) { return NULL; }
+
+	return out_handle;
+}
+
+BOOL UnregisterSuspendResumeCallback(HPOWERNOTIFY handle)
+{
+	SetLastError(0);
+
+	if (!handle) { return FALSE; }
+
+	HMODULE dll = GetPowrProfDll();
+	if (!dll) { return FALSE; }
+
+	void* pfn = GetProcAddress(dll, "PowerUnregisterSuspendResumeNotification");
+	if (!pfn) { return FALSE; }
+
+	DWORD result = static_cast<decltype(PowerUnregisterSuspendResumeNotification)*>(pfn)(handle);
+	SetLastError(result);
+	return result == ERROR_SUCCESS;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 //
 // CSoundKeeper implementation.
@@ -379,16 +434,78 @@ CSoundSession* CSoundKeeper::FindSession(LPCWSTR device_id)
 
 // Fire main thread control events.
 
+void CSoundKeeper::FireStop()
+{
+	TraceLog("Fire Stop!");
+	m_do_stop = true;
+}
+
+void CSoundKeeper::FireStart()
+{
+	TraceLog("Fire Start!");
+
+	if (!m_is_suspended)
+	{
+		m_do_start = true;
+	}
+	else
+	{
+		TraceLog("Skip starting (is suspended).");
+	}
+}
+
 void CSoundKeeper::FireRestart()
 {
 	TraceLog("Fire Restart!");
-	m_do_restart = true;
+
+	m_do_stop = true;
+
+	if (!m_is_suspended)
+	{
+		m_do_start = true;
+	}
+	else
+	{
+		TraceLog("Skip starting (is suspended).");
+	}
 }
 
 void CSoundKeeper::FireShutdown()
 {
 	TraceLog("Fire Shutdown!");
 	m_do_shutdown = true;
+}
+
+// Suspend/Resume notification callback.
+
+ULONG CALLBACK CSoundKeeper::SuspendResumeCallbackEntry(PVOID Context, ULONG Type, PVOID Setting)
+{
+	return static_cast<CSoundKeeper*>(Context)->SuspendResumeCallback(Type);
+}
+
+ULONG CSoundKeeper::SuspendResumeCallback(ULONG Type)
+{
+	switch (Type)
+	{
+		case PBT_APMSUSPEND:
+			DebugLog("Power event: Suspend. Suspend Sound Keeper.");
+			m_is_suspended = true;
+			this->FireStop();
+			break;
+		case PBT_APMRESUMEAUTOMATIC:
+			DebugLog("Power event: Resume (unattended). Too early to resume Sound Keeper.");
+			break;
+		case PBT_APMRESUMESUSPEND:
+			DebugLog("Power event: Resume (user input). Resume Sound Keeper.");
+			m_is_suspended = false;
+			this->FireStart();
+			break;
+		default:
+			DebugLogWarning("Unknown power event type: %u.", Type);
+			break;
+	}
+
+	return 0;
 }
 
 // Entry point methods.
@@ -662,60 +779,113 @@ HRESULT CSoundKeeper::Run()
 	}
 	defer [&] { m_dev_enumerator->UnregisterEndpointNotificationCallback(this); };
 
+	// Register for Suspend/Resume notifications.
+
+	HPOWERNOTIFY suspend_resume_notification = RegisterSuspendResumeCallback(SuspendResumeCallbackEntry, this);
+
+#ifdef _CONSOLE
+
+	// It is expected on Windows 7 so show the warning on Windows 8+.
+	if (!suspend_resume_notification && nt_build_number >= 9200)
+	{
+		DebugLogWarning("Unable to register for power notifications. Error code: %d.", GetLastError());
+	}
+
+#endif
+
+	defer[&]
+	{
+		UnregisterSuspendResumeCallback(suspend_resume_notification);
+	};
+
 	// Working loop.
 
-	DebugLog("Enter main loop.");
+	DebugLog("Enter main loop. Starting...");
+	this->Start();
+
+	bool need_stop = false;
+	bool need_start = false;
 
 	for (bool working = true; working; )
 	{
-		uint32_t seconds_to_sleeping = (m_cfg_no_sleep ? -1 : GetSecondsToSleeping());
+		DWORD timeout = INFINITE;
 
-		if (seconds_to_sleeping == 0)
+		if (!m_cfg_no_sleep)
 		{
-			if (m_is_started)
+			uint32_t seconds_to_sleeping = GetSecondsToSleeping();
+
+			if (seconds_to_sleeping == 0)
 			{
-				DebugLog("Going to sleep...");
-				this->Stop();
+				if (m_is_started && !need_stop)
+				{
+					DebugLog("Going to sleep...");
+					need_stop = true;
+				}
 			}
-		}
-		else
-		{
-			if (!m_is_started)
+			else
 			{
-				DebugLog("Starting...");
-				this->Start();
+				if (!m_is_started && !m_is_suspended && !need_start)
+				{
+					DebugLog("Going to start...");
+					need_start = true;
+				}
 			}
+
+			timeout = (seconds_to_sleeping <= 30) ? 500 : 5000;
 		}
 
-		DWORD timeout = (seconds_to_sleeping <= 30) ? 500 : (m_cfg_no_sleep ? INFINITE : 5000);
-
-		switch (WaitForAny({ m_do_restart, m_do_shutdown, global_stop_event }, timeout))
+		if (need_stop || need_start)
 		{
-		case WAIT_TIMEOUT:
+			// Debounce timeout to collapse event bursts and avoid rapid restarts.
+			timeout = need_start ? 100 : 10;
+		}
 
-			break;
+		switch (WaitForAny({ m_do_stop, m_do_start, m_do_shutdown, global_stop_event }, timeout))
+		{
+			case WAIT_TIMEOUT:
 
-		case WAIT_OBJECT_0 + 0:
+				if (need_stop && need_start)
+				{
+					DebugLog("Restarting...");
+					this->Restart();
+				}
+				else if (need_stop && m_is_started)
+				{
+					DebugLog("Stopping...");
+					this->Stop();
+				}
+				else if (need_start && !m_is_started)
+				{
+					DebugLog("Starting...");
+					this->Start();
+				}
 
-			// Prevent multiple restarts.
-			while (WaitForOne(m_do_restart, 500) != WAIT_TIMEOUT);
-			DebugLog("Restarting...");
-			this->Restart();
-			break;
+				need_stop = false;
+				need_start = false;
+				break;
 
-		case WAIT_OBJECT_0 + 1:
-		case WAIT_OBJECT_0 + 2:
-		default:
+			case WAIT_OBJECT_0 + 0: // m_do_stop
+				need_stop = true;
+				break;
 
-			// We're done, exit the loop.
-			DebugLog("Shutdown.");
-			working = false;
-			break;
+			case WAIT_OBJECT_0 + 1: // m_do_start
+				need_start = true;
+				break;
+
+			case WAIT_OBJECT_0 + 2: // m_do_shutdown
+			case WAIT_OBJECT_0 + 3: // global_stop_event
+			default:
+
+				// We're done, exit the loop.
+				DebugLog("Shutdown.");
+				working = false;
+				break;
 		}
 	}
 
-	DebugLog("Leave main loop.");
-	Stop();
+	DebugLog("Leave main loop. Stopping...");
+	this->Stop();
+
 	return hr;
 }
 

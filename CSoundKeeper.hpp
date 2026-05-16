@@ -43,10 +43,12 @@ protected:
 
 	IMMDeviceEnumerator*    m_dev_enumerator = nullptr;
 	bool                    m_is_started = false;
+	atomic_bool             m_is_suspended = false;
 	CSoundSession**         m_sessions = nullptr;
 	UINT                    m_sessions_count = 0;
 	AutoResetEvent          m_do_shutdown = false;
-	AutoResetEvent          m_do_restart = false;
+	AutoResetEvent          m_do_stop = false;
+	AutoResetEvent          m_do_start = false;
 
 	bool                    m_cfg_allow_remote = false;
 	bool                    m_cfg_no_sleep = false;
@@ -62,6 +64,9 @@ protected:
 	HRESULT Stop();
 	HRESULT Restart();
 	CSoundSession* FindSession(LPCWSTR device_id);
+
+	static ULONG CALLBACK SuspendResumeCallbackEntry(PVOID Context, ULONG Type, PVOID Setting);
+	ULONG SuspendResumeCallback(ULONG Type);
 
 public:
 
@@ -89,6 +94,8 @@ public:
 	// Set stream type and defaults.
 	void SetStreamTypeDefaults(KeepStreamType stream_type);
 
+	void FireStop();
+	void FireStart();
 	void FireRestart();
 	void FireShutdown();
 

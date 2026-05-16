@@ -1,4 +1,4 @@
-Sound Keeper v1.3.5 [2025/07/05]
+Sound Keeper v1.3.6 [2026/XX/XX]
 https://veg.by/projects/soundkeeper/
 
 Prevents SPDIF/HDMI digital audio playback devices from sleeping. Uses WASAPI, requires Windows 7+.
@@ -44,6 +44,9 @@ Examples:
 - "SoundKeeper.exe brown -a 0.1" (settings are command line arguments) generates brown noise with 0.1% amplitude.
 
 What's new
+
+v1.3.6 [2026/XX/XX]:
+- Handle Windows 8+ suspend/resume events that should help with modern standby support.
 
 v1.3.5 [2025/07/05]:
 - Handle ASIO exclusive mode by waiting until it ends, similar to WASAPI exclusive mode.
@@ -105,4 +108,4 @@ v1.0.2 [2017/12/23]: 64-bit version is added.
 v1.0.1 [2017/12/21]: Waking PC up after sleeping doesn't prevent Sound Keeper from working.
 v1.0.0 [2014/12/24]: Initial release.
 
-(c) 2014-2025 Evgeny Vrublevsky <me@veg.by>
+(c) 2014-2026 Evgeny Vrublevsky <me@veg.by>
