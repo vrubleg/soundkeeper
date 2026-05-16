@@ -725,7 +725,18 @@ void CSoundKeeper::ParseModeString(const char* args)
 	if (strstr(buf, "digital")) { this->SetDeviceType(KeepDeviceType::Digital); }
 	if (strstr(buf, "kill"))    { this->SetDeviceType(KeepDeviceType::None); }
 	if (strstr(buf, "remote"))  { this->SetAllowRemote(true); }
-	if (strstr(buf, "nosleep")) { this->SetNoSleep(true); }
+
+	if (strstr(buf, "sleepy"))
+	{
+		this->SetSleepWithDisplay(true);
+	}
+
+	if (strstr(buf, "nosleep"))
+	{
+		this->SetSleepWithIdleTimer(false);
+		this->SetSleepWithSystem(false);
+		this->SetSleepWithDisplay(false);
+	}
 
 	if (strstr(buf, "openonly"))
 	{
@@ -807,10 +818,17 @@ HRESULT CSoundKeeper::Run()
 		}
 	}
 
-	if (GetSecondsToSleeping() == 0)
+	if (m_cfg_sleep_with_idle_timer && GetSecondsToSleeping() == 0)
 	{
-		DebugLogWarning("Sleep timer informarion is not available. Sleep detection is disabled.");
-		m_cfg_no_sleep = true;
+		// It's always 0 since Windows 11 so disable it for Windows 11+.
+		DebugLogWarning("Idle sleep timer is not available.");
+		m_cfg_sleep_with_idle_timer = false;
+	}
+
+	if (m_cfg_sleep_with_system && nt_build_number < 9200)
+	{
+		// It's available since Windows 8 so disable it for Windows 7.
+		m_cfg_sleep_with_system = false;
 	}
 
 #ifdef _CONSOLE
@@ -846,10 +864,11 @@ HRESULT CSoundKeeper::Run()
 		DebugLog("Periodicity: Disabled.");
 	}
 
-	if (m_cfg_no_sleep)
-	{
-		DebugLog("Sleep Detection: Disabled.");
-	}
+	DebugLog("Sleep With Idle Timer: %s, With System: %s, With Display: %s.",
+		m_cfg_sleep_with_idle_timer ? "Enabled" : "Disabled",
+		m_cfg_sleep_with_system ? "Enabled" : "Disabled",
+		m_cfg_sleep_with_display ? "Enabled" : "Disabled"
+	);
 
 #endif
 
@@ -912,22 +931,32 @@ HRESULT CSoundKeeper::Run()
 
 	// Register for Suspend/Resume notifications.
 
-	HPOWERNOTIFY suspend_resume_notification = RegisterSuspendResumeCallback(SuspendResumeCallbackEntry, this);
-	if (!suspend_resume_notification && nt_build_number >= 9200)
+	HPOWERNOTIFY suspend_resume_notify = NULL;
+	defer [&] { if (suspend_resume_notify) { UnregisterSuspendResumeCallback(suspend_resume_notify); } };
+
+	if (m_cfg_sleep_with_system)
 	{
-		// It is not supported on Windows 7 so show the warning on Windows 8+ only.
-		DebugLogWarning("Unable to register for suspend/resume notifications. Error code: %d.", GetLastError());
+		suspend_resume_notify = RegisterSuspendResumeCallback(SuspendResumeCallbackEntry, this);
+		if (!suspend_resume_notify)
+		{
+			DebugLogWarning("Unable to register for suspend/resume notifications. Error code: %d.", GetLastError());
+		}
 	}
-	defer [&] { UnregisterSuspendResumeCallback(suspend_resume_notification); };
 
 	// Register for display state notifications.
 
-	HPOWERNOTIFY display_state_notification = RegisterPowerSettingCallback(nt_build_number >= 9200 ? &GUID_CONSOLE_DISPLAY_STATE : &GUID_MONITOR_POWER_ON, DisplayStateCallbackEntry, this);
-	if (!display_state_notification)
+	HPOWERNOTIFY display_state_notify = NULL;
+	defer [&] { if (display_state_notify) { UnregisterPowerSettingCallback(display_state_notify); } };
+
+	if (m_cfg_sleep_with_display)
 	{
-		DebugLogWarning("Unable to register for display state notifications. Error code: %d.", GetLastError());
+		LPCGUID SettingGuid = nt_build_number >= 9200 ? &GUID_CONSOLE_DISPLAY_STATE : &GUID_MONITOR_POWER_ON;
+		display_state_notify = RegisterPowerSettingCallback(SettingGuid, DisplayStateCallbackEntry, this);
+		if (!display_state_notify)
+		{
+			DebugLogWarning("Unable to register for display state notifications. Error code: %d.", GetLastError());
+		}
 	}
-	defer [&] { UnregisterPowerSettingCallback(display_state_notification); };
 
 	// Working loop.
 
@@ -941,7 +970,7 @@ HRESULT CSoundKeeper::Run()
 	{
 		DWORD timeout = INFINITE;
 
-		if (!m_cfg_no_sleep)
+		if (m_cfg_sleep_with_idle_timer)
 		{
 			uint32_t seconds_to_sleeping = GetSecondsToSleeping();
 

@@ -47,6 +47,7 @@ What's new
 
 v1.3.6 [2026/XX/XX]:
 - Handle Windows 8+ suspend/resume events that should help with modern standby support.
+- New "Sleepy" mode to enable optional automatic sleep when display is off to counter the Windows 11 sleep issue.
 
 v1.3.5 [2025/07/05]:
 - Handle ASIO exclusive mode by waiting until it ends, similar to WASAPI exclusive mode.
