@@ -110,6 +110,6 @@ public:
 
 	void ParseStreamArgs(KeepStreamType stream_type, const char* args);
 	void ParseModeString(const char* args);
-	HRESULT Run();
-	static HRESULT Main();
+	HRESULT Main();
+	static HRESULT MainEntry();
 };

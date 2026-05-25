@@ -176,7 +176,7 @@ protected:
 	// Rendering thread.
 	//
 
-	static DWORD APIENTRY StartRenderingThread(LPVOID context);
+	static DWORD APIENTRY RenderingThreadEntry(LPVOID context);
 	DWORD RenderingThread();
 	RenderingMode TryOpenDevice();
 	RenderingMode Rendering();

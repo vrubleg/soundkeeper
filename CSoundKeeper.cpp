@@ -768,7 +768,7 @@ void CSoundKeeper::ParseModeString(const char* args)
 	}
 }
 
-HRESULT CSoundKeeper::Run()
+HRESULT CSoundKeeper::Main()
 {
 	// Windows 8-10 audio service leaks handles and shared memory when exclusive mode is used, enable a workaround.
 	uint32_t nt_build_number = GetNtBuildNumber();
@@ -1049,7 +1049,7 @@ HRESULT CSoundKeeper::Run()
 	return hr;
 }
 
-FORCEINLINE HRESULT CSoundKeeper::Main()
+FORCEINLINE HRESULT CSoundKeeper::MainEntry()
 {
 	DebugThreadName("Main");
 
@@ -1066,7 +1066,7 @@ FORCEINLINE HRESULT CSoundKeeper::Main()
 	}
 
 	CSoundKeeper* keeper = new CSoundKeeper();
-	HRESULT hr = keeper->Run();
+	HRESULT hr = keeper->Main();
 	SafeRelease(keeper);
 
 	CoUninitialize();
@@ -1108,14 +1108,14 @@ int main()
 		);
 	}
 
-	return CSoundKeeper::Main();
+	return CSoundKeeper::MainEntry();
 }
 
 #else
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ PWSTR pCmdLine, _In_ int nCmdShow)
 {
-	return CSoundKeeper::Main();
+	return CSoundKeeper::MainEntry();
 }
 
 #endif

@@ -83,7 +83,7 @@ bool CSoundSession::Start()
 
 	//
 	// Now create the thread which is going to drive the renderer.
-	m_render_thread = CreateThread(NULL, 0, StartRenderingThread, this, 0, NULL);
+	m_render_thread = CreateThread(NULL, 0, RenderingThreadEntry, this, 0, NULL);
 	if (m_render_thread == NULL)
 	{
 		DebugLogError("Unable to create rendering thread: 0x%08X.", GetLastError());
@@ -122,7 +122,7 @@ void CSoundSession::Stop()
 // Rendering thread.
 //
 
-DWORD APIENTRY CSoundSession::StartRenderingThread(LPVOID context)
+DWORD APIENTRY CSoundSession::RenderingThreadEntry(LPVOID context)
 {
 	DebugThreadName("Rendering");
 
