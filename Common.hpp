@@ -3,6 +3,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define _USE_MATH_DEFINES
 
+#include "Common/BasicDefines.hpp"
 #include "Common/BasicMacros.hpp"
 #include "Common/Defer.hpp"
 #include "Common/NtBase.hpp"
@@ -15,7 +16,7 @@
 #include <math.h>
 #include <stdatomic.h>
 
-#ifdef _CONSOLE
+#if IS_WIN_CUI
 
 inline void DebugLogImpl(const char * funcname, const char * type, const char * format, ...)
 {

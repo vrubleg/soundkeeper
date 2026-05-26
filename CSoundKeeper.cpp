@@ -35,7 +35,7 @@ uint32_t GetSecondsToSleeping()
 		return 0;
 	}
 
-#ifdef _CONSOLE
+#if IS_WIN_CUI
 
 	static LONG last_result = 0x80000000;
 
@@ -280,7 +280,7 @@ uint32_t GetDeviceFormFactor(IMMDevice* device)
 	if (SUCCEEDED(hr) && prop_formfactor.vt == VT_UI4)
 	{
 		formfactor = prop_formfactor.uintVal;
-#ifdef _CONSOLE
+#if IS_WIN_CUI
 		LPWSTR device_id = nullptr;
 		hr = device->GetId(&device_id);
 		if (FAILED(hr))
@@ -831,7 +831,7 @@ HRESULT CSoundKeeper::Main()
 		m_cfg_sleep_with_system = false;
 	}
 
-#ifdef _CONSOLE
+#if IS_WIN_CUI
 
 	switch (this->GetDeviceType())
 	{
@@ -1057,7 +1057,7 @@ FORCEINLINE HRESULT CSoundKeeper::MainEntry()
 
 	if (HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE); FAILED(hr))
 	{
-#ifndef _CONSOLE
+#if !IS_WIN_CUI
 		MessageBoxA(0, "Cannot initialize COM.", "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL);
 #else
 		DebugLogError("Cannot initialize COM: 0x%08X.", hr);
@@ -1071,7 +1071,7 @@ FORCEINLINE HRESULT CSoundKeeper::MainEntry()
 
 	CoUninitialize();
 
-#ifndef _CONSOLE
+#if !IS_WIN_CUI
 	if (FAILED(hr))
 	{
 		MessageBoxA(0, "Cannot initialize WASAPI.", "Sound Keeper", MB_ICONERROR | MB_OK | MB_SYSTEMMODAL);
@@ -1090,7 +1090,7 @@ FORCEINLINE HRESULT CSoundKeeper::MainEntry()
 	return hr;
 }
 
-#ifdef _CONSOLE
+#if IS_WIN_CUI
 
 int main()
 {

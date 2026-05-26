@@ -1,7 +1,9 @@
 // We use msvcrt.dll as a C runtime to save space in release builds.
 // It has limited set of functions, so we reimplement missing ones here.
 
-#if (defined(_VC_NODEFAULTLIB) || defined(__INTELLISENSE__)) && defined(_M_IX86)
+#include "Common.hpp"
+
+#if (IS_NOCRT || IS_INTELLISENSE) && IS_X8632
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -13,7 +15,7 @@ extern "C" void _ftol2();
 
 // Make static analysis think that _ftol2 is defined here.
 
-#if defined(_PREFAST_)
+#if IS_PREFAST
 extern "C" void _ftol2()
 {
 	__assume(0);

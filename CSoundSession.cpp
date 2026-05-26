@@ -558,7 +558,7 @@ CSoundSession::SampleType CSoundSession::ParseSampleType(WAVEFORMATEX* format)
 	}
 	else
 	{
-#ifdef _CONSOLE
+#if IS_WIN_CUI
 		if (format->wFormatTag != WAVE_FORMAT_EXTENSIBLE)
 		{
 			DebugLogWarning("Unrecognized format: 0x%04hX %dch %dHz %d-bit.", format->wFormatTag,

@@ -47,6 +47,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BuildInfo.hpp" />
+    <ClInclude Include="Common\BasicDefines.hpp" />
     <ClInclude Include="Resources.hpp" />
     <ClInclude Include="Common.hpp" />
     <ClInclude Include="Common\BasicMacros.hpp" />
