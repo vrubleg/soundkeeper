@@ -24,7 +24,7 @@ public:
 
 inline DWORD AlertableSleep(DWORD timeout)
 {
-	return SleepEx(timeout, true);
+	return SleepEx(timeout, TRUE);
 }
 
 inline DWORD WaitForOne(HANDLE handle, DWORD timeout = INFINITE)
@@ -34,7 +34,7 @@ inline DWORD WaitForOne(HANDLE handle, DWORD timeout = INFINITE)
 
 inline DWORD AlertableWaitForOne(HANDLE handle, DWORD timeout = INFINITE)
 {
-	return WaitForSingleObjectEx(handle, timeout, true);
+	return WaitForSingleObjectEx(handle, timeout, TRUE);
 }
 
 inline DWORD WaitForAny(std::initializer_list<HANDLE> handles, DWORD timeout = INFINITE)
@@ -44,7 +44,7 @@ inline DWORD WaitForAny(std::initializer_list<HANDLE> handles, DWORD timeout = I
 
 inline DWORD AlertableWaitForAny(std::initializer_list<HANDLE> handles, DWORD timeout = INFINITE)
 {
-	return WaitForMultipleObjectsEx((DWORD)handles.size(), handles.begin(), FALSE, timeout, true);
+	return WaitForMultipleObjectsEx((DWORD)handles.size(), handles.begin(), FALSE, timeout, TRUE);
 }
 
 inline DWORD WaitForAll(std::initializer_list<HANDLE> handles, DWORD timeout = INFINITE)
@@ -54,7 +54,37 @@ inline DWORD WaitForAll(std::initializer_list<HANDLE> handles, DWORD timeout = I
 
 inline DWORD AlertableWaitForAll(std::initializer_list<HANDLE> handles, DWORD timeout = INFINITE)
 {
-	return WaitForMultipleObjectsEx((DWORD)handles.size(), handles.begin(), TRUE, timeout, true);
+	return WaitForMultipleObjectsEx((DWORD)handles.size(), handles.begin(), TRUE, timeout, TRUE);
+}
+
+inline DWORD WaitForOneOrMsg(HANDLE handle, DWORD timeout = INFINITE)
+{
+	return MsgWaitForMultipleObjectsEx(1, &handle, timeout, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
+}
+
+inline DWORD AlertableWaitForOneOrMsg(HANDLE handle, DWORD timeout = INFINITE)
+{
+	return MsgWaitForMultipleObjectsEx(1, &handle, timeout, QS_ALLINPUT, MWMO_INPUTAVAILABLE | MWMO_ALERTABLE);
+}
+
+inline DWORD WaitForAnyOrMsg(std::initializer_list<HANDLE> handles, DWORD timeout = INFINITE)
+{
+	return MsgWaitForMultipleObjectsEx((DWORD)handles.size(), handles.begin(), timeout, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
+}
+
+inline DWORD AlertableWaitForAnyOrMsg(std::initializer_list<HANDLE> handles, DWORD timeout = INFINITE)
+{
+	return MsgWaitForMultipleObjectsEx((DWORD)handles.size(), handles.begin(), timeout, QS_ALLINPUT, MWMO_INPUTAVAILABLE | MWMO_ALERTABLE);
+}
+
+inline DWORD WaitForAllAndMsg(std::initializer_list<HANDLE> handles, DWORD timeout = INFINITE)
+{
+	return MsgWaitForMultipleObjectsEx((DWORD)handles.size(), handles.begin(), timeout, QS_ALLINPUT, MWMO_INPUTAVAILABLE | MWMO_WAITALL);
+}
+
+inline DWORD AlertableWaitForAllAndMsg(std::initializer_list<HANDLE> handles, DWORD timeout = INFINITE)
+{
+	return MsgWaitForMultipleObjectsEx((DWORD)handles.size(), handles.begin(), timeout, QS_ALLINPUT, MWMO_INPUTAVAILABLE | MWMO_ALERTABLE | MWMO_WAITALL);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

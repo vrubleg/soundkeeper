@@ -45,6 +45,7 @@ protected:
 	bool                    m_is_started = false;
 	atomic_bool             m_is_suspended = false;
 	atomic_bool             m_is_display_off = false;
+	atomic_bool             m_is_user_locked = false;
 	CSoundSession**         m_sessions = nullptr;
 	UINT                    m_sessions_count = 0;
 	AutoResetEvent          m_do_shutdown = false;
@@ -55,6 +56,7 @@ protected:
 	bool                    m_cfg_sleep_with_idle_timer = true;
 	bool                    m_cfg_sleep_with_system = true;
 	bool                    m_cfg_sleep_with_display = false;
+	bool                    m_cfg_sleep_with_user_lock = false;
 	KeepDeviceType          m_cfg_device_type = KeepDeviceType::Primary;
 	KeepStreamType          m_cfg_stream_type = KeepStreamType::Zero;
 	double                  m_cfg_frequency = 0.0;
@@ -72,6 +74,8 @@ protected:
 	ULONG SuspendResumeCallback(ULONG Type);
 	static ULONG CALLBACK DisplayStateCallbackEntry(PVOID Context, ULONG Type, PVOID Setting);
 	ULONG DisplayStateCallback(MONITOR_DISPLAY_STATE state);
+	static LRESULT CALLBACK MessageWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+	VOID UserSessionStateCallback(WPARAM wParam, LPARAM lParam);
 
 public:
 
@@ -81,12 +85,14 @@ public:
 	void SetSleepWithIdleTimer(bool value) { m_cfg_sleep_with_idle_timer = value; }
 	void SetSleepWithSystem(bool value) { m_cfg_sleep_with_system = value; }
 	void SetSleepWithDisplay(bool value) { m_cfg_sleep_with_display = value; }
+	void SetSleepWithUserLock(bool value) { m_cfg_sleep_with_user_lock = value; }
 	KeepDeviceType GetDeviceType() const { return m_cfg_device_type; }
 	KeepStreamType GetStreamType() const { return m_cfg_stream_type; }
 	bool GetAllowRemote() const { return m_cfg_allow_remote; }
 	bool GetSleepWithIdleTimer() const { return m_cfg_sleep_with_idle_timer; }
 	bool GetSleepWithSystem() const { return m_cfg_sleep_with_system; }
 	bool GetSleepWithDisplay() const { return m_cfg_sleep_with_display; }
+	bool GetSleepWithUserLock() const { return m_cfg_sleep_with_user_lock; }
 
 	// Configuration methods.
 	void SetFrequency(double frequency) { m_cfg_frequency = frequency; }

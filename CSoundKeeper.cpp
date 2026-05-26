@@ -59,14 +59,14 @@ uint32_t GetSecondsToSleeping()
 
 #include <powrprof.h>
 
-inline HMODULE GetPowrProfDll()
+HMODULE GetPowrProfDll()
 {
 	static HMODULE dll = 0;
 	if (!dll) { dll = LoadLibraryA("powrprof.dll"); }
 	return dll;
 }
 
-inline FARPROC GetPowrProfProcAddress(LPCSTR lpProcName)
+FARPROC GetPowrProfProcAddress(LPCSTR lpProcName)
 {
 	if (HMODULE dll = GetPowrProfDll())
 	{
@@ -164,6 +164,78 @@ BOOL UnregisterPowerSettingCallback(HPOWERNOTIFY handle)
 	DWORD result = static_cast<decltype(PowerSettingUnregisterNotification)*>(pfn)(handle);
 	SetLastError(result);
 	return result == ERROR_SUCCESS;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+//
+// Session lock/unlock notifications.
+//
+
+HWND CreateMessageOnlyWindow(WNDPROC wndproc, PVOID context)
+{
+	HWND hwnd = CreateWindowExW(0, L"Message", L"", 0, 0, 0, 0, 0, HWND_MESSAGE, NULL, THIS_MODULE, NULL);
+	if (!hwnd) { return hwnd; }
+
+	SetWindowLongPtrW(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(context));
+	SetWindowLongPtrW(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(wndproc));
+
+	return hwnd;
+}
+
+BOOL DestroyMessageOnlyWindow(HWND hwnd)
+{
+	SetWindowLongPtrW(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(DefWindowProcW));
+	SetWindowLongPtrW(hwnd, GWLP_USERDATA, 0);
+
+	return DestroyWindow(hwnd);
+}
+
+#include <wtsapi32.h>
+
+HMODULE GetWtsApiDll()
+{
+	static HMODULE dll = 0;
+	if (!dll) { dll = LoadLibraryA("wtsapi32.dll"); }
+	return dll;
+}
+
+FARPROC GetWtsApiProcAddress(LPCSTR lpProcName)
+{
+	if (HMODULE dll = GetWtsApiDll())
+	{
+		return GetProcAddress(dll, lpProcName);
+	}
+	else
+	{
+		return NULL;
+	}
+}
+
+BOOL RegisterSessionNotificationWndProc(HWND hwnd, DWORD flags = NOTIFY_FOR_THIS_SESSION)
+{
+	static void* pfn = nullptr;
+
+	if (!pfn)
+	{
+		pfn = GetWtsApiProcAddress("WTSRegisterSessionNotification");
+		if (!pfn) { return FALSE; }
+	}
+
+	return static_cast<decltype(WTSRegisterSessionNotification)*>(pfn)(hwnd, flags);
+}
+
+BOOL UnregisterSessionNotificationWndProc(HWND hwnd)
+{
+	static void* pfn = nullptr;
+
+	if (!pfn)
+	{
+		pfn = GetWtsApiProcAddress("WTSUnRegisterSessionNotification");
+		if (!pfn) { return FALSE; }
+	}
+
+	return static_cast<decltype(WTSUnRegisterSessionNotification)*>(pfn)(hwnd);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -504,7 +576,7 @@ void CSoundKeeper::FireStart()
 {
 	TraceLog("Fire Start!");
 
-	if (!m_is_suspended && !m_is_display_off)
+	if (!m_is_suspended && !m_is_display_off && !m_is_user_locked)
 	{
 		m_do_start = true;
 	}
@@ -520,7 +592,7 @@ void CSoundKeeper::FireRestart()
 
 	m_do_stop = true;
 
-	if (!m_is_suspended && !m_is_display_off)
+	if (!m_is_suspended && !m_is_display_off && !m_is_user_locked)
 	{
 		m_do_start = true;
 	}
@@ -639,6 +711,46 @@ ULONG CSoundKeeper::DisplayStateCallback(MONITOR_DISPLAY_STATE state)
 	return ERROR_SUCCESS;
 }
 
+// User session lock notifications.
+
+LRESULT CALLBACK CSoundKeeper::MessageWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+	switch (msg)
+	{
+		case WM_WTSSESSION_CHANGE:
+			reinterpret_cast<CSoundKeeper*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA))->UserSessionStateCallback(wParam, lParam);
+			break;
+	}
+
+	return DefWindowProc(hwnd, msg, wParam, lParam);
+}
+
+VOID CSoundKeeper::UserSessionStateCallback(WPARAM wParam, LPARAM lParam)
+{
+	switch (wParam)
+	{
+		case WTS_SESSION_LOCK:
+
+			DebugLog("User session state: Locked.");
+			if (!m_is_user_locked)
+			{
+				m_is_user_locked = true;
+				this->FireStop();
+			}
+			break;
+
+		case WTS_SESSION_UNLOCK:
+
+			DebugLog("User session state: Unlocked.");
+			if (m_is_user_locked)
+			{
+				m_is_user_locked = false;
+				this->FireStart();
+			}
+			break;
+	}
+}
+
 // Entry point methods.
 
 void CSoundKeeper::SetStreamTypeDefaults(KeepStreamType stream_type)
@@ -729,6 +841,7 @@ void CSoundKeeper::ParseModeString(const char* args)
 	if (strstr(buf, "sleepy"))
 	{
 		this->SetSleepWithDisplay(true);
+		this->SetSleepWithUserLock(true);
 	}
 
 	if (strstr(buf, "nosleep"))
@@ -736,6 +849,7 @@ void CSoundKeeper::ParseModeString(const char* args)
 		this->SetSleepWithIdleTimer(false);
 		this->SetSleepWithSystem(false);
 		this->SetSleepWithDisplay(false);
+		this->SetSleepWithUserLock(false);
 	}
 
 	if (strstr(buf, "openonly"))
@@ -864,10 +978,11 @@ HRESULT CSoundKeeper::Main()
 		DebugLog("Periodicity: Disabled.");
 	}
 
-	DebugLog("Sleep With Idle Timer: %s, With System: %s, With Display: %s.",
-		m_cfg_sleep_with_idle_timer ? "Enabled" : "Disabled",
-		m_cfg_sleep_with_system ? "Enabled" : "Disabled",
-		m_cfg_sleep_with_display ? "Enabled" : "Disabled"
+	DebugLog("Sleep With Idle Timer: %s, With System: %s, With Display: %s, With User Lock: %s.",
+		m_cfg_sleep_with_idle_timer ? "Yes" : "No",
+		m_cfg_sleep_with_system ? "Yes" : "No",
+		m_cfg_sleep_with_display ? "Yes" : "No",
+		m_cfg_sleep_with_user_lock ? "Yes" : "No"
 	);
 
 #endif
@@ -958,6 +1073,34 @@ HRESULT CSoundKeeper::Main()
 		}
 	}
 
+	// Register for user lock notifications.
+
+	HWND hwnd = NULL;
+	defer [&] { if (hwnd) { DestroyMessageOnlyWindow(hwnd); } };
+
+	if (m_cfg_sleep_with_user_lock)
+	{
+		hwnd = CreateMessageOnlyWindow(MessageWndProc, this);
+
+		if (!hwnd)
+		{
+			DebugLogError("Cannot create a message only window.");
+		}
+	}
+
+	BOOL user_lock_notify = FALSE;
+	defer [&] { if (user_lock_notify) { UnregisterSessionNotificationWndProc(hwnd); } };
+
+	if (m_cfg_sleep_with_user_lock && hwnd)
+	{
+		user_lock_notify = RegisterSessionNotificationWndProc(hwnd);
+
+		if (!user_lock_notify)
+		{
+			DebugLogWarning("Unable to register for user session notifications.");
+		}
+	}
+
 	// Working loop.
 
 	DebugLog("Enter main loop. Starting...");
@@ -984,7 +1127,7 @@ HRESULT CSoundKeeper::Main()
 			}
 			else
 			{
-				if (!m_is_started && !m_is_suspended && !m_is_display_off && !need_start)
+				if (!m_is_started && !m_is_suspended && !m_is_display_off && !m_is_user_locked && !need_start)
 				{
 					DebugLog("Going to start...");
 					need_start = true;
@@ -1000,7 +1143,7 @@ HRESULT CSoundKeeper::Main()
 			timeout = need_start ? 100 : 10;
 		}
 
-		switch (WaitForAny({ m_do_stop, m_do_start, m_do_shutdown, global_stop_event }, timeout))
+		switch (WaitForAnyOrMsg({ m_do_stop, m_do_start, m_do_shutdown, global_stop_event }, timeout))
 		{
 			case WAIT_TIMEOUT:
 
@@ -1039,6 +1182,17 @@ HRESULT CSoundKeeper::Main()
 				// We're done, exit the loop.
 				DebugLog("Shutdown.");
 				working = false;
+				break;
+
+			case WAIT_OBJECT_0 + 4: // msg
+
+				MSG msg;
+				while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE))
+				{
+					TranslateMessage(&msg);
+					DispatchMessageW(&msg);
+				}
+
 				break;
 		}
 	}
