@@ -731,7 +731,7 @@ VOID CSoundKeeper::UserSessionStateCallback(WPARAM wParam, LPARAM lParam)
 	{
 		case WTS_SESSION_LOCK:
 
-			DebugLog("User session state: Locked.");
+			DebugLog("User session state: Lock.");
 			if (!m_is_user_locked)
 			{
 				m_is_user_locked = true;
@@ -741,12 +741,47 @@ VOID CSoundKeeper::UserSessionStateCallback(WPARAM wParam, LPARAM lParam)
 
 		case WTS_SESSION_UNLOCK:
 
-			DebugLog("User session state: Unlocked.");
+			DebugLog("User session state: Unlock.");
 			if (m_is_user_locked)
 			{
 				m_is_user_locked = false;
 				this->FireStart();
 			}
+			break;
+
+		case WTS_CONSOLE_CONNECT:
+
+			DebugLog("User session state: Console Connect.");
+			break;
+
+		case WTS_CONSOLE_DISCONNECT:
+
+			DebugLog("User session state: Console Disconnect.");
+			break;
+
+		case WTS_REMOTE_CONNECT:
+
+			DebugLog("User session state: Remote Connect.");
+			break;
+
+		case WTS_REMOTE_DISCONNECT:
+
+			DebugLog("User session state: Remote Disconnect.");
+			break;
+
+		case WTS_SESSION_LOGON:
+
+			DebugLog("User session state: Logon.");
+			break;
+
+		case WTS_SESSION_LOGOFF:
+
+			DebugLog("User session state: Logoff.");
+			break;
+
+		default:
+
+			DebugLog("User session state: %u.", wParam);
 			break;
 	}
 }
