@@ -1,12 +1,5 @@
 #include "CSoundSession.hpp"
 
-// Enable Multimedia Class Scheduler Service.
-#define ENABLE_MMCSS
-
-#ifdef ENABLE_MMCSS
-#include <avrt.h>
-#endif
-
 bool CSoundSession::g_is_leaky_wasapi = false;
 
 CSoundSession::CSoundSession(CSoundKeeper* soundkeeper, IMMDevice* endpoint)
@@ -122,6 +115,8 @@ void CSoundSession::Stop()
 // Rendering thread.
 //
 
+#include <avrt.h>
+
 DWORD APIENTRY CSoundSession::RenderingThreadEntry(LPVOID context)
 {
 	DebugThreadName("Rendering");
@@ -136,21 +131,22 @@ DWORD APIENTRY CSoundSession::RenderingThreadEntry(LPVOID context)
 		return 1;
 	}
 
-#ifdef ENABLE_MMCSS
+	// Enable Multimedia Class Scheduler Service (MMCSS).
+
 	HANDLE mmcss_handle = NULL;
 	DWORD mmcss_task_index = 0;
-	mmcss_handle = AvSetMmThreadCharacteristics(L"Audio", &mmcss_task_index);
+	mmcss_handle = AvSetMmThreadCharacteristicsA("Audio", &mmcss_task_index);
 	if (mmcss_handle == NULL)
 	{
 		DebugLogError("Unable to enable MMCSS on rendering thread: 0x%08X.", GetLastError());
 	}
-#endif
 
 	DWORD result = renderer->RenderingThread();
 
-#ifdef ENABLE_MMCSS
-	if (mmcss_handle != NULL) { AvRevertMmThreadCharacteristics(mmcss_handle); }
-#endif
+	if (mmcss_handle != NULL)
+	{
+		AvRevertMmThreadCharacteristics(mmcss_handle);
+	}
 
 	CoUninitialize();
 
