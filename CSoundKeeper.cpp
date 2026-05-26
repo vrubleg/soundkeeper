@@ -441,7 +441,7 @@ HRESULT CSoundKeeper::Stop()
 				m_sessions[i]->Release();
 			}
 		}
-		delete m_sessions;
+		delete[] m_sessions;
 	}
 
 	m_sessions = nullptr;
