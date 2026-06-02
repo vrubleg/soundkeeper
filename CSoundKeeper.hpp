@@ -109,6 +109,7 @@ public:
 	// Set stream type and defaults.
 	void SetStreamTypeDefaults(KeepStreamType stream_type);
 
+	bool HasReasonsToSleep();
 	void FireStop();
 	void FireStart();
 	void FireRestart();

@@ -238,6 +238,56 @@ BOOL UnregisterSessionNotificationWndProc(HWND hwnd)
 	return static_cast<decltype(WTSUnRegisterSessionNotification)*>(pfn)(hwnd);
 }
 
+BOOL WtsQuerySessionInformation(HANDLE hServer, DWORD SessionId, WTS_INFO_CLASS WTSInfoClass, PVOID* ppBuffer, DWORD* pBytesReturned)
+{
+	static void* pfn = nullptr;
+
+	if (!pfn)
+	{
+		pfn = GetWtsApiProcAddress("WTSQuerySessionInformationW");
+		if (!pfn) { return FALSE; }
+	}
+
+	return static_cast<decltype(WTSQuerySessionInformationW)*>(pfn)(hServer, SessionId, WTSInfoClass, (LPWSTR*) ppBuffer, pBytesReturned);
+}
+
+VOID WtsFreeMemory(PVOID pMemory)
+{
+	if (!pMemory) { return; }
+
+	static void* pfn = nullptr;
+
+	if (!pfn)
+	{
+		pfn = GetWtsApiProcAddress("WTSFreeMemory");
+		if (!pfn) { return; }
+	}
+
+	static_cast<decltype(WTSFreeMemory)*>(pfn)(pMemory);
+}
+
+bool IsUserSessionLocked()
+{
+	WTSINFOEXW* buffer = nullptr;
+	DWORD bytes = 0;
+	bool result = false;
+
+	if (WtsQuerySessionInformation(WTS_CURRENT_SERVER_HANDLE, WTS_CURRENT_SESSION, WTSSessionInfoEx, (PVOID*) &buffer, &bytes))
+	{
+		if (bytes >= sizeof(WTSINFOEXW) && buffer->Level >= 1)
+		{
+			result = !((buffer->Data.WTSInfoExLevel1.SessionFlags) & WTS_SESSIONSTATE_UNLOCK);
+
+			// Windows 7 has this flag inverted because of a bug.
+			if (GetNtBuildNumber() <= 7601) { result = !result; }
+		}
+
+		WtsFreeMemory(buffer);
+	}
+
+	return result;
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 //
@@ -564,6 +614,11 @@ CSoundSession* CSoundKeeper::FindSession(LPCWSTR device_id)
 	return nullptr;
 }
 
+bool CSoundKeeper::HasReasonsToSleep()
+{
+	return m_is_suspended || m_is_display_off || m_is_user_locked;
+}
+
 // Fire main thread control events.
 
 void CSoundKeeper::FireStop()
@@ -576,7 +631,7 @@ void CSoundKeeper::FireStart()
 {
 	TraceLog("Fire Start!");
 
-	if (!m_is_suspended && !m_is_display_off && !m_is_user_locked)
+	if (!this->HasReasonsToSleep())
 	{
 		m_do_start = true;
 	}
@@ -592,7 +647,7 @@ void CSoundKeeper::FireRestart()
 
 	m_do_stop = true;
 
-	if (!m_is_suspended && !m_is_display_off && !m_is_user_locked)
+	if (!this->HasReasonsToSleep())
 	{
 		m_do_start = true;
 	}
@@ -727,62 +782,40 @@ LRESULT CALLBACK CSoundKeeper::MessageWndProc(HWND hwnd, UINT msg, WPARAM wParam
 
 VOID CSoundKeeper::UserSessionStateCallback(WPARAM wParam, LPARAM lParam)
 {
-	switch (wParam)
+#if IS_WIN_CUI
+
+	const char* state_strings[9] = {
+		"None",
+		"Console Connect",
+		"Console Disconnect",
+		"Remote Connect",
+		"Remote Disconnect",
+		"Logon",
+		"Logoff",
+		"Lock",
+		"Unlock",
+	};
+
+	if (wParam <= WTS_SESSION_UNLOCK)
 	{
-		case WTS_SESSION_LOCK:
+		DebugLog("User Session Event: %s.", state_strings[wParam]);
+	}
+	else
+	{
+		DebugLog("User Session Event: %u.", wParam);
+	}
 
-			DebugLog("User session state: Lock.");
-			if (!m_is_user_locked)
-			{
-				m_is_user_locked = true;
-				this->FireStop();
-			}
-			break;
+#endif
 
-		case WTS_SESSION_UNLOCK:
-
-			DebugLog("User session state: Unlock.");
-			if (m_is_user_locked)
-			{
-				m_is_user_locked = false;
-				this->FireStart();
-			}
-			break;
-
-		case WTS_CONSOLE_CONNECT:
-
-			DebugLog("User session state: Console Connect.");
-			break;
-
-		case WTS_CONSOLE_DISCONNECT:
-
-			DebugLog("User session state: Console Disconnect.");
-			break;
-
-		case WTS_REMOTE_CONNECT:
-
-			DebugLog("User session state: Remote Connect.");
-			break;
-
-		case WTS_REMOTE_DISCONNECT:
-
-			DebugLog("User session state: Remote Disconnect.");
-			break;
-
-		case WTS_SESSION_LOGON:
-
-			DebugLog("User session state: Logon.");
-			break;
-
-		case WTS_SESSION_LOGOFF:
-
-			DebugLog("User session state: Logoff.");
-			break;
-
-		default:
-
-			DebugLog("User session state: %u.", wParam);
-			break;
+	if (wParam == WTS_SESSION_UNLOCK && m_is_user_locked)
+	{
+		m_is_user_locked = false;
+		this->FireStart();
+	}
+	else if (wParam == WTS_SESSION_LOCK && !m_is_user_locked)
+	{
+		m_is_user_locked = true;
+		this->FireStop();
 	}
 }
 
@@ -974,10 +1007,17 @@ HRESULT CSoundKeeper::Main()
 		m_cfg_sleep_with_idle_timer = false;
 	}
 
-	if (m_cfg_sleep_with_system && nt_build_number < 9200)
+	if (nt_build_number < 9200)
 	{
-		// It's available since Windows 8 so disable it for Windows 7.
+		// It's available since Windows 8 so disable it for Windows Vista and 7.
 		m_cfg_sleep_with_system = false;
+	}
+
+	if (nt_build_number < 7600)
+	{
+		// It's available since Windows 7 so disable it for Windows Vista.
+		m_cfg_sleep_with_user_lock = false;
+		m_cfg_sleep_with_display = false;
 	}
 
 #if IS_WIN_CUI
@@ -1115,6 +1155,9 @@ HRESULT CSoundKeeper::Main()
 
 	if (m_cfg_sleep_with_user_lock)
 	{
+		m_is_user_locked = IsUserSessionLocked();
+		DebugLog("User Session State: %s.", m_is_user_locked ? "Locked" : "Unlocked");
+
 		hwnd = CreateMessageOnlyWindow(MessageWndProc, this);
 
 		if (!hwnd)
@@ -1139,7 +1182,10 @@ HRESULT CSoundKeeper::Main()
 	// Working loop.
 
 	DebugLog("Enter main loop. Starting...");
-	this->Start();
+	if (!this->HasReasonsToSleep())
+	{
+		this->Start();
+	}
 
 	bool need_stop = false;
 	bool need_start = false;
@@ -1162,7 +1208,7 @@ HRESULT CSoundKeeper::Main()
 			}
 			else
 			{
-				if (!m_is_started && !m_is_suspended && !m_is_display_off && !m_is_user_locked && !need_start)
+				if (!m_is_started && !this->HasReasonsToSleep() && !need_start)
 				{
 					DebugLog("Going to start...");
 					need_start = true;
@@ -1233,7 +1279,10 @@ HRESULT CSoundKeeper::Main()
 	}
 
 	DebugLog("Leave main loop. Stopping...");
-	this->Stop();
+	if (m_is_started)
+	{
+		this->Stop();
+	}
 
 	return hr;
 }
