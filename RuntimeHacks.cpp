@@ -13,15 +13,6 @@
 
 extern "C" void _ftol2();
 
-// Make static analysis think that _ftol2 is defined here.
-
-#if IS_PREFAST
-extern "C" void _ftol2()
-{
-	__assume(0);
-}
-#endif
-
 #else
 
 //

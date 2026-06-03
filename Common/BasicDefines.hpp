@@ -105,9 +105,3 @@
 #else
 	#define IS_INTELLISENSE 0
 #endif
-
-#if defined(_PREFAST_)
-	#define IS_PREFAST      1
-#else
-	#define IS_PREFAST      0
-#endif
