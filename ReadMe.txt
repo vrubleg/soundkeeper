@@ -35,6 +35,11 @@ Sine and noise stream parameters:
 - W is waiting time between sounds if L is set. Use to enable periodic sound.
 - T is transition or fading time. Default: 0.1 second. Applicable for: Sine, Noise.
 
+Known issue: streaming audio prevents automatic sleep mode on Windows 11. To counter that, you can use these switches:
+- "SleepL" to make Sound Keeper sleeping when current user session is locked.
+- "SleepD" to make Sound Keeper sleeping when monitor is turned off.
+- "SleepLD" to make Sound Keeper sleeping in both cases.
+
 Examples:
 - SoundKeeperZeroAll.exe generates zero amplitude stream on all enabled audio outputs.
 - SoundKeeperAll.exe generates default inaudible stream on all enabled audio outputs.
@@ -46,8 +51,8 @@ Examples:
 What's new
 
 v1.3.6 [2026/XX/XX]:
-- Handle Windows 8+ suspend/resume events that should help with modern standby support.
-- New "Sleepy" mode to enable optional automatic sleep when display is off to counter the Windows 11 sleep issue.
+- Handle Windows 8+ suspend/resume events that should help to avoid battery drain during modern standby.
+- Optional sleep with user session lock or/and with display to counter the Windows 11 sleep issue.
 
 v1.3.5 [2025/07/05]:
 - Handle ASIO exclusive mode by waiting until it ends, similar to WASAPI exclusive mode.

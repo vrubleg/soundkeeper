@@ -854,7 +854,7 @@ void CSoundKeeper::ParseStreamArgs(KeepStreamType stream_type, const char* args)
 {
 	this->SetStreamTypeDefaults(stream_type);
 
-	char* p = (char*) args;
+	const char* p = args;
 	while (*p)
 	{
 		if (*p == ' ' || *p == '\t' || *p == '-') { p++; }
@@ -865,7 +865,7 @@ void CSoundKeeper::ParseStreamArgs(KeepStreamType stream_type, const char* args)
 			while (*p == ' ' || *p == '\t' || *p == '=') { p++; }
 			if (*p < '0' || '9' < *p) { break; }
 
-			double value = strtod(p, &p);
+			double value = strtod(p, (char**) &p);
 			if (type == 'f')
 			{
 				this->SetFrequency(std::min(value, 96000.0));
@@ -906,18 +906,29 @@ void CSoundKeeper::ParseModeString(const char* args)
 	if (strstr(buf, "kill"))    { this->SetDeviceType(KeepDeviceType::None); }
 	if (strstr(buf, "remote"))  { this->SetAllowRemote(true); }
 
-	if (strstr(buf, "sleepy"))
-	{
-		this->SetSleepWithDisplay(true);
-		this->SetSleepWithUserLock(true);
-	}
-
 	if (strstr(buf, "nosleep"))
 	{
 		this->SetSleepWithIdleTimer(false);
 		this->SetSleepWithSystem(false);
 		this->SetSleepWithDisplay(false);
 		this->SetSleepWithUserLock(false);
+	}
+	else if (strstr(buf, "sleepy"))
+	{
+		this->SetSleepWithDisplay(true);
+		this->SetSleepWithUserLock(true);
+	}
+	else if (const char* p = strstr(buf, "sleep"))
+	{
+		p += 5;
+
+		while (*p)
+		{
+			if (*p == ' ' || *p == '\t' || *p == '-' || *p == '=') { p++; }
+			else if (*p == 'd') { this->SetSleepWithDisplay(true); p++; }
+			else if (*p == 'l') { this->SetSleepWithUserLock(true); p++; }
+			else { break; }
+		}
 	}
 
 	if (strstr(buf, "openonly"))
@@ -928,23 +939,23 @@ void CSoundKeeper::ParseModeString(const char* args)
 	{
 		this->SetStreamType(KeepStreamType::Zero);
 	}
-	else if (char* p = strstr(buf, "fluctuate"))
+	else if (const char* p = strstr(buf, "fluctuate"))
 	{
 		this->ParseStreamArgs(KeepStreamType::Fluctuate, p+9);
 	}
-	else if (char* p = strstr(buf, "sine"))
+	else if (const char* p = strstr(buf, "sine"))
 	{
 		this->ParseStreamArgs(KeepStreamType::Sine, p+4);
 	}
-	else if (char* p = strstr(buf, "white"))
+	else if (const char* p = strstr(buf, "white"))
 	{
 		this->ParseStreamArgs(KeepStreamType::WhiteNoise, p+5);
 	}
-	else if (char* p = strstr(buf, "brown"))
+	else if (const char* p = strstr(buf, "brown"))
 	{
 		this->ParseStreamArgs(KeepStreamType::BrownNoise, p+5);
 	}
-	else if (char* p = strstr(buf, "pink"))
+	else if (const char* p = strstr(buf, "pink"))
 	{
 		this->ParseStreamArgs(KeepStreamType::PinkNoise, p+4);
 	}
