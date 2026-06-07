@@ -59,7 +59,6 @@ uint32_t GetSecondsToSleeping()
 
 #include <powrprof.h>
 #include <functiondiscoverykeys_devpkey.h> // for PKEY_Device_FriendlyName
-#include <shellapi.h> // for CommandLineToArgvW
 
 HMODULE GetPowrProfDll()
 {
