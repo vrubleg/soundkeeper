@@ -1,4 +1,4 @@
-Sound Keeper v1.3.6 [2026/XX/XX]
+Sound Keeper v1.3.6 [2026/06/08]
 https://veg.by/projects/soundkeeper/
 
 Prevents SPDIF/HDMI digital audio playback devices from sleeping. Uses WASAPI, requires Windows 7+.
@@ -38,7 +38,7 @@ Sine and noise stream parameters:
 Known issue: streaming audio prevents automatic sleep mode on Windows 11. To counter that, you can use these switches:
 - "SleepL" to make Sound Keeper sleeping when current user session is locked.
 - "SleepD" to make Sound Keeper sleeping when monitor is turned off.
-- "SleepLD" to make Sound Keeper sleeping in both cases.
+- "SleepLD" or "Sleepy" to make Sound Keeper sleeping in both cases.
 
 Examples:
 - SoundKeeperZeroAll.exe generates zero amplitude stream on all enabled audio outputs.
@@ -50,7 +50,7 @@ Examples:
 
 What's new
 
-v1.3.6 [2026/XX/XX]:
+v1.3.6 [2026/06/08]:
 - Handle Windows 8+ suspend/resume events that should help to avoid battery drain during modern standby.
 - Optional sleep with user session lock or/and with display to counter the Windows 11 sleep issue.
 
