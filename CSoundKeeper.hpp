@@ -5,7 +5,7 @@
 #include <mmdeviceapi.h>
 #include <audiopolicy.h>
 
-enum class KeepDeviceType { None, Primary, Digital, Analog, All };
+enum class KeepDeviceType { None, Primary, Digital, Analog, All, ByName };
 enum class KeepStreamType { None, Zero, Fluctuate, Sine, WhiteNoise, BrownNoise, PinkNoise };
 
 class CSoundKeeper;
@@ -58,6 +58,7 @@ protected:
 	bool                    m_cfg_sleep_with_display = false;
 	bool                    m_cfg_sleep_with_user_lock = false;
 	KeepDeviceType          m_cfg_device_type = KeepDeviceType::Primary;
+	char                    m_cfg_device_name[MAX_AUDIODEVICENAME_LENGTH] = "";
 	KeepStreamType          m_cfg_stream_type = KeepStreamType::Zero;
 	double                  m_cfg_frequency = 0.0;
 	double                  m_cfg_amplitude = 0.0;
@@ -80,6 +81,17 @@ protected:
 public:
 
 	void SetDeviceType(KeepDeviceType device_type) { m_cfg_device_type = device_type; }
+	void SetDeviceName(const char* name)
+	{
+		if (name && name[0])
+		{
+			strncpy_s(m_cfg_device_name, name, MAX_AUDIODEVICENAME_LENGTH - 1);
+		}
+		else
+		{
+			m_cfg_device_name[0] = '\0';
+		}
+	}
 	void SetStreamType(KeepStreamType stream_type) { m_cfg_stream_type = stream_type; }
 	void SetAllowRemote(bool allow) { m_cfg_allow_remote = allow; }
 	void SetSleepWithIdleTimer(bool value) { m_cfg_sleep_with_idle_timer = value; }
@@ -87,6 +99,7 @@ public:
 	void SetSleepWithDisplay(bool value) { m_cfg_sleep_with_display = value; }
 	void SetSleepWithUserLock(bool value) { m_cfg_sleep_with_user_lock = value; }
 	KeepDeviceType GetDeviceType() const { return m_cfg_device_type; }
+	const char* GetDeviceName() const { return m_cfg_device_name; }
 	KeepStreamType GetStreamType() const { return m_cfg_stream_type; }
 	bool GetAllowRemote() const { return m_cfg_allow_remote; }
 	bool GetSleepWithIdleTimer() const { return m_cfg_sleep_with_idle_timer; }

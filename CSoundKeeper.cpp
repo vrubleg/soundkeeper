@@ -58,6 +58,7 @@ uint32_t GetSecondsToSleeping()
 // ---------------------------------------------------------------------------------------------------------------------
 
 #include <powrprof.h>
+#include <functiondiscoverykeys_devpkey.h> // for PKEY_Device_FriendlyName
 
 HMODULE GetPowrProfDll()
 {
@@ -427,6 +428,73 @@ uint32_t GetDeviceFormFactor(IMMDevice* device)
 	return formfactor;
 }
 
+//
+// Returns true if the device's friendly name (as shown in mmsys.cpl) contains 'name_filter' as a case-insensitive substring.
+//
+
+bool DeviceNameMatches(IMMDevice* device, const char* name_filter)
+{
+	if (!name_filter || !name_filter[0]) { DebugLog("Device name not set, all devices will be rejected"); return false; }
+
+	IPropertyStore* properties = nullptr;
+	HRESULT hr = device->OpenPropertyStore(STGM_READ, &properties);
+	if (FAILED(hr)) { DebugLog("Failed to check device information"); return false; }
+	defer [&] { properties->Release(); };
+
+	PROPVARIANT prop_name;
+	PropVariantInit(&prop_name);
+	//
+	// Friendly name contains both the device name that the user can change
+	// and the device's own name as specified in the driver or wherever it
+	// is specified.
+	// For example, if I rename a device into "CABLE Input", and the device's name
+	// itself is "VB-Audio Virtual Cable", Friendly name would be:
+	// "CABLE Input (VB-Audio Virtual Cable)".
+	// This may obviously exceed MAX_AUDIODEVICENAME_LENGTH which I specified to
+	// be 41 in BasicDefines.hpp. However, this shouldn't be a problem because
+	// the user-renamable name comes first and I used safe functions limited by
+	// length correctly, and matching is done by looking for a substring (strstr).
+	//
+	hr = properties->GetValue(PKEY_Device_FriendlyName, &prop_name);
+	int vt = prop_name.vt;
+	if (FAILED(hr) || vt != VT_LPWSTR)
+	{
+		PropVariantClear(&prop_name);
+		DebugLog("Failed to get audio device friendly name, prop vt was: %d", vt);
+		return false;
+	}
+
+	// both sides to lower
+	wchar_t wdevice_lower[MAX_AUDIODEVICENAME_LENGTH];
+	wcsncpy_s(wdevice_lower, prop_name.pwszVal, MAX_AUDIODEVICENAME_LENGTH - 1);
+	_wcslwr_s(wdevice_lower, MAX_AUDIODEVICENAME_LENGTH);
+	char device_lower[MAX_AUDIODEVICENAME_LENGTH];
+	//
+	// Audio device names are stored in wide characters. However the rest of
+	// the source code does not support wide characters. I've decided to not
+	// add support for it as that would be too much changes.
+	// Instead the user is expected to rename their audio devices in mmsys.cpl.
+	// Unicode characters in audio device names will be treated as '\n' because
+	// it's pretty hard to use a newline in a command-line argument and even
+	// more so in the file name. Therefore such a name will never be able to be
+	// matched. Hopefully this will force the user to read the readme and see
+	// that they are advised to rename their audio devices to not contain any
+	// unicode characters.
+	//
+	char replacementchar = '\n';
+	WideCharToMultiByte(CP_ACP, 0, wdevice_lower, -1, device_lower, sizeof(device_lower), &replacementchar, NULL);
+
+	char filter_lower[MAX_AUDIODEVICENAME_LENGTH];
+	strncpy_s(filter_lower, name_filter, MAX_AUDIODEVICENAME_LENGTH - 1);
+	_strlwr_s(filter_lower, MAX_AUDIODEVICENAME_LENGTH);
+
+	bool match = (strstr(device_lower, filter_lower) != nullptr);
+	DebugLog("Match=%s: Current FriendlyName: '%s'; Filter: '%s'", match ? "yes" : "no", device_lower, filter_lower);
+
+	PropVariantClear(&prop_name);
+	return match;
+}
+
 HRESULT CSoundKeeper::Start()
 {
 	ScopedLock lock(m_mutex);
@@ -525,6 +593,12 @@ HRESULT CSoundKeeper::Start()
 				&& (m_cfg_device_type == KeepDeviceType::Digital) != (formfactor == SPDIF || formfactor == HDMI))
 			{
 				DebugLog("Skipping this device because of the Digital / Analog filter.");
+				continue;
+			}
+			else if (m_cfg_device_type == KeepDeviceType::ByName
+				&& !DeviceNameMatches(device, m_cfg_device_name))
+			{
+				DebugLog("Skipping this device, the device name doesn't match the specified filter: %s", m_cfg_device_name);
 				continue;
 			}
 
@@ -903,6 +977,21 @@ void CSoundKeeper::ParseModeString(const char* args)
 	if (strstr(buf, "all"))     { this->SetDeviceType(KeepDeviceType::All); }
 	if (strstr(buf, "analog"))  { this->SetDeviceType(KeepDeviceType::Analog); }
 	if (strstr(buf, "digital")) { this->SetDeviceType(KeepDeviceType::Digital); }
+	if (const char* p = strstr(buf, "device"))
+	{
+		p += 6;
+
+		const char* charlimit = p + MAX_AUDIODEVICENAME_LENGTH + 1;
+		if (*p == ' ' || *p == '\t' || *p == '-' || *p == '=') { p++; }
+		const char* end = p;
+		do { end++; } while (*end && *end != ';' && end < charlimit);
+
+		char devicename[MAX_AUDIODEVICENAME_LENGTH];
+		strncpy_s(devicename, p, end - p);
+
+		this->SetDeviceName(devicename);
+		this->SetDeviceType(KeepDeviceType::ByName);
+	}
 	if (strstr(buf, "kill"))    { this->SetDeviceType(KeepDeviceType::None); }
 	if (strstr(buf, "remote"))  { this->SetAllowRemote(true); }
 

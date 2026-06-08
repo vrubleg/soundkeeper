@@ -20,6 +20,14 @@ Supported device type settings:
 - "All" keeps on all enabled audio outputs.
 - "Digital" keeps on all enabled SPDIF and HDMI audio outputs (like it was in Sound Keeper v1.0).
 - "Analog" keeps on all enabled audio outputs except SPDIF and HDMI.
+- "Device" keeps on all outputs that match the audio device name chosen by the user.
+
+The "ByName" type requires some more explanation. On Windows it's possible to rename audio devices.
+To do that, you can open the legacy "Sounds" dialog (Win+R -> mmsys.cpl), open properties of any
+audio device and simply modify the name and click apply. You can then pass that name to SoundKeeper
+either as an argument or in the file name itself just like all other options.
+The syntax is "DeviceDEVICE NAME;".
+Please don't have semicolons in your device name. (but it might still work)
 
 Supported stream type settings:
 - "OpenOnly" opens audio output, but doesn't play anything. Sometimes it helps.
@@ -47,6 +55,7 @@ Examples:
 - SoundKeeperSineF1000A15.exe generates 1000Hz sine wave with 15% amplitude. It is audible! Use it for testing.
 - "SoundKeeper.exe sine -f 1000 -a 15" is a command line version of the previous example.
 - "SoundKeeper.exe brown -a 0.1" (settings are command line arguments) generates brown noise with 0.1% amplitude.
+- "SoundKeeperDeviceCABLE Input;SineF440A10.exe" generates an audible sine wave on device named "CABLE Input".
 
 What's new
 

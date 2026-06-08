@@ -105,3 +105,5 @@
 #else
 	#define IS_INTELLISENSE 0
 #endif
+
+#define MAX_AUDIODEVICENAME_LENGTH 42 // the character limit for device names in mmsys.cpl is 41
