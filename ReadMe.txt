@@ -1,4 +1,4 @@
-Sound Keeper v1.3.6 [2026/06/08]
+Sound Keeper v1.3.7 [2026/06/XX]
 https://veg.by/projects/soundkeeper/
 
 Prevents SPDIF/HDMI digital audio playback devices from sleeping. Uses WASAPI, requires Windows 7+.
@@ -20,6 +20,7 @@ Supported device type settings:
 - "All" keeps on all enabled audio outputs.
 - "Digital" keeps on all enabled SPDIF and HDMI audio outputs (like it was in Sound Keeper v1.0).
 - "Analog" keeps on all enabled audio outputs except SPDIF and HDMI.
+- "Marked" keeps on outputs that are marked with an exclamation mark "!" in their name. Just add "!" to desired outputs.
 
 Supported stream type settings:
 - "OpenOnly" opens audio output, but doesn't play anything. Sometimes it helps.
@@ -49,6 +50,9 @@ Examples:
 - "SoundKeeper.exe brown -a 0.1" (settings are command line arguments) generates brown noise with 0.1% amplitude.
 
 What's new
+
+v1.3.7 [2026/06/XX]:
+- An option to run Sound Keeper on explicitly marked (with "!") output devices only.
 
 v1.3.6 [2026/06/08]:
 - Handle Windows 8+ suspend/resume events that should help to avoid battery drain during modern standby.

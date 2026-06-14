@@ -2,10 +2,7 @@
 
 #include "Common.hpp"
 
-#include <mmdeviceapi.h>
-#include <audiopolicy.h>
-
-enum class KeepDeviceType { None, Primary, Digital, Analog, All };
+enum class KeepDeviceType { None, Primary, Marked, Digital, Analog, All };
 enum class KeepStreamType { None, Zero, Fluctuate, Sine, WhiteNoise, BrownNoise, PinkNoise };
 
 class CSoundKeeper;

@@ -4,6 +4,8 @@
 
 #include <mmdeviceapi.h>
 #include <audioclient.h>
+#include <audiopolicy.h>
+#include <functiondiscoverykeys.h>
 
 class CSoundSession;
 

@@ -379,6 +379,11 @@ HRESULT STDMETHODCALLTYPE CSoundKeeper::OnDeviceStateChanged(LPCWSTR device_id, 
 
 HRESULT STDMETHODCALLTYPE CSoundKeeper::OnPropertyValueChanged(LPCWSTR device_id, const PROPERTYKEY key)
 {
+	if (m_cfg_device_type == KeepDeviceType::Marked && IsEqualPropertyKey(key, PKEY_Device_DeviceDesc))
+	{
+		DebugLog("Device '%S' has updated description.", device_id);
+		this->FireRestart();
+	}
 	return S_OK;
 }
 
@@ -425,6 +430,50 @@ uint32_t GetDeviceFormFactor(IMMDevice* device)
 	SafeRelease(properties);
 
 	return formfactor;
+}
+
+bool IsDeviceMarked(IMMDevice* device)
+{
+	bool result = false;
+
+	IPropertyStore* properties = nullptr;
+	HRESULT hr = device->OpenPropertyStore(STGM_READ, &properties);
+	if (FAILED(hr))
+	{
+		DebugLogWarning("Unable to retrieve property store of an audio device: 0x%08X.", hr);
+		return result;
+	}
+
+	PROPVARIANT prop_name;
+	PropVariantInit(&prop_name);
+	hr = properties->GetValue(PKEY_Device_DeviceDesc, &prop_name);
+	if (SUCCEEDED(hr) && prop_name.vt == VT_LPWSTR)
+	{
+		result = !!wcschr(prop_name.pwszVal, L'!');
+
+#if IS_WIN_CUI
+		LPWSTR device_id = nullptr;
+		hr = device->GetId(&device_id);
+		if (FAILED(hr))
+		{
+			DebugLogWarning("Unable to get device ID: 0x%08X.", hr);
+		}
+		else
+		{
+			DebugLog("Device ID: '%S'. Description: '%S' (%s).", device_id, prop_name.pwszVal, result ? "Marked" : "Skipped");
+			CoTaskMemFree(device_id);
+		}
+#endif
+	}
+	else
+	{
+		DebugLogWarning("Unable to retrieve description of an audio device: 0x%08X.", hr);
+	}
+
+	PropVariantClear(&prop_name);
+	SafeRelease(properties);
+
+	return result;
 }
 
 HRESULT CSoundKeeper::Start()
@@ -525,6 +574,11 @@ HRESULT CSoundKeeper::Start()
 				&& (m_cfg_device_type == KeepDeviceType::Digital) != (formfactor == SPDIF || formfactor == HDMI))
 			{
 				DebugLog("Skipping this device because of the Digital / Analog filter.");
+				continue;
+			}
+			else if (m_cfg_device_type == KeepDeviceType::Marked && !IsDeviceMarked(device))
+			{
+				DebugLog("Skipping this device because it is not marked with '!'.");
 				continue;
 			}
 
@@ -901,6 +955,7 @@ void CSoundKeeper::ParseModeString(const char* args)
 	_strlwr(buf);
 
 	if (strstr(buf, "all"))     { this->SetDeviceType(KeepDeviceType::All); }
+	if (strstr(buf, "marked"))  { this->SetDeviceType(KeepDeviceType::Marked); }
 	if (strstr(buf, "analog"))  { this->SetDeviceType(KeepDeviceType::Analog); }
 	if (strstr(buf, "digital")) { this->SetDeviceType(KeepDeviceType::Digital); }
 	if (strstr(buf, "kill"))    { this->SetDeviceType(KeepDeviceType::None); }
@@ -1037,6 +1092,7 @@ HRESULT CSoundKeeper::Main()
 	{
 		case KeepDeviceType::None:      DebugLog("Device Type: None."); break;
 		case KeepDeviceType::Primary:   DebugLog("Device Type: Primary."); break;
+		case KeepDeviceType::Marked:    DebugLog("Device Type: Marked."); break;
 		case KeepDeviceType::All:       DebugLog("Device Type: All."); break;
 		case KeepDeviceType::Analog:    DebugLog("Device Type: Analog."); break;
 		case KeepDeviceType::Digital:   DebugLog("Device Type: Digital."); break;
